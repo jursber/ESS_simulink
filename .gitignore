@@ -25,16 +25,12 @@ env/
 *.ipynb_checkpoints
 
 # Data files (keep small samples, ignore large ones)
-data/raw/*.csv
-data/raw/*.xlsx
-data/raw/*.parquet
-data/processed/*.csv
-data/processed/*.xlsx
-data/processed/*.parquet
-
-# Keep directory structure
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+data/raw/**/*.csv
+data/raw/**/*.xlsx
+data/raw/**/*.parquet
+data/processed/**/*.csv
+data/processed/**/*.xlsx
+data/processed/**/*.parquet
 
 # OS
 .DS_Store
