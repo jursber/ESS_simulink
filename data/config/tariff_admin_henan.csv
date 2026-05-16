@@ -1,0 +1,6 @@
+period,start_hour,end_hour,price_yuan_per_kwh,label
+valley,0,8,0.28,谷段
+flat,12,17,0.58,平段
+peak,8,12,0.95,峰段
+flat,21,24,0.58,平段
+peak,17,21,0.95,峰段

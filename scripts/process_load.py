@@ -23,7 +23,7 @@ def process_one_day(filepath: str) -> pd.DataFrame:
     """读取单日 CSV，计算 Load_real，聚合到小时级。"""
     df = pd.read_csv(filepath, parse_dates=["time"])
 
-    df["Load_real"] = df["load"] - df["storage"]
+    df["Load_real"] = df["load"] + df["storage"]
     df["date"] = df["time"].dt.date
     df["hour"] = df["time"].dt.hour
 

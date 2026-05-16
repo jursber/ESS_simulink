@@ -1,0 +1,7 @@
+param,value,unit,note
+p_base,0.50,元/kWh,月度平段基础电价
+coefficient_peak,1.6,-,峰段系数
+coefficient_flat,1.0,-,平段系数
+coefficient_valley,0.4,-,谷段系数
+period_source,admin_tou,-,时段划分沿用行政分时电价
+status,deprecated,-,即将淘汰
