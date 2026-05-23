@@ -113,6 +113,20 @@
 - **R083**：新建对比方案（方案二）默认加载全局缺省参数，不继承方案一的私有参数
 - **R084**：任意方案可一键复制其他已保存方案的全部或部分私有参数
 
+## 第 7 轮（售电购电数据加载与验收，2026-05-22）
+
+- **R085**：`contract_position_*.csv`、`dayahead_position_*.csv` 在含 `date` 列时，计算路径必须按 `ScenarioConfig.selected_date` 筛选该日 0~23 时共 24 行，再代入 §5.3 购电公式，与现货/负荷按日对齐。**已入PRD**
+- **R086**：筛选后该日无行或小时不完整时，应抛出明确错误（提示检查 CSV 日期与行数）。**已入PRD**
+- **R087**：购电分项验收：`C_中长期`、`C_日前`、`C_实时` 与 PRD 手工展开式在固定 mock 数据上一致；`C_购电 = 三者之和`。**已入PRD**
+
+---
+
+## Backlog 与文档索引
+
+- **已入 PRD 的条目**：以 [PRD_v1.0.3.md](PRD_v1.0.3.md) 为准，并在本文件对应 Rxxx 处标注「已入PRD」。
+- **讨论中、尚未写入 PRD 正文**：继续以「第 N 轮」追加；合并入 PRD 时同步更新 [CHANGELOG.md](CHANGELOG.md) 与（如适用）[implementation_matrix.md](implementation_matrix.md)。
+- **版本与协作约定**：[VERSIONING.md](VERSIONING.md)；**交互纪要**：[SESSION_LOG.md](SESSION_LOG.md)；**实现登记**：[IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md)。
+
 ---
 
 *下一轮需求讨论后继续追加...*

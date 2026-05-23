@@ -1,0 +1,12 @@
+{
+  "id": "131c8b426815",
+  "name": "新方案-2",
+  "created_at": "2026-05-17T01:04:17.910331+00:00",
+  "region": "henan",
+  "pricing_mode": "M1",
+  "business_model": "B1",
+  "ess_params": {},
+  "financial_params": {},
+  "selected_date": "2026-03-15",
+  "private_overrides": {}
+}

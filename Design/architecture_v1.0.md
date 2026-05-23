@@ -1,7 +1,7 @@
 # 储能运营模拟计算器 — 架构设计文档 v1.0
 
 > 目标：本文档覆盖前端 UI 设计、后端架构、算法实现细节，足够 Claude Code 据此完成全部代码开发。
-> 配套文档：`PRD/PRD_v1.0.1.md`（需求冻结）、`PRD/requirements.md`（需求记录）
+> 配套文档：`PRD/PRD_v1.0.3.md`（需求冻结）、`PRD/requirements.md`（需求记录）、`PRD/VERSIONING.md`（版本与协作约定）、`PRD/implementation_matrix.md`（追溯矩阵）
 
 ---
 
@@ -33,7 +33,7 @@
 │       └────────────┴────────────┴───────────────┘        │
 │                          │                                │
 │              Session State (st.session_state)             │
-│        global_params / scenarios / results_cache          │
+│        global_ess / global_fin / scenarios / results_cache │
 ├──────────────────────────┼────────────────────────────────┤
 │                          │                                │
 │              数据访问层 (Data Access Layer)               │
@@ -77,87 +77,70 @@
 ## 3. 目录结构
 
 ```
-E:\Cursor\ESS_simulink\
+ESS_simulink/
 ├── app.py                        # Streamlit 入口
 ├── requirements.txt
 ├── .gitignore
 │
-├── PRD/                          # 需求文档
-│   ├── PRD_v1.0.1.md
-│   ├── requirements.md
-│   └── CHANGELOG.md
+├── PRD/
+│   ├── PRD_v1.0.3.md             # 需求冻结正文
+│   ├── README.md                 # PRD 目录索引
+│   ├── CHANGELOG.md
+│   ├── VERSIONING.md             # 语义化版本与 SESSION/IMPLEMENTATION 约定
+│   ├── SESSION_LOG.md            # 人机交互纪要
+│   ├── IMPLEMENTATION_LOG.md     # 代码实现登记
+│   ├── implementation_matrix.md  # PRD ↔ 代码 ↔ 测试
+│   └── requirements.md           # Rxxx 需求池
 │
-├── Design/                       # 设计文档
-│   └── architecture_v1.0.md
+├── Design/
+│   └── architecture_v1.0.md      # 本文档
 │
 ├── data/
-│   ├── config/                   # 可编辑参数文件（CSV）
-│   │   ├── ess_defaults.csv      # 储能默认参数
+│   ├── config/                   # 可编辑参数（CSV）
+│   │   ├── ess_defaults.csv
+│   │   ├── financial_defaults.csv
+│   │   ├── wholesale_settlement_defaults.csv
 │   │   ├── tariff_admin_henan.csv
 │   │   ├── tariff_jiangsu_mode_henan.csv
 │   │   ├── tariff_contract_henan.csv
 │   │   ├── contract_position_henan.csv
 │   │   └── dayahead_position_henan.csv
-│   │
-│   ├── processed/                # 处理后的小时级数据（只读）
+│   ├── processed/
 │   │   ├── load/
-│   │   │   └── load_henan.csv
 │   │   └── spot_price/
-│   │       └── price_henan.csv
-│   │
-│   ├── raw/                      # 原始数据（只读，不入库）
-│   │   ├── load_raw/
-│   │   └── spot_price_minute/
-│   │
-│   └── scenarios/                # 用户保存的方案（JSON）
-│       └── *.json
+│   ├── raw/
+│   └── scenarios/                # 方案 JSON
 │
 ├── src/
-│   ├── __init__.py
-│   │
-│   ├── core/                     # 计算引擎（无 UI 依赖）
-│   │   ├── __init__.py
-│   │   ├── dispatch.py           # [已实现] 统一调度算法
-│   │   └── pricing.py            # [待实现] 电价模式计算
-│   │
-│   ├── models/                   # 数据模型
-│   │   ├── __init__.py
-│   │   └── dispatch.py           # [已实现] Dataclass/enum 定义
-│   │
-│   ├── data/                     # 数据访问层
-│   │   ├── __init__.py
-│   │   ├── loader.py             # [待实现] 加载处理后的数据
-│   │   ├── config.py             # [待实现] 加载/保存配置
-│   │   └── scenario.py           # [待实现] 方案 JSON 读写
-│   │
-│   ├── utils/                    # 工具
-│   │   ├── __init__.py
-│   │   └── units.py              # [已实现] 单位注册表
-│   │
-│   └── ui/                       # Streamlit UI 组件
-│       ├── __init__.py
-│       ├── pages/                # 各页面
-│       │   ├── __init__.py
-│       │   ├── params_page.py    # [待实现] 全局参数库
-│       │   ├── scenarios_page.py # [待实现] 方案管理
-│       │   ├── analysis_page.py  # [待实现] 单方案分析
-│       │   └── compare_page.py   # [待实现] 多方案对比
-│       ├── components/           # 可复用 UI 组件
-│       │   ├── __init__.py
-│       │   ├── param_editor.py   # [待实现] 参数编辑表单
-│       │   ├── dispatch_chart.py # [待实现] 调度曲线图
-│       │   ├── waterfall.py      # [待实现] 收益瀑布图
-│       │   └── metrics_table.py  # [待实现] 投资指标表
-│       └── state.py              # [待实现] session_state 管理
+│   ├── core/
+│   │   ├── dispatch.py           # [已实现] 调度与收益
+│   │   ├── pricing.py            # [已实现] M1~M5 用户侧电价
+│   │   ├── calculator.py         # [已实现] 统一计算入口
+│   │   └── wholesale_settlement.py  # [已实现] 批发购电分项
+│   ├── models/
+│   │   ├── dispatch.py           # [已实现] 枚举与 dataclass
+│   │   └── wholesale.py          # [已实现] 批发结算配置模型
+│   ├── data/
+│   │   ├── config.py             # [已实现] ConfigLoader
+│   │   ├── loader.py             # [已实现] DataLoader
+│   │   └── scenario.py           # [已实现] ScenarioConfig / ScenarioManager
+│   ├── utils/
+│   │   └── units.py
+│   └── ui/
+│       ├── state.py              # [已实现] AppState
+│       ├── pages/
+│       │   ├── params_page.py
+│       │   ├── scenarios_page.py
+│       │   ├── analysis_page.py
+│       │   └── compare_page.py
+│       └── components/
+│           ├── dispatch_chart.py
+│           ├── waterfall.py
+│           └── metrics_table.py
 │
-├── scripts/                      # 数据处理脚本
-│   ├── process_load.py
-│   └── process_price.py
-│
-└── tests/                        # 测试
-    ├── test_dispatch_all.py      # [已实现] 全模型验证
-    ├── test_pricing.py           # [待实现]
-    └── test_scenario.py          # [待实现]
+├── scripts/
+├── tests/                        # pytest：见 PRD/implementation_matrix.md
+└── docs/
 ```
 
 ---
@@ -174,10 +157,8 @@ E:\Cursor\ESS_simulink\
 - `_annual_cashflow()` — 年现金流口径选择
 - `_npv()` / `_compute_irr()` — 投资评价
 
-**`src/core/pricing.py`** — 电价模式计算（待实现）：
-- 输入：PricingMode, region, 原始电价数据
-- 输出：24 小时 P_user[t] 数组
-- 五种模式的具体实现（见下文算法部分）
+**`src/core/pricing.py`** — 电价模式计算（**已实现**）：
+- `compute_user_price()`、`lookup_tou()` 等 — 输出 24 小时 `P_user[t]`（M1~M5）
 
 ### 4.2 数据模型
 
@@ -189,34 +170,11 @@ E:\Cursor\ESS_simulink\
 - `HourlyData` (dataclass): 单小时全部输入数据
 - `DispatchResult` (dataclass): 完整调度输出
 
-待新增模型：
+**方案与全局参数（实现位置说明）**：
 
-```python
-# src/models/scenario.py（待实现）
-@dataclass
-class ScenarioConfig:
-    """方案配置。"""
-    id: str                          # UUID
-    name: str                        # 用户命名
-    created_at: str                  # ISO datetime
-    region: str                      # "henan"
-    pricing_mode: PricingMode
-    business_model: BusinessModel
-    ess_params: ESSParams
-    financial_params: FinancialParams
-    selected_date: str               # "2026-03-15"
-    private_overrides: dict          # 仅覆盖全局默认的参数 {param_path: value}
-
-@dataclass  
-class GlobalParams:
-    """全局默认参数库。"""
-    ess: ESSParams
-    financial: dict[str, FinancialParams]  # 按商业模式分别存储
-    tariffs: dict[str, pd.DataFrame]       # 电价表
-    contracts: dict[str, pd.DataFrame]     # 合约持仓
-```
-
----
+- **`ScenarioConfig` / `ScenarioManager`** 当前实现在 **`src/data/scenario.py`**（以 dict / JSON 为主，便于序列化；非 `src/models/`）。
+- **批发结算规则** 以 **`src/models/wholesale.py`** 中 `WholesaleSettlementConfig` 及 **`src/core/wholesale_settlement.py`** 为准，与 PRD 第五章扩展一致。
+- 历史设计稿中曾计划将 `ScenarioConfig` 放在 `src/models/`；**以当前 `src/data/scenario.py` 为准**。
 
 ## 5. 数据访问层设计
 
@@ -226,8 +184,8 @@ class GlobalParams:
 class ConfigLoader:
     load_ess_defaults() -> ESSParams
     load_tariff(region, mode) -> pd.DataFrame
-    load_contract_position(region) -> pd.DataFrame
-    load_dayahead_position(region) -> pd.DataFrame
+    load_contract_position(region, date: str | None) -> pd.DataFrame
+    load_dayahead_position(region, date: str | None) -> pd.DataFrame
     save_ess_defaults(params: ESSParams) -> None
 ```
 
@@ -237,10 +195,10 @@ class ConfigLoader:
 
 ```
 class DataLoader:
-    load_processed_load(region, date) -> list[HourlyData]
+    load_processed_load(...) -> list[HourlyData]
     load_spot_prices(region, date) -> (list[float], list[float])  # P_da, P_rt
     get_available_dates(region) -> list[str]
-    get_load_range(region, date) -> (float, float)  # min, max
+    get_monthly_pda(region) -> list[float]   # M4 用全月日前扁平序列
 ```
 
 **关键：单位换算集中在此完成**。原始电价 元/MWh → 元/kWh 除 1000。
@@ -282,11 +240,11 @@ class ScenarioManager:
 使用 Streamlit 原生多页面（`app.py` + `src/ui/pages/*.py`）：
 
 ```
-app.py                          # 入口，st.navigation 定义页面
-├── 全局参数库 (params_page)     # icon: ⚙
-├── 方案管理 (scenarios_page)    # icon: 📋
-├── 单方案分析 (analysis_page)   # icon: 📊
-└── 多方案对比 (compare_page)    # icon: 📈
+app.py                          # 入口：顶栏 + 左侧 radio 切换四页（见实现）
+├── 全局参数库 (params_page)
+├── 方案管理 (scenarios_page)
+├── 单方案分析 (analysis_page)
+└── 多方案对比 (compare_page)
 ```
 
 ### 6.2 全局参数库页面
@@ -519,8 +477,8 @@ UI Event (用户点击"计算")
     → ConfigLoader.load_ess_defaults()
     → DataLoader.load_processed_load(region, date)
     → DataLoader.load_spot_prices(region, date)
-    → ConfigLoader.load_contract_position(region)
-    → ConfigLoader.load_dayahead_position(region)
+    → ConfigLoader.load_contract_position(region, date)
+    → ConfigLoader.load_dayahead_position(region, date)
     → pricing.compute_user_price(pricing_mode, tariffs, P_da)
     → dispatch.run_dispatch(hourly, bm, pricing_mode, ess, fin)
     → state.cache_result(scenario_id, result)

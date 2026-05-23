@@ -19,6 +19,7 @@
 
 ```
 ESS_simulink/
+├── PRD/              # 需求冻结、CHANGELOG、交互/实现日志、追溯矩阵（见 PRD/README.md）
 ├── data/
 │   ├── raw/          # 原始输入数据（电价曲线、负荷曲线等）
 │   └── processed/    # 清洗/转换后的数据
