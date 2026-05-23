@@ -1,4 +1,4 @@
-"""多方案对比页面。"""
+"""多方案对比页面（套用新视觉外壳）。"""
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -6,12 +6,16 @@ import plotly.graph_objects as go
 from src.data.scenario import ScenarioManager
 from src.core.calculator import calculate
 from src.ui.state import AppState
+from src.ui.components.blocks import card
 
 
 def show():
-    st.title("多方案对比")
     AppState.init()
+    with card(title="多方案对比"):
+        _run()
 
+
+def _run():
     mgr = ScenarioManager()
     items = mgr.list_all()
 

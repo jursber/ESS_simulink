@@ -8,8 +8,13 @@ from typing import Optional, Union
 import pandas as pd
 
 from src.models.dispatch import ESSParams
+from src.models.wholesale import WholesaleSettlementConfig
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "config"
+
+CONTRACT_CURVE_FILES = {"mock_henan": "contract_position_henan.csv"}
+DAYAHEAD_CURVE_FILES = {"mock_henan": "dayahead_position_henan.csv"}
+WHOLESALE_SETTLEMENT_PATH = CONFIG_DIR / "wholesale_settlement_defaults.csv"
 
 
 def _filter_hourly_csv_by_date(df: pd.DataFrame, date: Optional[str], label: str) -> pd.DataFrame:
@@ -94,23 +99,70 @@ class ConfigLoader:
     # ---- 合约持仓 ----
 
     @staticmethod
-    def load_contract_position(region: str, date: Optional[str] = None) -> pd.DataFrame:
-        """加载中长期合约持仓。
+    def load_contract_position(
+        region: str,
+        date: Optional[str] = None,
+        profile: str = "mock_henan",
+    ) -> pd.DataFrame:
+        """加载中长期合约持仓（含 P_ref、阻塞附加费等可选列）。
 
         Args:
-            region: 地区标识（当前文件名为 henan 固定后缀，与既有电价表一致）
-            date: 方案日期；若 CSV 含 date 列则只加载该日 24 点，供购电成本与现货曲线对齐
+            region: 地区标识（预留；当前数据为河南示范曲线）
+            date: 方案日期；若 CSV 含 date 列则只加载该日 24 点
+            profile: 合约曲线配置名，见 CONTRACT_CURVE_FILES
         """
-        _ = region  # 预留多地区文件名
-        raw = pd.read_csv(CONFIG_DIR / "contract_position_henan.csv")
-        return _filter_hourly_csv_by_date(raw, date, "contract_position_henan.csv")
+        _ = region
+        fname = CONTRACT_CURVE_FILES.get(profile, next(iter(CONTRACT_CURVE_FILES.values())))
+        raw = pd.read_csv(CONFIG_DIR / fname)
+        df = _filter_hourly_csv_by_date(raw, date, fname)
+        if "p_ref_yuan_per_kwh" not in df.columns:
+            df["p_ref_yuan_per_kwh"] = 0.0
+        if "c_lt_block_yuan" not in df.columns:
+            df["c_lt_block_yuan"] = 0.0
+        return df
 
     @staticmethod
-    def load_dayahead_position(region: str, date: Optional[str] = None) -> pd.DataFrame:
-        """加载日前申报电量。参数含义同 load_contract_position。"""
+    def load_dayahead_position(
+        region: str,
+        date: Optional[str] = None,
+        profile: str = "mock_henan",
+    ) -> pd.DataFrame:
+        """加载日前电量（含出清电量列，用于 cleared 口径）。"""
         _ = region
-        raw = pd.read_csv(CONFIG_DIR / "dayahead_position_henan.csv")
-        return _filter_hourly_csv_by_date(raw, date, "dayahead_position_henan.csv")
+        fname = DAYAHEAD_CURVE_FILES.get(profile, next(iter(DAYAHEAD_CURVE_FILES.values())))
+        raw = pd.read_csv(CONFIG_DIR / fname)
+        df = _filter_hourly_csv_by_date(raw, date, fname)
+        if "q_dayahead_cleared_kwh" not in df.columns:
+            df["q_dayahead_cleared_kwh"] = df["q_dayahead_kwh"]
+        return df
+
+    @staticmethod
+    def load_wholesale_settlement() -> WholesaleSettlementConfig:
+        """加载售电批发购电结算全局配置（第五章表 5.4）。"""
+        if not WHOLESALE_SETTLEMENT_PATH.exists():
+            return WholesaleSettlementConfig()
+        df = pd.read_csv(WHOLESALE_SETTLEMENT_PATH)
+        d: dict[str, str | float] = {}
+        for _, r in df.iterrows():
+            key = str(r["param"])
+            val = r["value"]
+            if key in (
+                "purchase_monthly_constant_yuan",
+                "guangxi_month_smooth_yuan",
+                "shanxi_wholesale_addon_yuan",
+            ):
+                d[key] = float(val)
+            else:
+                d[key] = val
+        return WholesaleSettlementConfig.from_flat_dict(d)
+
+    @staticmethod
+    def save_wholesale_settlement(cfg: WholesaleSettlementConfig) -> None:
+        """保存售电批发购电结算配置。"""
+        flat = cfg.to_flat_dict()
+        rows = [(k, v, "-", "true") for k, v in flat.items()]
+        out = pd.DataFrame(rows, columns=["param", "value", "unit", "editable"])
+        out.to_csv(WHOLESALE_SETTLEMENT_PATH, index=False, encoding="utf-8-sig")
 
     # ---- 财务参数 ----
 

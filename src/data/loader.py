@@ -58,6 +58,9 @@ class DataLoader:
         Q_contract: list[float],
         P_contract: list[float],
         Q_dayahead: list[float],
+        P_ref: Optional[list[float]] = None,
+        q_dayahead_cleared: Optional[list[float]] = None,
+        c_lt_block_yuan: Optional[list[float]] = None,
     ) -> list[HourlyData]:
         """加载指定日期的处理后的负荷数据，组装为 HourlyData 列表。
 
@@ -69,14 +72,24 @@ class DataLoader:
             Q_contract: 合约电量 (kWh), 24 元素
             P_contract: 合约电价 (元/kWh), 24 元素
             Q_dayahead: 日前申报电量 (kWh), 24 元素
-
-        Returns:
-            24 个 HourlyData 对象
+            P_ref: 中长期结算参考点电价 (元/kWh)，缺省为 24 个 0
+            q_dayahead_cleared: 日前出清电量；缺省为 None（表示与 Q_dayahead 相同）
+            c_lt_block_yuan: 各时段中长期阻塞等附加电费 (元)；缺省为 0
         """
         for name, arr in [("P_da", P_da), ("P_rt", P_rt), ("Q_contract", Q_contract),
                           ("P_contract", P_contract), ("Q_dayahead", Q_dayahead)]:
             if len(arr) != 24:
                 raise ValueError(f"{name} 必须为 24 元素，实际 {len(arr)}")
+        if P_ref is None:
+            P_ref = [0.0] * 24
+        elif len(P_ref) != 24:
+            raise ValueError("P_ref 必须为 24 元素或 None")
+        if c_lt_block_yuan is None:
+            c_lt_block_yuan = [0.0] * 24
+        elif len(c_lt_block_yuan) != 24:
+            raise ValueError("c_lt_block_yuan 必须为 24 元素或 None")
+        if q_dayahead_cleared is not None and len(q_dayahead_cleared) != 24:
+            raise ValueError("q_dayahead_cleared 必须为 24 元素或 None")
 
         load_path = LOAD_DIR / f"load_{region}.csv"
         if not load_path.exists():
@@ -90,6 +103,7 @@ class DataLoader:
         hourly = []
         for h in range(24):
             row = day[day["hour"] == h].iloc[0]
+            q_clr = None if q_dayahead_cleared is None else float(q_dayahead_cleared[h])
             hourly.append(HourlyData(
                 hour=h,
                 load_real=float(row["Load_real"]),
@@ -99,6 +113,9 @@ class DataLoader:
                 Q_contract=Q_contract[h],
                 P_contract=P_contract[h],
                 Q_dayahead=Q_dayahead[h],
+                P_ref=float(P_ref[h]),
+                q_dayahead_cleared=q_clr,
+                c_lt_block_yuan=float(c_lt_block_yuan[h]),
             ))
         return hourly
 

@@ -6,12 +6,13 @@
 
 import math
 from typing import List, Tuple, Optional
-from dataclasses import dataclass
 
 from src.models.dispatch import (
     ESSParams, FinancialParams, HourlyData, DispatchResult,
     BusinessModel, PricingMode,
 )
+from src.models.wholesale import WholesaleSettlementConfig
+from src.core.wholesale_settlement import compute_wholesale_purchase_cost
 
 
 def compute_effective_price(
@@ -183,14 +184,21 @@ def run_dispatch(
     params: ESSParams,
     fin: FinancialParams,
     soc_initial: float = 0.10,
+    wholesale_cfg: Optional[WholesaleSettlementConfig] = None,
 ) -> DispatchResult:
     """执行完整调度计算。
 
     输入：24 小时数据、商业模式、电价模式、储能参数、财务参数。
     输出：完整的 DispatchResult，包含调度曲线和全部收益指标。
+
+    Args:
+        wholesale_cfg: 售电批发购电结算规则（第五章）；缺省为广东型三部制默认参数。
     """
     n = len(hourly)
     assert n == 24, f"需要 24 小时数据，实际 {n} 小时"
+
+    if wholesale_cfg is None:
+        wholesale_cfg = WholesaleSettlementConfig()
 
     P_user = [d.P_user for d in hourly]
     P_da = [d.P_da for d in hourly]
@@ -224,16 +232,22 @@ def run_dispatch(
     result.user_savings = savings
     result.user_net = savings * fin.r_user
 
-    # 5. 售电公司侧——仅含售电公司的模式才计算购电成本
+    # 5. 售电公司侧——仅含售电公司的模式才计算购电成本（统一批发结算引擎）
     has_retailer = bm not in (BusinessModel.B1_USER_ESS,)
     if has_retailer:
-        C_mlt = sum(hourly[h].Q_contract * hourly[h].P_contract for h in range(24))
-        C_da = sum((hourly[h].Q_dayahead - hourly[h].Q_contract) * P_da[h] for h in range(24))
-        C_rt = sum((load_grid[h] - hourly[h].Q_dayahead) * P_rt[h] for h in range(24))
-        result.C_mlt = C_mlt
-        result.C_da = C_da
-        result.C_rt = C_rt
-        result.purchase_cost = C_mlt + C_da + C_rt
+        P_da_list = [hourly[h].P_da for h in range(24)]
+        P_rt_list = [hourly[h].P_rt for h in range(24)]
+        bd = compute_wholesale_purchase_cost(
+            hourly, load_grid, P_da_list, P_rt_list, wholesale_cfg
+        )
+        result.C_mlt = bd.C_mlt
+        result.C_da = bd.C_da
+        result.C_rt = bd.C_rt
+        result.C_lt_block = bd.C_lt_block
+        result.C_guangxi_month_smooth = bd.C_month_smooth
+        result.C_purchase_monthly_constant = bd.C_monthly_constant
+        result.C_shanxi_wholesale_addon = bd.C_shanxi_addon
+        result.purchase_cost = bd.purchase_cost
         result.retail_revenue = user_bill_with_ess
         result.retail_profit = result.retail_revenue - result.purchase_cost
 

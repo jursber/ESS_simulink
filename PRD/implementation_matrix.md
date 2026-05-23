@@ -13,7 +13,7 @@
 | §6 | 数据清单、CSV、`date` 筛选 24 点 | [src/data/config.py](../src/data/config.py)；[src/data/loader.py](../src/data/loader.py) | [tests/test_config.py](../tests/test_config.py)、[tests/test_loader.py](../tests/test_loader.py) |
 | §7 | 算法需求（离散搜索等） | [src/core/dispatch.py](../src/core/dispatch.py) | [tests/test_dispatch_all.py](../tests/test_dispatch_all.py) |
 | §8 | 架构原则 | 分层：`ui` → `calculator` / `data` → `core` | [tests/test_integration.py](../tests/test_integration.py)（端到端倾向） |
-| §9 | Web 交互 | [app.py](../app.py)；[src/ui/pages/](../src/ui/pages/)；[src/ui/components/](../src/ui/components/)；[src/ui/state.py](../src/ui/state.py) | [tests/test_integration.py](../tests/test_integration.py)（若有 UI 逻辑单测可再拆） |
+| §9 | Web 交互（视觉层 v1.1.0） | [app.py](../app.py)；[src/ui/pages/analysis_page.py](../src/ui/pages/analysis_page.py)；[src/ui/components/style.py](../src/ui/components/style.py)、[blocks.py](../src/ui/components/blocks.py)、[topology.py](../src/ui/components/topology.py)、[dispatch_chart.py](../src/ui/components/dispatch_chart.py)、[waterfall.py](../src/ui/components/waterfall.py)、[metrics_table.py](../src/ui/components/metrics_table.py)；[src/ui/state.py](../src/ui/state.py) | [tests/test_integration.py](../tests/test_integration.py)（UI 视觉层暂以人工/截图验收） |
 | §10 | 附录 | 参数默认值等多来自 `data/config/*.csv` | [tests/test_config.py](../tests/test_config.py) |
 | — | 方案 JSON 读写 | [src/data/scenario.py](../src/data/scenario.py) `ScenarioConfig`、`ScenarioManager` | [tests/test_scenario.py](../tests/test_scenario.py) |
 | — | 批发结算配置模型 | [src/models/wholesale.py](../src/models/wholesale.py) | [tests/test_wholesale_settlement.py](../tests/test_wholesale_settlement.py) |

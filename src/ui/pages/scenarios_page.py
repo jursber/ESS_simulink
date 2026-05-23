@@ -1,4 +1,4 @@
-"""方案管理页面。"""
+"""方案管理页面（套用新视觉外壳）。"""
 import streamlit as st
 
 from src.data.scenario import ScenarioManager, ScenarioConfig
@@ -6,6 +6,7 @@ from src.data.config import ConfigLoader
 from src.data.loader import DataLoader
 from src.core.calculator import calculate
 from src.ui.state import AppState
+from src.ui.components.blocks import card
 
 BM_OPTIONS = ["B1", "B2a", "B2b", "B2c", "B3a", "B3b", "B4"]
 PM_OPTIONS = ["M1", "M2", "M3", "M4", "M5"]
@@ -19,9 +20,12 @@ def _run_calculation(config: ScenarioConfig):
 
 
 def show():
-    st.title("方案管理")
     AppState.init()
+    with card(title="方案管理"):
+        _run()
 
+
+def _run():
     mgr = ScenarioManager()
 
     col_left, col_right = st.columns([1, 2])
