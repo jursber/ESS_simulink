@@ -1,42 +1,34 @@
 """全局 UI 样式 token 与 Streamlit 控件覆盖。
 
-设计基线：Ant Design 5（Light）视觉 token；蓝色主色、工业风、亮色主题、最小字号 12px。
-通过 `inject_global_css()` 在 app 入口注入一次，先于任何页面渲染。
+设计基线：PRD/ui_spec_v1.md — 工业线框风、纯白背景、蓝色主色、最小字号 12px。
 """
 from __future__ import annotations
 
 import streamlit as st
 
-
-# ---- 设计 token ---------------------------------------------------------
+# ---- 设计 token（与 PRD/ui_spec_v1.md 一致）--------------------------------
 
 PRIMARY = "#1677FF"
 PRIMARY_HOVER = "#4096FF"
 PRIMARY_ACTIVE = "#0958D9"
-DANGER = "#FF4D4F"
 SUCCESS = "#52C41A"
-WARNING = "#FAAD14"
 
 TEXT_PRIMARY = "#1F1F1F"
 TEXT_REGULAR = "#595959"
 TEXT_SECONDARY = "#8C8C8C"
 TEXT_DISABLED = "#BFBFBF"
 
-BORDER = "#D9D9D9"
+BORDER = "#E5E7EB"
 DIVIDER = "#F0F0F0"
-BG_PAGE = "#F5F7FA"
+BG_PAGE = "#FFFFFF"
 BG_CARD = "#FFFFFF"
-BG_HOVER = "#FAFAFA"
+BG_STRIP = "#FAFBFC"
 
-RADIUS = "6px"
-SHADOW = "0 1px 2px rgba(0,0,0,.04)"
+RADIUS = "4px"
 
-TOPBAR_H = 44
-LEFTNAV_W = 96
-RIGHTPANEL_W = 290
-
-
-# ---- CSS ----------------------------------------------------------------
+TOPBAR_H = 40
+LEFTNAV_W = 84
+RIGHTPANEL_W = 280
 
 _CSS = f"""
 <style>
@@ -44,9 +36,7 @@ _CSS = f"""
     --primary: {PRIMARY};
     --primary-hover: {PRIMARY_HOVER};
     --primary-active: {PRIMARY_ACTIVE};
-    --danger: {DANGER};
     --success: {SUCCESS};
-    --warning: {WARNING};
     --text-1: {TEXT_PRIMARY};
     --text-2: {TEXT_REGULAR};
     --text-3: {TEXT_SECONDARY};
@@ -55,18 +45,17 @@ _CSS = f"""
     --divider: {DIVIDER};
     --bg-page: {BG_PAGE};
     --bg-card: {BG_CARD};
-    --bg-hover: {BG_HOVER};
+    --bg-strip: {BG_STRIP};
     --radius: {RADIUS};
-    --shadow: {SHADOW};
     --fs-12: 12px;
     --fs-13: 13px;
     --fs-14: 14px;
     --fs-16: 16px;
-    --fs-18: 18px;
-    --fs-22: 22px;
     --topbar-h: {TOPBAR_H}px;
     --leftnav-w: {LEFTNAV_W}px;
     --rightpanel-w: {RIGHTPANEL_W}px;
+    --body-h: calc(100vh - var(--topbar-h) - 8px);
+    --grid-gap: 6px;
   }}
 
   html, body {{
@@ -104,11 +93,14 @@ _CSS = f"""
     height: 100vh !important;
     overflow: hidden !important;
   }}
+  [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {{
+    gap: 0 !important;
+  }}
   [data-testid="stVerticalBlock"] {{
-    gap: 4px !important;
+    gap: var(--grid-gap) !important;
   }}
   [data-testid="stHorizontalBlock"] {{
-    gap: 6px !important;
+    gap: var(--grid-gap) !important;
     align-items: stretch !important;
   }}
   [data-testid="stElementContainer"] {{
@@ -122,10 +114,9 @@ _CSS = f"""
     font-weight: 600;
     line-height: 1.3;
   }}
-  h1 {{ font-size: var(--fs-18) !important; }}
-  h2 {{ font-size: var(--fs-16) !important; }}
-  h3 {{ font-size: var(--fs-14) !important; }}
-  h4, h5 {{ font-size: var(--fs-13) !important; }}
+  h1 {{ font-size: var(--fs-16) !important; }}
+  h2 {{ font-size: var(--fs-14) !important; }}
+  h3, h4, h5 {{ font-size: var(--fs-13) !important; }}
 
   p, li, label, span, div {{ font-size: var(--fs-13); }}
   .stCaption, [data-testid="stCaptionContainer"] {{
@@ -133,13 +124,13 @@ _CSS = f"""
     font-size: var(--fs-12) !important;
   }}
 
-  /* ---- 顶栏：st.container(key="topbar") 渲染为 .st-key-topbar ---- */
+  /* ---- 顶栏 ---- */
   .st-key-topbar {{
     height: var(--topbar-h);
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
-    margin: 0 0 8px 0;
-    padding: 0 16px;
+    margin: 0;
+    padding: 0 12px;
   }}
   .st-key-topbar [data-testid="stHorizontalBlock"] {{
     height: var(--topbar-h);
@@ -167,24 +158,123 @@ _CSS = f"""
   .st-key-topbar [data-testid="stButton"] button {{
     font-size: var(--fs-12);
     padding: 2px 10px;
-    height: 28px;
-    min-height: 28px;
+    height: 26px;
+    min-height: 26px;
     background: var(--bg-card);
     color: var(--text-2);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius);
     width: 100%;
+    box-shadow: none;
   }}
   .st-key-topbar [data-testid="stButton"] button:hover {{
     color: var(--primary);
     border-color: var(--primary);
   }}
 
-  /* ---- 主体区 ---- */
+  /* ---- 主体 ---- */
   .st-key-body {{
-    padding: 0 10px;
-    height: calc(100vh - var(--topbar-h) - 16px);
+    padding: 0 8px 8px 8px;
+    height: var(--body-h);
     overflow: hidden;
+  }}
+  .st-key-body > [data-testid="stHorizontalBlock"] {{
+    height: 100%;
+    align-items: stretch !important;
+  }}
+  .st-key-body > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {{
+    height: 100%;
+    overflow: hidden;
+  }}
+  .st-key-body > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
+    > [data-testid="stVerticalBlock"] {{
+    height: 100%;
+  }}
+
+  /* ---- 左导航 ---- */
+  .st-key-nav {{
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 4px;
+    height: 100%;
+    box-sizing: border-box;
+  }}
+  .nav-spacer {{ flex: 1; min-height: 8px; }}
+  .st-key-nav [data-testid="stButton"] button {{
+    width: 100%;
+    text-align: center;
+    font-size: var(--fs-13);
+    padding: 6px 2px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-2);
+    font-weight: 500;
+    height: 32px;
+    min-height: 32px;
+    box-shadow: none;
+  }}
+  .st-key-nav [data-testid="stButton"] button:hover {{
+    background: var(--bg-strip);
+    color: var(--primary);
+    border-color: var(--divider);
+  }}
+  [class*="st-key-navitem_"][class*="_on"] [data-testid="stButton"] button {{
+    background: rgba(22, 119, 255, 0.08) !important;
+    color: var(--primary) !important;
+    border-color: rgba(22, 119, 255, 0.2) !important;
+  }}
+  .st-key-nav [data-testid="stElementContainer"] {{ margin-bottom: 4px !important; }}
+  .st-key-nav_defaults_wrap {{
+    border-top: 1px solid var(--divider);
+    padding-top: 6px;
+    margin-top: 6px;
+  }}
+  .st-key-nav_defaults_wrap [data-testid="stButton"] button {{
+    color: var(--text-3);
+    font-size: var(--fs-12);
+  }}
+
+  /* ---- 单方案分析 2×2 栅格 ---- */
+  .st-key-analysis_page {{
+    height: 100%;
+  }}
+  .st-key-analysis_page > [data-testid="stHorizontalBlock"] {{
+    height: 100%;
+    align-items: stretch !important;
+  }}
+  .st-key-analysis_center {{
+    height: 100%;
+  }}
+  .st-key-analysis_center > [data-testid="stVerticalBlock"] {{
+    height: 100%;
+    gap: var(--grid-gap) !important;
+    display: flex;
+    flex-direction: column;
+  }}
+  .st-key-analysis_row1,
+  .st-key-analysis_row2 {{
+    flex: 1 1 50%;
+    min-height: 0;
+    overflow: hidden;
+  }}
+  .st-key-analysis_row1 > [data-testid="stHorizontalBlock"],
+  .st-key-analysis_row2 > [data-testid="stHorizontalBlock"] {{
+    height: 100%;
+    align-items: stretch !important;
+  }}
+  .st-key-analysis_row1 [data-testid="stColumn"] > [data-testid="stVerticalBlock"],
+  .st-key-analysis_row2 [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {{
+    height: 100%;
+  }}
+
+  .st-key-param_panel {{
+    height: 100%;
+    overflow: hidden;
+  }}
+  .st-key-param_panel > [data-testid="stVerticalBlock"] {{
+    height: 100%;
   }}
 
   /* ---- 卡片 ---- */
@@ -192,12 +282,17 @@ _CSS = f"""
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: none;
     padding: 8px 10px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    margin-bottom: 6px;
+    margin: 0;
+    box-sizing: border-box;
+  }}
+  .card-fill {{
+    height: 100%;
+    min-height: 0;
   }}
   .card-title {{
     display: flex;
@@ -209,6 +304,7 @@ _CSS = f"""
     margin-bottom: 4px;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--divider);
+    flex-shrink: 0;
   }}
   .card-title .sub {{
     font-size: var(--fs-12);
@@ -220,27 +316,32 @@ _CSS = f"""
     color: var(--text-3);
     font-weight: 400;
   }}
+  .panel-title {{
+    font-size: var(--fs-14);
+    font-weight: 600;
+    color: var(--text-1);
+    line-height: 28px;
+  }}
 
-  /* ---- 键值行 ---- */
+  /* ---- 键值行（亲密性：左对齐） ---- */
   .kv-row {{
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 8px;
     padding: 2px 0;
     font-size: var(--fs-13);
     line-height: 1.5;
-    border-bottom: 1px dashed transparent;
   }}
   .kv-row .k {{
     color: var(--text-3);
-    margin-right: 8px;
     white-space: nowrap;
     font-size: var(--fs-12);
+    flex-shrink: 0;
   }}
   .kv-row .v {{
     color: var(--text-1);
     font-weight: 500;
-    text-align: right;
     white-space: nowrap;
   }}
   .kv-row .u {{
@@ -250,14 +351,13 @@ _CSS = f"""
     font-weight: 400;
   }}
 
-  /* 财务指标条（紧凑横排，每项 label/value 上下结构） */
   .fin-strip {{
     display: flex;
-    gap: 8px;
-    background: var(--bg-hover);
+    gap: 0;
+    background: var(--bg-strip);
     border: 1px solid var(--divider);
     border-radius: var(--radius);
-    padding: 8px;
+    padding: 6px 0;
     margin-top: 4px;
   }}
   .fin-strip .cell {{
@@ -279,20 +379,21 @@ _CSS = f"""
     line-height: 1.3;
   }}
 
-  /* 收益条目（带左圆点） */
   .pl-row {{
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 3px 0;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 2px 0;
     font-size: var(--fs-13);
-    line-height: 1.5;
+    line-height: 1.4;
   }}
   .pl-row .k {{
     color: var(--text-2);
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }}
   .pl-row .k::before {{
     content: "";
@@ -303,21 +404,20 @@ _CSS = f"""
     flex-shrink: 0;
   }}
   .pl-row .v {{
-    color: var(--text-1);
+    color: var(--primary);
     font-weight: 600;
     font-size: var(--fs-13);
   }}
 
-  /* ---- 指标条 ---- */
   .metric-strip {{
     display: flex;
     align-items: stretch;
-    gap: 0;
-    background: var(--bg-hover);
+    background: var(--bg-strip);
     border: 1px solid var(--divider);
     border-radius: var(--radius);
     padding: 6px 0;
     margin-top: 4px;
+    flex-shrink: 0;
   }}
   .metric-strip .cell {{
     flex: 1;
@@ -338,19 +438,19 @@ _CSS = f"""
     line-height: 1.3;
   }}
 
-  /* ---- 分组标题 ---- */
   .section-title {{
     font-size: var(--fs-13);
     color: var(--text-1);
     font-weight: 600;
-    margin: 8px 0 4px 0;
+    height: 24px;
+    line-height: 24px;
+    margin: 8px 0 6px 0;
     padding-left: 8px;
     border-left: 3px solid var(--primary);
-    line-height: 1.4;
+    flex-shrink: 0;
   }}
   .section-title:first-child {{ margin-top: 2px; }}
 
-  /* ---- 表格 ---- */
   .tbl {{
     width: 100%;
     border-collapse: collapse;
@@ -362,7 +462,7 @@ _CSS = f"""
     text-align: center;
   }}
   .tbl th {{
-    background: var(--bg-hover);
+    background: var(--bg-strip);
     color: var(--text-2);
     font-weight: 600;
   }}
@@ -371,73 +471,7 @@ _CSS = f"""
     color: var(--text-2);
   }}
 
-  /* ---- 左导航 ---- */
-  .st-key-nav {{
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 6px 4px;
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--topbar-h) - 16px);
-  }}
-  .nav-spacer {{ flex: 1; min-height: 12px; }}
-
-  /* 左导航按钮：覆盖 Streamlit button */
-  .st-key-nav [data-testid="stButton"] button {{
-    width: 100%;
-    text-align: center;
-    font-size: var(--fs-13);
-    padding: 6px 2px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-2);
-    margin: 0;
-    font-weight: 500;
-    height: 32px;
-    min-height: 32px;
-  }}
-  .st-key-nav [data-testid="stButton"] button:hover {{
-    background: var(--bg-hover);
-    color: var(--primary);
-    border-color: var(--divider);
-  }}
-  /* 激活态：当前页对应 navitem_xxx_on 容器内的按钮 */
-  [class*="st-key-navitem_"][class*="_on"] [data-testid="stButton"] button {{
-    background: rgba(22, 119, 255, 0.08) !important;
-    color: var(--primary) !important;
-    border-color: rgba(22, 119, 255, 0.2) !important;
-  }}
-  .st-key-nav [data-testid="stElementContainer"] {{ margin-bottom: 4px !important; }}
-  .st-key-nav_defaults_wrap {{
-    border-top: 1px solid var(--divider);
-    padding-top: 6px;
-    margin-top: 6px;
-  }}
-  .st-key-nav_defaults_wrap [data-testid="stButton"] button {{
-    color: var(--text-3);
-    font-size: var(--fs-12);
-  }}
-
-  /* 顶栏右上按钮 */
-  .topbar-btns [data-testid="stButton"] button {{
-    font-size: var(--fs-12);
-    padding: 2px 8px;
-    height: 26px;
-    min-height: 26px;
-    background: var(--bg-card);
-    color: var(--text-2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 100%;
-  }}
-  .topbar-btns [data-testid="stButton"] button:hover {{
-    color: var(--primary);
-    border-color: var(--primary);
-  }}
-
-  /* ---- 通用控件 ---- */
+  /* ---- 控件 ---- */
   [data-testid="stSelectbox"] label,
   [data-testid="stTextInput"] label,
   [data-testid="stNumberInput"] label,
@@ -446,11 +480,9 @@ _CSS = f"""
     font-size: var(--fs-12) !important;
     color: var(--text-2) !important;
     font-weight: 400 !important;
-    margin: 0 0 2px 0 !important;
+    margin: 0 0 4px 0 !important;
     padding: 0 !important;
-    line-height: 1.2 !important;
-    min-height: 16px !important;
-    height: 16px !important;
+    line-height: 1.3 !important;
   }}
   [data-testid="stSelectbox"] > div > div {{
     font-size: var(--fs-13) !important;
@@ -462,27 +494,24 @@ _CSS = f"""
     min-height: 30px !important;
     height: 30px !important;
     padding: 4px 8px !important;
+    border-color: var(--border) !important;
   }}
   [data-testid="stSelectbox"],
   [data-testid="stTextInput"],
   [data-testid="stNumberInput"] {{
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }}
 
-  /* select + view 同行对齐：view 列里的按钮顶端对齐到 select 输入框（label 16px + gap 2px = 18px） */
-  [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:has([data-testid="stButton"] button[kind="secondary"]) {{
-    /* placeholder */
-  }}
-
-  /* Primary button */
   .stButton button[kind="primary"] {{
     background: var(--primary);
     border-color: var(--primary);
     font-size: var(--fs-13);
     padding: 4px 14px;
-    height: 30px;
-    border-radius: 4px;
+    height: 28px;
+    min-height: 28px;
+    border-radius: var(--radius);
     font-weight: 500;
+    box-shadow: none;
   }}
   .stButton button[kind="primary"]:hover {{
     background: var(--primary-hover);
@@ -491,14 +520,17 @@ _CSS = f"""
   .stButton button {{
     font-size: var(--fs-12);
     padding: 3px 10px;
-    border-radius: 4px;
+    border-radius: var(--radius);
+    box-shadow: none;
   }}
 
-  /* "查看" 链式按钮（同行配 selectbox 时，外层加 margin-top 对齐输入框） */
-  .view-link {{
-    margin-top: 18px;
+  .view-col {{
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 2px;
+    min-height: 58px;
   }}
-  .view-link [data-testid="stButton"] button {{
+  .view-col [data-testid="stButton"] button {{
     background: transparent;
     border: none;
     color: var(--primary);
@@ -506,46 +538,16 @@ _CSS = f"""
     padding: 0 4px;
     height: 30px;
     min-height: 30px;
-    text-decoration: none;
     font-weight: 400;
     width: 100%;
+    box-shadow: none;
   }}
-  .view-link [data-testid="stButton"] button:hover {{
+  .view-col [data-testid="stButton"] button:hover {{
     color: var(--primary-hover);
     text-decoration: underline;
     background: transparent;
   }}
 
-  /* checkbox 紧凑 */
-  [data-testid="stCheckbox"] {{
-    margin: 0 !important;
-  }}
-  [data-testid="stCheckbox"] > label {{
-    font-size: var(--fs-12) !important;
-    color: var(--text-1) !important;
-  }}
-
-  /* expander 紧凑 */
-  [data-testid="stExpander"] summary {{
-    font-size: var(--fs-13);
-    padding: 4px 8px;
-  }}
-
-  /* plotly 紧凑 */
-  .js-plotly-plot, .plotly {{
-    font-size: var(--fs-12) !important;
-  }}
-
-  /* dataframe / table */
-  [data-testid="stTable"] table {{
-    font-size: var(--fs-12);
-  }}
-  [data-testid="stTable"] th,
-  [data-testid="stTable"] td {{
-    padding: 4px 8px !important;
-  }}
-
-  /* 自定义参数 + 按钮 */
   .plus-btn [data-testid="stButton"] button {{
     width: 100%;
     border: 1px dashed var(--border);
@@ -553,15 +555,18 @@ _CSS = f"""
     color: var(--text-2);
     font-size: var(--fs-12);
     padding: 6px;
+    box-shadow: none;
   }}
   .plus-btn [data-testid="stButton"] button:hover {{
     color: var(--primary);
     border-color: var(--primary);
   }}
 
-  /* st.container 默认显示边框/背景的处理：移除 main 区 container 边框 */
-  [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {{
-    gap: 0 !important;
+  .js-plotly-plot, .plotly {{
+    font-size: var(--fs-12) !important;
+  }}
+  [data-testid="stPlotlyChart"] {{
+    margin: 0 !important;
   }}
 </style>
 """

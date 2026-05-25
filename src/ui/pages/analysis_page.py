@@ -1,9 +1,8 @@
-"""单方案分析页面 — 按原型整屏三列布局重建视觉层。
+"""单方案分析页面 — PRD/ui_spec_v1.md 2×2 栅格 + 右栏参数区。
 
-布局：
-  Center 左列：方案概览（下拉 + 商业模式复选 + 拓扑 + 数值标签条）
-              储能本体建设收益分析（基本参数双列 + 财务条 + 经营表）
-  Center 右列：多方收益分析（终端用户段 + 储售一体用户段 + 大调度图）
+布局（中部 Center）：
+  Row1：方案概览 | 多方收益分析
+  Row2：储能本体建设收益分析 | 典型日调度曲线
   Right：参数调节区（批发 / 零售 / 储能合作 / 自定义参数）
 
 保留接口：try_header_save、_init_analysis_session、_build_work_config、
@@ -31,6 +30,7 @@ from src.ui.components.blocks import (
     fin_strip,
     kv_row,
     metric_strip,
+    panel_title,
     pl_row,
     plus_button,
     section_title,
@@ -184,10 +184,10 @@ def _mini_bar(values: list[float], labels: list[str], color: str) -> go.Figure:
     )
     ymax = max(values + [0.1]) * 1.25
     fig.update_layout(
-        height=170,
-        margin=dict(l=4, r=4, t=14, b=22),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
+        height=140,
+        margin=dict(l=8, r=8, t=8, b=24),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
         font=dict(size=10, color="#595959"),
         xaxis=dict(tickfont=dict(size=10), showgrid=False, automargin=True),
@@ -243,249 +243,256 @@ def show() -> None:
     ess_mwh = ess.cap_rated / 1000.0
     share_ratio = st.session_state.get(f"analy_{sid}_share_ratio", 20.0)
 
-    center_col, right_col = st.columns([1, 0.27], gap="small")
+    with st.container(key="analysis_page"):
+        center_col, right_col = st.columns([1, 0.22], gap="small")
 
-    # ----------- 中部：左列（概览 + 储能本体收益分析） + 右列（多方收益 + 大图） -----------
-    with center_col:
-        col_left, col_mid = st.columns([1.0, 0.95], gap="small")
+        with center_col:
+            with st.container(key="analysis_center"):
+                with st.container(key="analysis_row1"):
+                    r1_overview, r1_welfare = st.columns(2, gap="small")
+                    with r1_overview:
+                        with card(title="方案概览", fill=True):
+                            new_name = st.selectbox(
+                                "方案",
+                                scenario_names,
+                                index=scenario_names.index(selected_name),
+                                key="analysis_scheme_pick",
+                                label_visibility="collapsed",
+                            )
+                            if new_name != selected_name:
+                                st.rerun()
+                            render_topology()
+                            metric_strip(
+                                [
+                                    ("储能", f"{ess_mwh:.2f}MWh"),
+                                    ("光伏", "0"),
+                                    ("可调负荷", "0"),
+                                    ("生产负荷", f"{prod_mwh:.2f}MWh"),
+                                ]
+                            )
 
-        # ============ 中·左·上：方案概览（下拉 + 拓扑） ============
-        with col_left:
-            with card():
-                new_name = st.selectbox(
-                    "方案",
-                    scenario_names,
-                    index=scenario_names.index(selected_name),
-                    key="analysis_scheme_pick",
-                    label_visibility="collapsed",
+                    with r1_welfare:
+                        with card(
+                            title="多方收益分析",
+                            right=f"总社会福利：{result.total_welfare / 10000:,.1f} 万元",
+                            fill=True,
+                        ):
+                            section_title("终端用户")
+                            user_bill_no = result.user_bill_no_ess / 10000
+                            user_bill_with = result.user_bill_with_ess / 10000
+                            user_savings = result.user_savings / 10000
+                            user_return = (result.user_savings - result.user_net) / 10000
+                            user_total = result.user_bill_with_ess / 10000
+                            u_left, u_right = st.columns([1.05, 1], gap="small")
+                            with u_left:
+                                pl_row("应缴电网电费", f"{user_bill_no:,.1f} 万元")
+                                pl_row("实缴电网电费", f"{user_bill_with:,.1f} 万元")
+                                pl_row("用户节约电费", f"{user_savings:,.1f} 万元")
+                                pl_row("返还储能费用", f"{user_return:,.1f} 万元")
+                                pl_row("用户总电费", f"{user_total:,.1f} 万元")
+                            with u_right:
+                                st.plotly_chart(
+                                    _mini_bar(
+                                        [user_bill_no, user_bill_with, user_savings, user_return, user_total],
+                                        ["应缴", "实缴", "节约", "返还", "总计"],
+                                        "#1677FF",
+                                    ),
+                                    use_container_width=True,
+                                    config={"displayModeBar": False},
+                                )
+
+                            section_title("储售一体用户")
+                            cb_bill_no = result.user_bill_no_ess / 10000
+                            cb_bill_with = result.user_bill_with_ess / 10000
+                            cb_savings = result.user_savings / 10000
+                            cb_return = (result.user_savings - result.user_net) / 10000
+                            cb_total = (result.user_bill_with_ess + (result.user_savings - result.user_net)) / 10000
+                            c_left, c_right = st.columns([1.05, 1], gap="small")
+                            with c_left:
+                                pl_row("应缴电网电费", f"{cb_bill_no:,.1f} 万元")
+                                pl_row("实缴电网电费", f"{cb_bill_with:,.1f} 万元")
+                                pl_row("用户节约电费", f"{cb_savings:,.1f} 万元")
+                                pl_row("返还储能费用", f"{cb_return:,.1f} 万元")
+                                pl_row("用户总电费", f"{cb_total:,.1f} 万元")
+                            with c_right:
+                                st.plotly_chart(
+                                    _mini_bar(
+                                        [cb_bill_no, cb_bill_with, cb_savings, cb_return, cb_total],
+                                        ["应缴", "实缴", "节约", "返还", "总计"],
+                                        "#52C41A",
+                                    ),
+                                    use_container_width=True,
+                                    config={"displayModeBar": False},
+                                )
+
+                irr_val = result.irr if result.irr != float("inf") else None
+                roi_years = (
+                    initial_invest_yuan / (result.daily_arbitrage * 365)
+                    if result.daily_arbitrage > 0
+                    else float("inf")
                 )
-                if new_name != selected_name:
-                    st.rerun()
+                roi_str = f"{roi_years:.2f} 年" if roi_years != float("inf") else "N/A"
+                irr_str = f"{irr_val * 100:.2f}%" if irr_val else "N/A"
+                cum_cf = result.daily_arbitrage * 365 * ess.design_life / 10000
 
-                render_topology()
-                metric_strip(
-                    [
-                        ("储能", f"{ess_mwh:.2f}MWh"),
-                        ("光伏", "0"),
-                        ("可调负荷", "0"),
-                        ("生产负荷", f"{prod_mwh:.2f}MWh"),
-                    ]
-                )
+                with st.container(key="analysis_row2"):
+                    r2_ess, r2_dispatch = st.columns(2, gap="small")
+                    with r2_ess:
+                        with card(
+                            title="储能本体建设收益分析",
+                            sub="固化版本，不可点编辑，不可触动态投资",
+                            fill=True,
+                        ):
+                            section_title("基本参数")
+                            bp_l, bp_r = st.columns(2, gap="small")
+                            with bp_l:
+                                kv_row("储能容量", f"{ess_mwh:.2f}", "MWh")
+                                kv_row("总投资", f"{initial_invest_yuan / 10000:,.1f}", "万元")
+                                kv_row("储能效率", f"{ess.eta_roundtrip * 100:.0f}", "%")
+                                kv_row("商业模式", BM_LABELS.get(work.business_model, work.business_model))
+                                kv_row("用户分成比例", f"{share_ratio:.0f}", "%")
+                            with bp_r:
+                                kv_row("建设单价", f"{ess.unit_cost:.2f}", "元/Wh")
+                                kv_row("运维成本", f"{ess.r_om * 100:.1f}", "%建设成本/年")
+                                kv_row("项目寿命", f"{ess.design_life}", "年")
+                                kv_row("调度目标", BM_LABELS.get(work.business_model, work.business_model))
+                                kv_row("电价模式", PM_LABELS.get(work.pricing_mode, work.pricing_mode))
 
-            # ============ 中·左·下：储能本体建设收益分析 ============
-            irr_val = result.irr if result.irr != float("inf") else None
-            roi_years = (
-                initial_invest_yuan / (result.daily_arbitrage * 365)
-                if result.daily_arbitrage > 0
-                else float("inf")
-            )
-            roi_str = f"{roi_years:.2f} 年" if roi_years != float("inf") else "N/A"
-            irr_str = f"{irr_val * 100:.2f}%" if irr_val else "N/A"
-            cum_cf = result.daily_arbitrage * 365 * ess.design_life / 10000
-            with card(title="储能本体建设收益分析", sub="固化版本，不可点编辑，不可触动态投资"):
-                section_title("基本参数")
-                bp_l, bp_r = st.columns(2, gap="small")
-                with bp_l:
-                    kv_row("储能容量", f"{ess_mwh:.2f}", "MWh")
-                    kv_row("总投资", f"{initial_invest_yuan / 10000:,.1f}", "万元")
-                    kv_row("储能效率", f"{ess.eta_roundtrip * 100:.0f}", "%")
-                    kv_row("商业模式", BM_LABELS.get(work.business_model, work.business_model))
-                    kv_row("用户分成比例", f"{share_ratio:.0f}", "%")
-                with bp_r:
-                    kv_row("建设单价", f"{ess.unit_cost:.2f}", "元/Wh")
-                    kv_row("运维成本", f"{ess.r_om * 100:.1f}", "%建设成本/年")
-                    kv_row("项目寿命", f"{ess.design_life}", "年")
-                    kv_row("调度目标", BM_LABELS.get(work.business_model, work.business_model))
-                    kv_row("电价模式", PM_LABELS.get(work.pricing_mode, work.pricing_mode))
+                            section_title("财务数据")
+                            fin_strip(
+                                [
+                                    ("静态投资回收期 (ROI)", roi_str),
+                                    ("全投资内部收益率 (IRR)", irr_str),
+                                    (f"{ess.design_life} 年累计现金流", f"{cum_cf:,.1f} 万元"),
+                                ]
+                            )
 
-                section_title("财务数据")
-                fin_strip(
-                    [
-                        ("静态投资回收期 (ROI)", roi_str),
-                        ("全投资内部收益率 (IRR)", irr_str),
-                        (f"{ess.design_life} 年累计现金流", f"{cum_cf:,.1f} 万元"),
-                    ]
-                )
+                            section_title("经营数据")
+                            total_charge = sum(min(0, v) for v in result.load_ESS) * -1
+                            total_discharge = sum(max(0, v) for v in result.load_ESS)
+                            simple_table(
+                                ["指标", "典型日", "全年"],
+                                [
+                                    ["套利收入", f"{result.daily_arbitrage:,.0f} 元", f"{result.daily_arbitrage * 365 / 10000:,.1f} 万元"],
+                                    ["总充电量", f"{total_charge:,.0f} kWh", f"{total_charge * 365 / 1000:,.0f} MWh"],
+                                    ["总放电量", f"{total_discharge:,.0f} kWh", f"{total_discharge * 365 / 1000:,.0f} MWh"],
+                                    ["等效循环次数", f"{result.equivalent_cycles:.2f} 次", f"{result.equivalent_cycles * 365:,.0f} 次"],
+                                ],
+                            )
 
-                section_title("经营数据")
-                total_charge = sum(min(0, v) for v in result.load_ESS) * -1
-                total_discharge = sum(max(0, v) for v in result.load_ESS)
-                simple_table(
-                    ["指标", "典型日", "全年"],
-                    [
-                        ["套利收入", f"{result.daily_arbitrage:,.0f} 元", f"{result.daily_arbitrage * 365 / 10000:,.1f} 万元"],
-                        ["总充电量", f"{total_charge:,.0f} kWh", f"{total_charge * 365 / 1000:,.0f} MWh"],
-                        ["总放电量", f"{total_discharge:,.0f} kWh", f"{total_discharge * 365 / 1000:,.0f} MWh"],
-                        ["等效循环次数", f"{result.equivalent_cycles:.2f} 次", f"{result.equivalent_cycles * 365:,.0f} 次"],
-                    ],
-                )
+                    with r2_dispatch:
+                        with card(title="典型日调度曲线", sub="负荷 / 储能 / SOC / P_eff", fill=True):
+                            P_da, P_rt = DataLoader.load_spot_prices(work.region, work.selected_date)
+                            tariffs = {
+                                "admin": ConfigLoader.load_tariff(work.region, "admin"),
+                                "jiangsu": ConfigLoader.load_tariff(work.region, "jiangsu"),
+                                "contract": ConfigLoader.load_tariff(work.region, "contract"),
+                                "flat_price": 0.55,
+                            }
+                            P_user = compute_user_price(
+                                PricingMode(work.pricing_mode),
+                                tariffs,
+                                DataLoader.get_monthly_pda(work.region),
+                            )
+                            fin_defaults = ConfigLoader.load_financial_defaults(work.region)
+                            r_user_map = {
+                                "B1": float(fin_defaults["r_user_b1"]),
+                                "B2": float(fin_defaults["r_user_b2"]),
+                                "B3": float(fin_defaults["r_user_b3"]),
+                            }
+                            bm_code = work.business_model
+                            bm_prefix = (
+                                "B1"
+                                if bm_code == "B1"
+                                else ("B2" if bm_code.startswith("B2") else ("B3" if bm_code.startswith("B3") else "B2"))
+                            )
+                            r_user = r_user_map.get(bm_prefix, 0.30)
+                            P_eff = compute_effective_price(
+                                BusinessModel(work.business_model), P_user, P_user, P_rt, r_user,
+                            )
+                            fig1 = render_dispatch_chart(result, P_eff)
+                            fig1.update_layout(
+                                height=320,
+                                margin=dict(l=8, r=8, t=24, b=24),
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)",
+                            )
+                            st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
 
-        # ============ 中·右：多方收益分析 + 大调度图 ============
-        with col_mid:
-            with card(title="多方收益分析", right=f"总社会福利：{result.total_welfare / 10000:,.1f} 万元"):
-                # ---- 终端用户段 ----
-                section_title("终端用户")
-                user_bill_no = result.user_bill_no_ess / 10000
-                user_bill_with = result.user_bill_with_ess / 10000
-                user_savings = result.user_savings / 10000
-                user_return = (result.user_savings - result.user_net) / 10000
-                user_total = result.user_bill_with_ess / 10000
-                u_left, u_right = st.columns([1.05, 1], gap="small")
-                with u_left:
-                    pl_row("应缴电网电费", f"{user_bill_no:,.1f} 万元")
-                    pl_row("实缴电网电费", f"{user_bill_with:,.1f} 万元")
-                    pl_row("用户节约电费", f"{user_savings:,.1f} 万元")
-                    pl_row("返还储能费用", f"{user_return:,.1f} 万元")
-                    pl_row("用户总电费", f"{user_total:,.1f} 万元")
-                with u_right:
-                    st.plotly_chart(
-                        _mini_bar(
-                            [user_bill_no, user_bill_with, user_savings, user_return, user_total],
-                            ["应缴", "实缴", "节约", "返还", "总计"],
-                            "#1677FF",
-                        ),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
+        with right_col:
+            with st.container(key="param_panel"):
+                with card(fill=True):
+                    t_l, t_r = st.columns([1, 0.55])
+                    with t_l:
+                        panel_title("参数调节区")
+                    with t_r:
+                        if st.button("计算", type="primary", key=f"calc_{sid}", use_container_width=True):
+                            AppState.invalidate(sid)
+                            st.rerun()
+
+                    section_title("批发市场")
+                    _wh_select("批发购电规则", "settlement_mode", sid)
+                    _wh_select("中长期合约曲线", "contract_curve_profile", sid)
+                    _wh_select("日前报量曲线", "dayahead_curve_profile", sid)
+
+                    cur_sp = (
+                        f"{st.session_state[f'analy_{sid}_region']} · "
+                        f"{st.session_state[f'analy_{sid}_selected_date']}（日前&实时）"
                     )
+                    c_sp, c_spv = st.columns([1, 0.22], gap="small")
+                    with c_sp:
+                        st.text_input("现货电价曲线", value=cur_sp, disabled=True, key=f"sp_{sid}")
+                    with c_spv:
+                        if view_button(f"view_sp_{sid}"):
+                            st.toast(f"现货电价：{cur_sp}")
 
-                # ---- 储售一体用户段 ----
-                section_title("储售一体用户")
-                cb_bill_no = result.user_bill_no_ess / 10000
-                cb_bill_with = result.user_bill_with_ess / 10000
-                cb_savings = result.user_savings / 10000
-                cb_return = (result.user_savings - result.user_net) / 10000
-                cb_total = (result.user_bill_with_ess + (result.user_savings - result.user_net)) / 10000
-                c_left, c_right = st.columns([1.05, 1], gap="small")
-                with c_left:
-                    pl_row("应缴电网电费", f"{cb_bill_no:,.1f} 万元")
-                    pl_row("实缴电网电费", f"{cb_bill_with:,.1f} 万元")
-                    pl_row("用户节约电费", f"{cb_savings:,.1f} 万元")
-                    pl_row("返还储能费用", f"{cb_return:,.1f} 万元")
-                    pl_row("用户总电费", f"{cb_total:,.1f} 万元")
-                with c_right:
-                    st.plotly_chart(
-                        _mini_bar(
-                            [cb_bill_no, cb_bill_with, cb_savings, cb_return, cb_total],
-                            ["应缴", "实缴", "节约", "返还", "总计"],
-                            "#52C41A",
-                        ),
-                        use_container_width=True,
-                        config={"displayModeBar": False},
-                    )
+                    section_title("零售")
+                    c_pm, c_pmv = st.columns([1, 0.22], gap="small")
+                    with c_pm:
+                        st.selectbox(
+                            "零售用户电价",
+                            PM_OPTIONS,
+                            index=PM_OPTIONS.index(st.session_state[f"analy_{sid}_pricing_mode"])
+                            if st.session_state[f"analy_{sid}_pricing_mode"] in PM_OPTIONS
+                            else 0,
+                            format_func=lambda c: PM_LABELS.get(c, c),
+                            key=f"analy_{sid}_pricing_mode",
+                        )
+                    with c_pmv:
+                        if view_button(f"view_pm_{sid}"):
+                            cur_pm = st.session_state[f"analy_{sid}_pricing_mode"]
+                            st.toast(f"电价模式：{PM_LABELS.get(cur_pm, cur_pm)}")
 
-            # ---- 底部大图：调度曲线 ----
-            with card(title="典型日调度曲线", sub="负荷 / 储能 / SOC / P_eff"):
-                P_da, P_rt = DataLoader.load_spot_prices(work.region, work.selected_date)
-                tariffs = {
-                    "admin": ConfigLoader.load_tariff(work.region, "admin"),
-                    "jiangsu": ConfigLoader.load_tariff(work.region, "jiangsu"),
-                    "contract": ConfigLoader.load_tariff(work.region, "contract"),
-                    "flat_price": 0.55,
-                }
-                P_user = compute_user_price(
-                    PricingMode(work.pricing_mode),
-                    tariffs,
-                    DataLoader.get_monthly_pda(work.region),
-                )
-                fin_defaults = ConfigLoader.load_financial_defaults(work.region)
-                r_user_map = {
-                    "B1": float(fin_defaults["r_user_b1"]),
-                    "B2": float(fin_defaults["r_user_b2"]),
-                    "B3": float(fin_defaults["r_user_b3"]),
-                }
-                bm_code = work.business_model
-                bm_prefix = (
-                    "B1"
-                    if bm_code == "B1"
-                    else ("B2" if bm_code.startswith("B2") else ("B3" if bm_code.startswith("B3") else "B2"))
-                )
-                r_user = r_user_map.get(bm_prefix, 0.30)
-                P_eff = compute_effective_price(
-                    BusinessModel(work.business_model), P_user, P_user, P_rt, r_user,
-                )
-                fig1 = render_dispatch_chart(result, P_eff)
-                fig1.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=20), font=dict(size=10))
-                st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
-
-    # ============ 右侧：参数调节区 ============
-    with right_col:
-        with card():
-            t_l, t_r = st.columns([1, 0.5])
-            with t_l:
-                st.markdown(
-                    '<div style="font-size:14px;font-weight:600;color:#1F1F1F;padding-top:4px;">'
-                    "参数调节区</div>",
-                    unsafe_allow_html=True,
-                )
-            with t_r:
-                if st.button("计算", type="primary", key=f"calc_{sid}", use_container_width=True):
-                    AppState.invalidate(sid)
-                    st.rerun()
-
-            section_title("批发市场")
-            _wh_select("批发购电规则", "settlement_mode", sid)
-            _wh_select("中长期合约曲线", "contract_curve_profile", sid)
-            _wh_select("日前报量曲线", "dayahead_curve_profile", sid)
-
-            cur_sp = (
-                f"{st.session_state[f'analy_{sid}_region']} · "
-                f"{st.session_state[f'analy_{sid}_selected_date']}（日前&实时）"
-            )
-            c_sp, c_spv = st.columns([1, 0.22], gap="small")
-            with c_sp:
-                st.text_input("现货电价曲线", value=cur_sp, disabled=True, key=f"sp_{sid}")
-            with c_spv:
-                if view_button(f"view_sp_{sid}"):
-                    st.toast(f"现货电价：{cur_sp}")
-
-            section_title("零售")
-            c_pm, c_pmv = st.columns([1, 0.22], gap="small")
-            with c_pm:
-                st.selectbox(
-                    "零售用户电价",
-                    PM_OPTIONS,
-                    index=PM_OPTIONS.index(st.session_state[f"analy_{sid}_pricing_mode"])
-                    if st.session_state[f"analy_{sid}_pricing_mode"] in PM_OPTIONS
-                    else 0,
-                    format_func=lambda c: PM_LABELS.get(c, c),
-                    key=f"analy_{sid}_pricing_mode",
-                )
-            with c_pmv:
-                if view_button(f"view_pm_{sid}"):
                     cur_pm = st.session_state[f"analy_{sid}_pricing_mode"]
-                    st.toast(f"电价模式：{PM_LABELS.get(cur_pm, cur_pm)}")
+                    c_pc, c_pcv = st.columns([1, 0.22], gap="small")
+                    with c_pc:
+                        st.text_input(
+                            "电价曲线",
+                            value=PM_LABELS.get(cur_pm, cur_pm),
+                            disabled=True,
+                            key=f"pc_{sid}",
+                        )
+                    with c_pcv:
+                        if view_button(f"view_pc_{sid}"):
+                            st.toast(f"电价曲线：{PM_LABELS.get(cur_pm, cur_pm)}")
 
-            cur_pm = st.session_state[f"analy_{sid}_pricing_mode"]
-            c_pc, c_pcv = st.columns([1, 0.22], gap="small")
-            with c_pc:
-                st.text_input(
-                    "电价曲线",
-                    value=PM_LABELS.get(cur_pm, cur_pm),
-                    disabled=True,
-                    key=f"pc_{sid}",
-                )
-            with c_pcv:
-                if view_button(f"view_pc_{sid}"):
-                    st.toast(f"电价曲线：{PM_LABELS.get(cur_pm, cur_pm)}")
+                    _simple_select_with_view(
+                        "用户产负曲线", USER_PROFILES, f"analy_{sid}_user_profile", sid
+                    )
 
-            _simple_select_with_view(
-                "用户产负曲线", USER_PROFILES, f"analy_{sid}_user_profile", sid
-            )
+                    section_title("储能合作")
+                    st.selectbox(
+                        "储能合作模式", COOP_MODES,
+                        index=COOP_MODES.index(st.session_state[f"analy_{sid}_coop_mode"])
+                        if st.session_state[f"analy_{sid}_coop_mode"] in COOP_MODES
+                        else 0,
+                        key=f"analy_{sid}_coop_mode",
+                    )
+                    st.number_input(
+                        "用户分成比例 (%)",
+                        min_value=0.0, max_value=100.0, step=1.0,
+                        key=f"analy_{sid}_share_ratio",
+                    )
 
-            section_title("储能合作")
-            st.selectbox(
-                "储能合作模式", COOP_MODES,
-                index=COOP_MODES.index(st.session_state[f"analy_{sid}_coop_mode"])
-                if st.session_state[f"analy_{sid}_coop_mode"] in COOP_MODES
-                else 0,
-                key=f"analy_{sid}_coop_mode",
-            )
-            st.number_input(
-                "用户分成比例 (%)",
-                min_value=0.0, max_value=100.0, step=1.0,
-                key=f"analy_{sid}_share_ratio",
-            )
-
-            st.markdown('<div style="margin-top:8px;"></div>', unsafe_allow_html=True)
-            if plus_button(f"add_param_{sid}", "自定义参数  ＋"):
-                st.toast("自定义参数：待实现")
+                    if plus_button(f"add_param_{sid}", "自定义参数  ＋"):
+                        st.toast("自定义参数：待实现")

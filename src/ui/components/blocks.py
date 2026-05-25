@@ -23,15 +23,23 @@ def topbar(title: str) -> None:
 # ---- 卡片 ---------------------------------------------------------------
 
 @contextmanager
-def card(title: Optional[str] = None, sub: Optional[str] = None, right: Optional[str] = None):
+def card(
+    title: Optional[str] = None,
+    sub: Optional[str] = None,
+    right: Optional[str] = None,
+    *,
+    fill: bool = False,
+):
     """卡片容器：用 with card("xxx", sub="...") as _: 包裹一段内容。
 
     Args:
         title: 卡片标题；None 时不渲染标题条。
         sub: 标题旁紧跟的灰色小字（说明性副标题）。
         right: 标题右端的小字。
+        fill: 为 True 时加 card-fill，在 2×2 栅格内撑满格子高度。
     """
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    fill_cls = " card-fill" if fill else ""
+    st.markdown(f'<div class="card{fill_cls}">', unsafe_allow_html=True)
     if title is not None:
         sub_html = f'<span class="sub">　{sub}</span>' if sub else ""
         right_html = f'<span class="right">{right}</span>' if right else ""
@@ -123,11 +131,16 @@ def simple_table(headers: list[str], rows: list[list[str]]) -> None:
 # ---- "查看" 链式按钮 ----------------------------------------------------
 
 def view_button(key: str, label: str = "查看") -> bool:
-    """渲染一个链式风格按钮，返回是否被点击。"""
-    st.markdown('<div class="view-link">', unsafe_allow_html=True)
+    """渲染一个链式风格按钮（与 select 同行底对齐），返回是否被点击。"""
+    st.markdown('<div class="view-col">', unsafe_allow_html=True)
     clicked = st.button(label, key=key)
     st.markdown("</div>", unsafe_allow_html=True)
     return clicked
+
+
+def panel_title(text: str) -> None:
+    """右栏「参数调节区」标题。"""
+    st.markdown(f'<div class="panel-title">{text}</div>', unsafe_allow_html=True)
 
 
 # ---- 加号按钮 ------------------------------------------------------------

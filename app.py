@@ -65,7 +65,7 @@ with st.container(key="topbar"):
                 st.rerun()
 
 with st.container(key="body"):
-    nav_col, main_col = st.columns([0.085, 0.915], gap="small")
+    nav_col, main_col = st.columns([0.045, 0.955], gap="small")
 
     with nav_col:
         with st.container(key="nav"):

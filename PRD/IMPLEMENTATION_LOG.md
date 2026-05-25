@@ -44,3 +44,21 @@
   - "自定义参数 ＋" 入口仅 `st.toast`；
   - 拓扑图为静态 SVG，可后续替换为 Plotly Sankey；
   - "默认参数"按钮清理 widget session，但不写盘。
+
+---
+
+## IML-20260525-001 — 视觉返工落地（v1.1.1）
+
+- **类型**：前端视觉层返工（对齐 `PRD/ui_spec_v1.md` + `PRD/ui_mock_v1.svg`）。
+- **关联**：CHANGELOG **v1.1.1**；Plan `视觉规范与mock先行重做_c0fdccaa`。
+- **新增**：
+  - `PRD/ui_spec_v1.md`、`PRD/ui_mock_v1.svg`（规范与 mock 真源落盘于 PRD 目录）。
+- **重写/修改**：
+  - [src/ui/components/style.py](../src/ui/components/style.py)：工业线框 token；顶栏 40px；2×2 栅格高度 CSS；`.kv-row`/`.pl-row` 左对齐亲密性；移除 label 强制高度与 `view-link` margin hack。
+  - [src/ui/components/blocks.py](../src/ui/components/blocks.py)：`card(..., fill=True)`、`panel_title`、`view-col` 查看按钮。
+  - [src/ui/pages/analysis_page.py](../src/ui/pages/analysis_page.py)：中部 2×2 栅格布局；右栏 `param_panel` 容器。
+  - [src/ui/components/dispatch_chart.py](../src/ui/components/dispatch_chart.py)：Plotly 透明背景。
+  - [app.py](../app.py)：导航列宽微调（~84px）。
+  - `PRD/README.md`、`CHANGELOG.md`、`VERSIONING.md`、`SESSION_LOG.md`、`implementation_matrix.md`。
+- **不动**：`src/core/**`、`src/data/**`、`src/models/**` 业务逻辑；`tests/**` 行为断言。
+- **验证**：`pytest tests/` 全通过。

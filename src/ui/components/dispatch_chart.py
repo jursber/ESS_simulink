@@ -50,9 +50,13 @@ def render_dispatch_chart(result, P_eff=None) -> go.Figure:
         xaxis_title="小时",
         hovermode="x unified",
         legend=dict(orientation="h", y=1.12),
-        margin=dict(t=30),
+        margin=dict(l=8, r=8, t=24, b=24),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(size=10, color="#595959"),
     )
-    fig.update_yaxes(title_text="电量 (kWh)", secondary_y=False)
+    fig.update_xaxes(showgrid=True, gridcolor="#F0F0F0")
+    fig.update_yaxes(title_text="电量 (kWh)", showgrid=True, gridcolor="#F0F0F0", secondary_y=False)
     fig.update_yaxes(title_text="SOC / P_eff", range=[0, 1.0], secondary_y=True)
 
     return fig

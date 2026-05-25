@@ -2,6 +2,7 @@
 
 | PRD 版本 | 对话轮次 | 日期 | 变更摘要 |
 |----------|----------|------|----------|
+| v1.1.1 | 视觉返工落地 | 2026-05-25 | 规范与 mock 落盘至 `PRD/ui_spec_v1.md`、`PRD/ui_mock_v1.svg`；按工业线框风重写 `style.py` / `blocks.py` / `analysis_page.py`（2×2 栅格、纯白背景、亲密性、Plotly 透明底、无阴影）。详见 IMPLEMENTATION_LOG §IML-20260525-001 |
 | v1.1.0 | 前端视觉重建 | 2026-05-23 | 新增前端视觉层（Ant Design 5 token，蓝色主色，整屏无滚动，字号 12~18px）：新增 `src/ui/components/style.py / blocks.py / topology.py`；重写 [app.py](../app.py) 顶栏与左导航；按原型三列重写 [analysis_page.py](../src/ui/pages/analysis_page.py)；其余三页套外壳。不动 `src/core/**`、测试与方案 JSON。详见 [IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md) §IML-20260523-002 |
 | v1.0.4 | 文档体系 / 项目梳理 | 2026-05-23 | 新增 `VERSIONING.md`、`SESSION_LOG.md`、`IMPLEMENTATION_LOG.md`、`implementation_matrix.md`、`README.md`；`PRD_v1.0.1.md` 更名为 `PRD_v1.0.3.md` 与正文一致；`Design/architecture_v1.0.md` 与当前代码对齐。PRD **正文**仍为 v1.0.3 冻结，见 [VERSIONING.md](VERSIONING.md) |
 | v1.0.3 | 第 7 轮（补充） | 2026-05-22 | 澄清：§6.2 中长期/日前持仓 CSV 按方案 `date` 筛选 24 小时后再参与购电公式；实现于 `ConfigLoader` + `calculate` |
