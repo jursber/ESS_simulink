@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>深色仪表盘风格 - 储能收益分析</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f1117; --bg-card: #1a1d27; --bg-card-hover: #222636;
+    --border: #2a2e3a; --border-active: #3d8bfd;
+    --text-1: #e6e8ef; --text-2: #9ca3b0; --text-3: #6b7280;
+    --primary: #3d8bfd; --primary-dim: rgba(61,139,253,0.15);
+    --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+    --accent: #a78bfa;
+    --radius: 8px; --gap: 10px;
+  }
+  html, body { height: 100vh; overflow: hidden; background: var(--bg); color: var(--text-1); font-family: -apple-system, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 13px; line-height: 1.5; }
+
+  /* TopBar */
+  .topbar { height: 48px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; }
+  .topbar .logo { font-size: 15px; font-weight: 600; color: var(--text-1); letter-spacing: 0.03em; }
+  .topbar .logo span { color: var(--primary); }
+  .topbar-actions { display: flex; gap: 8px; }
+  .topbar-actions button { background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 4px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .topbar-actions button:hover { border-color: var(--primary); color: var(--primary); }
+  .topbar-actions button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* Layout */
+  .main { display: flex; height: calc(100vh - 48px); }
+  .nav { width: 56px; background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; flex-shrink: 0; }
+  .nav-item { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-3); cursor: pointer; transition: all 0.15s; font-size: 11px; text-align: center; line-height: 1.2; }
+  .nav-item:hover { background: var(--primary-dim); color: var(--text-2); }
+  .nav-item.active { background: var(--primary-dim); color: var(--primary); font-weight: 600; }
+  .nav-spacer { flex: 1; }
+
+  .content { flex: 1; display: flex; gap: var(--gap); padding: var(--gap); overflow: hidden; min-width: 0; }
+  .center { flex: 1; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+  .row { display: flex; gap: var(--gap); flex: 1; min-height: 0; }
+
+  /* Cards */
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-width: 0; }
+  .card:hover { border-color: #363b4a; }
+  .card-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .card-sub { font-size: 11px; color: var(--text-3); }
+  .card-body { flex: 1; overflow: hidden; }
+
+  /* Right panel */
+  .right-panel { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--gap); }
+  .param-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; flex: 1; overflow-y: auto; }
+  .param-section { margin-bottom: 12px; }
+  .param-section-title { font-size: 11px; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; padding-left: 8px; border-left: 2px solid var(--primary); }
+  .param-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+  .param-label { font-size: 12px; color: var(--text-2); }
+  .param-value { font-size: 12px; color: var(--text-1); font-weight: 500; background: var(--bg); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); min-width: 80px; text-align: right; }
+  .param-select { background: var(--bg); color: var(--text-1); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; font-size: 12px; min-width: 100px; }
+
+  /* Metric strips */
+  .metric-strip { display: flex; gap: 0; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin: 8px 0; flex-shrink: 0; }
+  .metric-cell { flex: 1; text-align: center; padding: 8px 4px; border-right: 1px solid var(--border); }
+  .metric-cell:last-child { border-right: none; }
+  .metric-cell .val { font-size: 16px; font-weight: 700; color: var(--primary); line-height: 1.2; }
+  .metric-cell .label { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* Key-value rows */
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+  .kv-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; }
+  .kv-row .k { font-size: 12px; color: var(--text-3); white-space: nowrap; min-width: 60px; }
+  .kv-row .v { font-size: 13px; color: var(--text-1); font-weight: 600; }
+  .kv-row .u { font-size: 11px; color: var(--text-3); margin-left: 2px; }
+
+  /* Financial strip */
+  .fin-strip { display: flex; background: rgba(61,139,253,0.06); border: 1px solid rgba(61,139,253,0.15); border-radius: 6px; overflow: hidden; margin: 8px 0; }
+  .fin-cell { flex: 1; text-align: center; padding: 8px 4px; border-right: 1px solid rgba(61,139,253,0.1); }
+  .fin-cell:last-child { border-right: none; }
+  .fin-cell .label { font-size: 11px; color: var(--text-3); }
+  .fin-cell .val { font-size: 15px; font-weight: 700; color: var(--success); }
+
+  /* Section title */
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 10px 0 6px; padding-left: 8px; border-left: 3px solid var(--primary); line-height: 1.4; }
+  .section-title:first-child { margin-top: 0; }
+
+  /* PL rows (revenue) */
+  .pl-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .pl-row .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+  .pl-row .k { font-size: 12px; color: var(--text-2); }
+  .pl-row .v { font-size: 13px; font-weight: 600; color: var(--primary); }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { background: rgba(255,255,255,0.04); color: var(--text-2); font-weight: 600; padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 4px 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-1); }
+  .data-table td:first-child { text-align: left; color: var(--text-2); }
+
+  /* Chart placeholder */
+  .chart-area { flex: 1; min-height: 0; position: relative; }
+  .chart-area canvas { width: 100% !important; height: 100% !important; }
+
+  /* Topology */
+  .topology { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 0; }
+  .topo-node { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-2); text-align: center; }
+  .topo-node.highlight { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+  .topo-arrow { color: var(--text-3); font-size: 16px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Button */
+  .btn-calc { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 6px; padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-calc:hover { background: #5a9bff; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo"><span>⚡</span> 荷源网储售综合模拟仿真系统</div>
+  <div class="topbar-actions">
+    <button>加载</button>
+    <button>保存</button>
+    <button>重置</button>
+  </div>
+</div>
+<div class="main">
+  <div class="nav">
+    <div class="nav-item active">单方案<br>分析</div>
+    <div class="nav-item">多方案<br>对比</div>
+    <div class="nav-item">方案<br>管理</div>
+    <div class="nav-item">全局<br>参数</div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" style="font-size:10px;">默认<br>参数</div>
+  </div>
+  <div class="content">
+    <div class="center">
+      <!-- Row 1 -->
+      <div class="row">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">方案概览</span>
+            <span class="card-sub">M1 行政分时 · B1 用户+储能</span>
+          </div>
+          <div class="card-body">
+            <div class="topology">
+              <div class="topo-node">电网</div>
+              <div class="topo-arrow">→</div>
+              <div class="topo-node highlight">储能 2MWh</div>
+              <div class="topo-arrow">→</div>
+              <div class="topo-node">用户 120kW</div>
+            </div>
+            <div class="metric-strip">
+              <div class="metric-cell"><div class="val">2.00</div><div class="label">储能 MWh</div></div>
+              <div class="metric-cell"><div class="val">0</div><div class="label">光伏</div></div>
+              <div class="metric-cell"><div class="val">0</div><div class="label">可调负荷</div></div>
+              <div class="metric-cell"><div class="val">18.56</div><div class="label">生产负荷 MWh</div></div>
+            </div>
+            <div class="kv-grid" style="margin-top:8px;">
+              <div class="kv-row"><span class="k">电价模式</span><span class="v">行政分时</span></div>
+              <div class="kv-row"><span class="k">商业模式</span><span class="v">用户+储能</span></div>
+              <div class="kv-row"><span class="k">储能容量</span><span class="v">2.00 <span class="u">MWh</span></span></div>
+              <div class="kv-row"><span class="k">总投资</span><span class="v">180.0 <span class="u">万元</span></span></div>
+              <div class="kv-row"><span class="k">储能效率</span><span class="v">85 <span class="u">%</span></span></div>
+              <div class="kv-row"><span class="k">项目寿命</span><span class="v">10 <span class="u">年</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">多方收益分析</span>
+            <span class="card-sub">总社会福利：42.8 万元</span>
+          </div>
+          <div class="card-body">
+            <div class="section-title">终端用户</div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <div class="pl-row"><div class="dot"></div><span class="k">应缴电网电费</span><span class="v">156.3 万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">实缴电网电费</span><span class="v">148.7 万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">节约电费</span><span class="v">7.6 万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">返还储能费用</span><span class="v">6.1 万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">用户总电费</span><span class="v">154.8 万</span></div>
+              </div>
+              <div style="width:160px;height:100px;background:rgba(61,139,253,0.08);border-radius:6px;display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:8px 8px 4px;">
+                <div style="width:18px;background:var(--primary);border-radius:3px 3px 0 0;height:90%;"></div>
+                <div style="width:18px;background:var(--primary);border-radius:3px 3px 0 0;height:85%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:35%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:28%;"></div>
+                <div style="width:18px;background:var(--primary);border-radius:3px 3px 0 0;height:88%;"></div>
+              </div>
+            </div>
+            <div class="section-title" style="margin-top:12px;">储售一体用户</div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">
+                <div class="pl-row"><div class="dot" style="background:var(--success);"></div><span class="k">应缴电网电费</span><span class="v" style="color:var(--success);">156.3 万</span></div>
+                <div class="pl-row"><div class="dot" style="background:var(--success);"></div><span class="k">实缴电网电费</span><span class="v" style="color:var(--success);">148.7 万</span></div>
+                <div class="pl-row"><div class="dot" style="background:var(--success);"></div><span class="k">节约电费</span><span class="v" style="color:var(--success);">7.6 万</span></div>
+                <div class="pl-row"><div class="dot" style="background:var(--success);"></div><span class="k">返还储能费用</span><span class="v" style="color:var(--success);">6.1 万</span></div>
+                <div class="pl-row"><div class="dot" style="background:var(--success);"></div><span class="k">用户总电费</span><span class="v" style="color:var(--success);">154.8 万</span></div>
+              </div>
+              <div style="width:160px;height:100px;background:rgba(52,211,153,0.08);border-radius:6px;display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:8px 8px 4px;">
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:90%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:85%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:35%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:28%;"></div>
+                <div style="width:18px;background:var(--success);border-radius:3px 3px 0 0;height:88%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row 2 -->
+      <div class="row">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">储能本体建设收益分析</span>
+            <span class="card-sub">固化版本</span>
+          </div>
+          <div class="card-body">
+            <div class="section-title">基本参数</div>
+            <div class="kv-grid">
+              <div class="kv-row"><span class="k">储能容量</span><span class="v">2.00 <span class="u">MWh</span></span></div>
+              <div class="kv-row"><span class="k">建设单价</span><span class="v">0.90 <span class="u">元/Wh</span></span></div>
+              <div class="kv-row"><span class="k">总投资</span><span class="v">180.0 <span class="u">万元</span></span></div>
+              <div class="kv-row"><span class="k">运维成本</span><span class="v">1.0 <span class="u">%建设成本/年</span></span></div>
+              <div class="kv-row"><span class="k">储能效率</span><span class="v">85 <span class="u">%</span></span></div>
+              <div class="kv-row"><span class="k">项目寿命</span><span class="v">10 <span class="u">年</span></span></div>
+            </div>
+            <div class="section-title">财务数据</div>
+            <div class="fin-strip">
+              <div class="fin-cell"><div class="label">静态回收期 ROI</div><div class="val">6.25 年</div></div>
+              <div class="fin-cell"><div class="label">内部收益率 IRR</div><div class="val">12.8%</div></div>
+              <div class="fin-cell"><div class="label">10年累计现金流</div><div class="val">288.0 万元</div></div>
+            </div>
+            <div class="section-title">经营数据</div>
+            <table class="data-table">
+              <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
+              <tr><td>套利收入</td><td>1,280 元</td><td>46.7 万元</td></tr>
+              <tr><td>总充电量</td><td>1,650 kWh</td><td>602 MWh</td></tr>
+              <tr><td>总放电量</td><td>1,402 kWh</td><td>512 MWh</td></tr>
+              <tr><td>等效循环次数</td><td>0.70 次</td><td>256 次</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">典型日调度曲线</span>
+            <span class="card-sub">负荷 / 储能 / SOC / P_eff</span>
+          </div>
+          <div class="card-body">
+            <canvas id="chart-dark"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="param-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:14px;font-weight:600;">参数调节区</span>
+          <button class="btn-calc" style="width:auto;padding:4px 16px;font-size:12px;">计 算</button>
+        </div>
+        <div class="param-section">
+          <div class="param-section-title">批发市场</div>
+          <div class="param-row"><span class="param-label">批发电规则</span><select class="param-select"><option>三部制结算</option></select></div>
+          <div class="param-row"><span class="param-label">中长期合约</span><select class="param-select"><option>统一条款</option></select></div>
+          <div class="param-row"><span class="param-label">日前报量</span><select class="param-select"><option>统一条款</option></select></div>
+          <div class="param-row"><span class="param-label">现货电价</span><span class="param-value">河南 · 03-15</span></div>
+        </div>
+        <div class="param-section">
+          <div class="param-section-title">零售</div>
+          <div class="param-row"><span class="param-label">电价模式</span><select class="param-select"><option>行政分时</option></select></div>
+          <div class="param-row"><span class="param-label">电价曲线</span><span class="param-value">行政分时</span></div>
+          <div class="param-row"><span class="param-label">用户负荷</span><select class="param-select"><option>XX大工业</option></select></div>
+        </div>
+        <div class="param-section">
+          <div class="param-section-title">储能合作</div>
+          <div class="param-row"><span class="param-label">合作模式</span><select class="param-select"><option>收益分成</option></select></div>
+          <div class="param-row"><span class="param-label">分成比例</span><span class="param-value">20 %</span></div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);">
+          <button style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-3);padding:6px;border-radius:4px;font-size:12px;cursor:pointer;">自定义参数 ＋</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('chart-dark').getContext('2d');
+const hours = Array.from({length:24}, (_,i) => `${i}:00`);
+const load = [85,82,78,75,73,72,80,95,120,135,140,142,138,130,125,128,135,145,150,140,120,105,95,88];
+const ess = [0,0,0,-30,-30,-30,-30,0,0,0,30,30,30,30,0,0,0,0,-30,-30,0,0,0,0];
+const soc = [50,50,50,65,80,95,100,100,100,100,85,70,55,40,40,40,40,40,55,70,70,70,70,50];
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: hours,
+    datasets: [
+      { label: '负荷 kWh', data: load, borderColor: '#3d8bfd', backgroundColor: 'rgba(61,139,253,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+      { label: '储能 kWh', data: ess, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+      { label: 'SOC %', data: soc, borderColor: '#34d399', borderDash: [4,4], tension: 0.3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#9ca3b0', font: { size: 11 }, boxWidth: 12, padding: 12 } } },
+    scales: {
+      x: { ticks: { color: '#6b7280', font: { size: 10 }, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { position: 'left', ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'kWh', color: '#6b7280', font: { size: 10 } } },
+      y1: { position: 'right', min: 0, max: 100, ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v+'%' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'SOC', color: '#6b7280', font: { size: 10 } } },
+    }
+  }
+});
+</script>
+</body>
+</html>

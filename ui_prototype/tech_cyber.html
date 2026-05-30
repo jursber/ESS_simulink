@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>科技感风格 - 储能收益分析</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #080c18; --bg-card: rgba(12,18,40,0.85); --bg-card-solid: #0c1228;
+    --border: rgba(56,189,248,0.12); --border-active: rgba(56,189,248,0.4);
+    --text-1: #e0e7ff; --text-2: #94a3c0; --text-3: #4a5578;
+    --primary: #38bdf8; --primary-glow: rgba(56,189,244,0.15); --primary-dim: rgba(56,189,244,0.08);
+    --success: #22d3a7; --success-glow: rgba(34,211,167,0.15);
+    --warning: #fbbf24; --danger: #f87171;
+    --accent: #a78bfa; --accent-glow: rgba(167,139,250,0.15);
+    --neon: #06ffa5;
+    --radius: 6px; --gap: 8px;
+  }
+  html, body { height: 100vh; overflow: hidden; background: var(--bg); color: var(--text-1); font-family: "SF Mono", "Cascadia Code", "JetBrains Mono", -apple-system, "PingFang SC", monospace; font-size: 12px; line-height: 1.5; }
+
+  /* Background grid */
+  body::before { content: ''; position: fixed; inset: 0; background:
+    linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+  /* TopBar */
+  .topbar { height: 44px; background: rgba(12,18,40,0.95); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; position: relative; z-index: 10; backdrop-filter: blur(12px); }
+  .topbar .logo { font-size: 14px; font-weight: 600; color: var(--primary); letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .topbar .logo .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--neon); box-shadow: 0 0 8px var(--neon), 0 0 16px rgba(6,255,165,0.3); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .topbar .divider { width: 1px; height: 20px; background: var(--border); margin: 0 8px; }
+  .topbar .status { font-size: 11px; color: var(--text-3); }
+  .topbar-actions { display: flex; gap: 6px; }
+  .btn { background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 4px 14px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: all 0.15s; font-family: inherit; letter-spacing: 0.03em; }
+  .btn:hover { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 8px var(--primary-dim); }
+  .btn-primary { background: var(--primary-dim); border-color: rgba(56,189,248,0.3); color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-glow); box-shadow: 0 0 12px var(--primary-glow); }
+
+  /* Layout */
+  .main { display: flex; height: calc(100vh - 44px); position: relative; z-index: 1; }
+  .nav { width: 52px; background: rgba(12,18,40,0.9); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; flex-shrink: 0; backdrop-filter: blur(12px); }
+  .nav-item { width: 40px; height: 40px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-3); cursor: pointer; transition: all 0.15s; font-size: 9px; gap: 2px; border: 1px solid transparent; }
+  .nav-item .icon { font-size: 14px; }
+  .nav-item:hover { color: var(--primary); border-color: var(--border); background: var(--primary-dim); }
+  .nav-item.active { color: var(--primary); border-color: rgba(56,189,248,0.3); background: var(--primary-dim); box-shadow: 0 0 8px var(--primary-dim); }
+  .nav-spacer { flex: 1; }
+
+  .content { flex: 1; display: flex; gap: var(--gap); padding: var(--gap); overflow: hidden; min-width: 0; }
+  .center { flex: 1; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+  .row { display: flex; gap: var(--gap); flex: 1; min-height: 0; }
+
+  /* Cards */
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-width: 0; backdrop-filter: blur(8px); position: relative; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.3; }
+  .card-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--primary); letter-spacing: 0.03em; }
+  .card-tag { font-size: 10px; color: var(--text-3); background: var(--primary-dim); border: 1px solid var(--border); padding: 1px 8px; border-radius: 3px; }
+  .card-body { flex: 1; overflow: hidden; }
+
+  /* Right panel */
+  .right-panel { width: 256px; flex-shrink: 0; }
+  .param-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; height: 100%; overflow-y: auto; backdrop-filter: blur(8px); position: relative; }
+  .param-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: 0.3; }
+  .param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .param-header-title { font-size: 13px; font-weight: 600; color: var(--primary); letter-spacing: 0.03em; }
+  .param-section { margin-bottom: 12px; }
+  .param-section-title { font-size: 10px; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; padding-left: 8px; border-left: 2px solid var(--primary); display: flex; align-items: center; gap: 6px; }
+  .param-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+  .param-label { font-size: 11px; color: var(--text-3); }
+  .param-input { background: rgba(0,0,0,0.3); color: var(--text-1); border: 1px solid var(--border); border-radius: 3px; padding: 3px 8px; font-size: 11px; min-width: 100px; text-align: right; font-family: inherit; transition: border-color 0.15s; }
+  .param-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 6px var(--primary-dim); }
+  .param-select { background: rgba(0,0,0,0.3); color: var(--text-1); border: 1px solid var(--border); border-radius: 3px; padding: 3px 8px; font-size: 11px; min-width: 100px; font-family: inherit; }
+
+  /* Topology */
+  .topology { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0; }
+  .topo-node { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; padding: 5px 12px; font-size: 11px; color: var(--text-2); }
+  .topo-node.highlight { border-color: rgba(56,189,248,0.4); color: var(--primary); background: var(--primary-dim); box-shadow: 0 0 8px var(--primary-dim); }
+  .topo-arrow { color: var(--primary); font-size: 12px; opacity: 0.5; }
+
+  /* Metric strip */
+  .metric-strip { display: flex; gap: 0; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin: 6px 0; flex-shrink: 0; }
+  .metric-cell { flex: 1; text-align: center; padding: 8px 4px; border-right: 1px solid var(--border); }
+  .metric-cell:last-child { border-right: none; }
+  .metric-cell .val { font-size: 16px; font-weight: 700; color: var(--primary); line-height: 1.2; text-shadow: 0 0 8px var(--primary-glow); }
+  .metric-cell .label { font-size: 10px; color: var(--text-3); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* KV grid */
+  .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px; }
+  .kv-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; }
+  .kv-row .k { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+  .kv-row .v { font-size: 12px; color: var(--text-1); font-weight: 600; }
+  .kv-row .u { font-size: 10px; color: var(--text-3); margin-left: 2px; }
+
+  /* Financial strip */
+  .fin-strip { display: flex; background: var(--success-glow); border: 1px solid rgba(34,211,167,0.15); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+  .fin-cell { flex: 1; text-align: center; padding: 8px 4px; border-right: 1px solid rgba(34,211,167,0.1); }
+  .fin-cell:last-child { border-right: none; }
+  .fin-cell .label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.03em; }
+  .fin-cell .val { font-size: 15px; font-weight: 700; color: var(--success); text-shadow: 0 0 6px var(--success-glow); }
+
+  /* Section title */
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text-2); margin: 8px 0 5px; padding-left: 8px; border-left: 2px solid var(--primary); line-height: 1.4; text-transform: uppercase; letter-spacing: 0.05em; }
+  .section-title:first-child { margin-top: 0; }
+
+  /* PL rows */
+  .pl-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .pl-row .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); flex-shrink: 0; box-shadow: 0 0 4px var(--primary); }
+  .pl-row .k { font-size: 11px; color: var(--text-2); }
+  .pl-row .v { font-size: 12px; font-weight: 600; color: var(--primary); }
+  .pl-row.alt .dot { background: var(--success); box-shadow: 0 0 4px var(--success); }
+  .pl-row.alt .v { color: var(--success); }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .data-table th { background: rgba(0,0,0,0.3); color: var(--text-2); font-weight: 600; padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.03em; font-size: 10px; }
+  .data-table td { padding: 4px 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-1); }
+  .data-table td:first-child { text-align: left; color: var(--text-2); }
+
+  /* Mini bars */
+  .mini-bars { display: flex; align-items: flex-end; gap: 5px; height: 85px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid var(--border); }
+  .mini-bar { flex: 1; border-radius: 2px 2px 0 0; position: relative; }
+  .mini-bar.blue { background: var(--primary); box-shadow: 0 0 6px var(--primary-glow); }
+  .mini-bar.green { background: var(--success); box-shadow: 0 0 6px var(--success-glow); }
+
+  /* Button */
+  .btn-calc { width: 100%; background: var(--primary-dim); color: var(--primary); border: 1px solid rgba(56,189,248,0.3); border-radius: 4px; padding: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; letter-spacing: 0.05em; }
+  .btn-calc:hover { background: var(--primary-glow); box-shadow: 0 0 12px var(--primary-glow); }
+
+  /* Plus button */
+  .plus-btn { width: 100%; background: transparent; border: 1px dashed var(--border); color: var(--text-3); padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .plus-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .chart-area { flex: 1; min-height: 0; }
+
+  /* Glow line decoration */
+  .glow-line { height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); margin: 8px 0; opacity: 0.2; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">
+    <div class="pulse"></div>
+    ESS · 储能仿真系统
+    <div class="divider"></div>
+    <span class="status">HENAN · 2026-03-15 · M1/B1</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn">LOAD</button>
+    <button class="btn">SAVE</button>
+    <button class="btn">RESET</button>
+  </div>
+</div>
+<div class="main">
+  <div class="nav">
+    <div class="nav-item active"><span class="icon">◈</span>分析</div>
+    <div class="nav-item"><span class="icon">◇</span>对比</div>
+    <div class="nav-item"><span class="icon">▣</span>管理</div>
+    <div class="nav-item"><span class="icon">⚙</span>参数</div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><span class="icon">↺</span>默认</div>
+  </div>
+  <div class="content">
+    <div class="center">
+      <!-- Row 1 -->
+      <div class="row">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">方案概览</span>
+            <span class="card-tag">M1 · B1</span>
+          </div>
+          <div class="card-body">
+            <div class="topology">
+              <div class="topo-node">电网</div>
+              <div class="topo-arrow">→</div>
+              <div class="topo-node highlight">储能 2MWh</div>
+              <div class="topo-arrow">→</div>
+              <div class="topo-node">用户 120kW</div>
+            </div>
+            <div class="metric-strip">
+              <div class="metric-cell"><div class="val">2.00</div><div class="label">储能 MWh</div></div>
+              <div class="metric-cell"><div class="val">0</div><div class="label">光伏</div></div>
+              <div class="metric-cell"><div class="val">0</div><div class="label">可调负荷</div></div>
+              <div class="metric-cell"><div class="val">18.56</div><div class="label">生产 MWh</div></div>
+            </div>
+            <div class="kv-grid" style="margin-top:8px;">
+              <div class="kv-row"><span class="k">电价模式</span><span class="v">行政分时</span></div>
+              <div class="kv-row"><span class="k">商业模式</span><span class="v">用户+储能</span></div>
+              <div class="kv-row"><span class="k">储能容量</span><span class="v">2.00 <span class="u">MWh</span></span></div>
+              <div class="kv-row"><span class="k">总投资</span><span class="v">180.0 <span class="u">万元</span></span></div>
+              <div class="kv-row"><span class="k">储能效率</span><span class="v">85 <span class="u">%</span></span></div>
+              <div class="kv-row"><span class="k">项目寿命</span><span class="v">10 <span class="u">年</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">多方收益分析</span>
+            <span class="card-tag">福利 42.8万</span>
+          </div>
+          <div class="card-body">
+            <div class="section-title">终端用户</div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;">
+                <div class="pl-row"><div class="dot"></div><span class="k">应缴电网电费</span><span class="v">156.3万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">实缴电网电费</span><span class="v">148.7万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">节约电费</span><span class="v">7.6万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">返还储能费用</span><span class="v">6.1万</span></div>
+                <div class="pl-row"><div class="dot"></div><span class="k">用户总电费</span><span class="v">154.8万</span></div>
+              </div>
+              <div class="mini-bars" style="width:140px;">
+                <div class="mini-bar blue" style="height:90%;"></div>
+                <div class="mini-bar blue" style="height:85%;"></div>
+                <div class="mini-bar blue" style="height:35%;"></div>
+                <div class="mini-bar blue" style="height:28%;"></div>
+                <div class="mini-bar blue" style="height:88%;"></div>
+              </div>
+            </div>
+            <div class="section-title" style="margin-top:10px;">储售一体用户</div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;">
+                <div class="pl-row alt"><div class="dot"></div><span class="k">应缴电网电费</span><span class="v">156.3万</span></div>
+                <div class="pl-row alt"><div class="dot"></div><span class="k">实缴电网电费</span><span class="v">148.7万</span></div>
+                <div class="pl-row alt"><div class="dot"></div><span class="k">节约电费</span><span class="v">7.6万</span></div>
+                <div class="pl-row alt"><div class="dot"></div><span class="k">返还储能费用</span><span class="v">6.1万</span></div>
+                <div class="pl-row alt"><div class="dot"></div><span class="k">用户总电费</span><span class="v">154.8万</span></div>
+              </div>
+              <div class="mini-bars" style="width:140px;">
+                <div class="mini-bar green" style="height:90%;"></div>
+                <div class="mini-bar green" style="height:85%;"></div>
+                <div class="mini-bar green" style="height:35%;"></div>
+                <div class="mini-bar green" style="height:28%;"></div>
+                <div class="mini-bar green" style="height:88%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row 2 -->
+      <div class="row">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">储能本体建设收益</span>
+            <span class="card-tag">固化</span>
+          </div>
+          <div class="card-body">
+            <div class="section-title">基本参数</div>
+            <div class="kv-grid">
+              <div class="kv-row"><span class="k">储能容量</span><span class="v">2.00 <span class="u">MWh</span></span></div>
+              <div class="kv-row"><span class="k">建设单价</span><span class="v">0.90 <span class="u">元/Wh</span></span></div>
+              <div class="kv-row"><span class="k">总投资</span><span class="v">180.0 <span class="u">万元</span></span></div>
+              <div class="kv-row"><span class="k">运维成本</span><span class="v">1.0 <span class="u">%/年</span></span></div>
+              <div class="kv-row"><span class="k">储能效率</span><span class="v">85 <span class="u">%</span></span></div>
+              <div class="kv-row"><span class="k">项目寿命</span><span class="v">10 <span class="u">年</span></span></div>
+            </div>
+            <div class="section-title">财务数据</div>
+            <div class="fin-strip">
+              <div class="fin-cell"><div class="label">ROI</div><div class="val">6.25年</div></div>
+              <div class="fin-cell"><div class="label">IRR</div><div class="val">12.8%</div></div>
+              <div class="fin-cell"><div class="label">10Y现金流</div><div class="val">288.0万</div></div>
+            </div>
+            <div class="section-title">经营数据</div>
+            <table class="data-table">
+              <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
+              <tr><td>套利收入</td><td>1,280 元</td><td>46.7 万元</td></tr>
+              <tr><td>总充电量</td><td>1,650 kWh</td><td>602 MWh</td></tr>
+              <tr><td>总放电量</td><td>1,402 kWh</td><td>512 MWh</td></tr>
+              <tr><td>等效循环</td><td>0.70 次</td><td>256 次</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">典型日调度曲线</span>
+            <span class="card-tag">LOAD/ESS/SOC</span>
+          </div>
+          <div class="card-body">
+            <canvas id="chart-tech"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="param-card">
+        <div class="param-header">
+          <span class="param-header-title">参数面板</span>
+          <button class="btn-calc" style="width:auto;padding:4px 14px;font-size:11px;">EXEC</button>
+        </div>
+        <div class="param-section">
+          <div class="param-section-title">批发市场</div>
+          <div class="param-row"><span class="param-label">结算规则</span><select class="param-select"><option>三部制结算</option></select></div>
+          <div class="param-row"><span class="param-label">中长期合约</span><select class="param-select"><option>统一条款</option></select></div>
+          <div class="param-row"><span class="param-label">日前报量</span><select class="param-select"><option>统一条款</option></select></div>
+          <div class="param-row"><span class="param-label">现货电价</span><span class="param-input">HEN-0315</span></div>
+        </div>
+        <div class="glow-line"></div>
+        <div class="param-section">
+          <div class="param-section-title">零售</div>
+          <div class="param-row"><span class="param-label">电价模式</span><select class="param-select"><option>行政分时</option></select></div>
+          <div class="param-row"><span class="param-label">电价曲线</span><span class="param-input">M1-ADMIN</span></div>
+          <div class="param-row"><span class="param-label">用户负荷</span><select class="param-select"><option>XX大工业</option></select></div>
+        </div>
+        <div class="glow-line"></div>
+        <div class="param-section">
+          <div class="param-section-title">储能合作</div>
+          <div class="param-row"><span class="param-label">合作模式</span><select class="param-select"><option>收益分成</option></select></div>
+          <div class="param-row"><span class="param-label">分成比例</span><span class="param-input">20%</span></div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);">
+          <button class="plus-btn">+ 自定义参数</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('chart-tech').getContext('2d');
+const hours = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
+const load = [85,82,78,75,73,72,80,95,120,135,140,142,138,130,125,128,135,145,150,140,120,105,95,88];
+const ess = [0,0,0,-30,-30,-30,-30,0,0,0,30,30,30,30,0,0,0,0,-30,-30,0,0,0,0];
+const soc = [50,50,50,65,80,95,100,100,100,100,85,70,55,40,40,40,40,40,55,70,70,70,70,50];
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: hours,
+    datasets: [
+      { label: '负荷 kWh', data: load, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.08)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+      { label: '储能 kWh', data: ess, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.06)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+      { label: 'SOC %', data: soc, borderColor: '#22d3a7', borderDash: [4,3], tension: 0.3, pointRadius: 0, borderWidth: 1, yAxisID: 'y1' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#4a5578', font: { size: 10, family: 'inherit' }, boxWidth: 10, padding: 10 } } },
+    scales: {
+      x: { ticks: { color: '#4a5578', font: { size: 9, family: 'inherit' }, maxRotation: 0 }, grid: { color: 'rgba(56,189,248,0.04)' } },
+      y: { position: 'left', ticks: { color: '#4a5578', font: { size: 9 } }, grid: { color: 'rgba(56,189,248,0.04)' }, title: { display: true, text: 'kWh', color: '#4a5578', font: { size: 9 } } },
+      y1: { position: 'right', min: 0, max: 100, ticks: { color: '#4a5578', font: { size: 9 }, callback: v => v+'%' }, grid: { drawOnChartArea: false }, title: { display: true, text: 'SOC', color: '#4a5578', font: { size: 9 } } },
+    }
+  }
+});
+</script>
+</body>
+</html>

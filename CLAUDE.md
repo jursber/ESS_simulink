@@ -31,11 +31,18 @@ ESS_simulink/
 ├── tests/            # 单元测试和集成测试
 ├── docs/             # 文档
 ├── notebooks/        # Jupyter 探索性分析
-├── scripts/          # 一次性脚本
+├── scripts/          # 一次性脚本（含 `run_streamlit.ps1` / `run_streamlit.bat`）
 ├── venv/             # Python 虚拟环境
 ├── CLAUDE.md         # 本文件
 └── requirements.txt  # Python 依赖
 ```
+
+## Streamlit（Windows）
+
+- 推荐：`.\scripts\run_streamlit.ps1` 或双击 `scripts\run_streamlit.bat`（`chcp 65001` + `PYTHONUTF8=1`，减轻终端乱码）。
+- 浏览器访问：`http://127.0.0.1:8501`（与 `.streamlit/config.toml` 中 `address` 一致）。
+- 无头/CI 可设环境变量：`$env:STREAMLIT_SERVER_HEADLESS="true"`。
+- `.streamlit/config.toml` 中 `fileWatcherType = "none"` 可降低本机监视器导致的异常退出。
 
 ## 开发规范
 
@@ -56,7 +63,6 @@ ESS_simulink/
 ### Git 规范
 - 提交信息用中文
 - 数据文件不入库（除极小样本外）
-```
 
 ## 交互约定
 
