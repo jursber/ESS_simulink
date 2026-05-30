@@ -14,6 +14,10 @@ plotly>=5.14.0
 # UI (for interactive dashboard)
 streamlit>=1.25.0
 
+# API backend
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0

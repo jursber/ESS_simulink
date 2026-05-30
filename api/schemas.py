@@ -1,0 +1,103 @@
+"""请求/响应 Pydantic 模型。"""
+from __future__ import annotations
+
+from typing import Optional
+
+from pydantic import BaseModel
+
+
+# ---------- 请求 ----------
+
+class WholesaleOverrides(BaseModel):
+    settlement_mode: Optional[str] = None
+    contract_curve_profile: Optional[str] = None
+    dayahead_curve_profile: Optional[str] = None
+
+
+class CalculateRequest(BaseModel):
+    scenario_id: str
+    pricing_mode: str = "M1"
+    business_model: str = "B1"
+    wholesale_overrides: Optional[WholesaleOverrides] = None
+
+
+# ---------- 响应 ----------
+
+class OptionItem(BaseModel):
+    value: str
+    label: str
+
+
+class ScenarioBrief(BaseModel):
+    id: str
+    name: str
+
+
+class TimeSeries(BaseModel):
+    hours: list[int]
+    load_ess: list[float]
+    soc: list[float]
+    load_grid: list[float]
+    load_real: list[float]
+
+
+class OverviewData(BaseModel):
+    pricing_mode: str
+    pricing_mode_label: str
+    business_model: str
+    business_model_label: str
+    ess_cap_mwh: float
+    ess_power_kw: float
+    prod_load_mwh: float
+    initial_invest_wan: float
+    eta_pct: float
+    design_life: int
+
+
+class WelfareData(BaseModel):
+    user_bill_no_ess_wan: float
+    user_bill_with_ess_wan: float
+    user_savings_wan: float
+    user_return_wan: float
+    user_total_wan: float
+    combined_bill_no_ess_wan: float
+    combined_bill_with_ess_wan: float
+    combined_savings_wan: float
+    combined_return_wan: float
+    combined_total_wan: float
+    total_welfare_wan: float
+
+
+class InvestmentData(BaseModel):
+    ess_cap_mwh: float
+    unit_cost: float
+    initial_invest_wan: float
+    om_pct: float
+    eta_pct: float
+    design_life: int
+    roi_years: Optional[float] = None
+    irr_pct: Optional[float] = None
+    cum_cf_wan: float
+    daily_arbitrage_yuan: float
+    annual_arbitrage_wan: float
+    total_charge_kwh: float
+    annual_charge_mwh: float
+    total_discharge_kwh: float
+    annual_discharge_mwh: float
+    equivalent_cycles: float
+    annual_cycles: float
+
+
+class CalculateResponse(BaseModel):
+    time_series: TimeSeries
+    overview: OverviewData
+    welfare: WelfareData
+    investment: InvestmentData
+
+
+class OptionsResponse(BaseModel):
+    pricing_modes: list[OptionItem]
+    business_models: list[OptionItem]
+    settlement_modes: list[OptionItem]
+    contract_profiles: list[OptionItem]
+    dayahead_profiles: list[OptionItem]
