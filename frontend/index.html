@@ -259,29 +259,32 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
           </div>
           <!-- 多方收益：6. 左文右图高度对齐 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">多方收益分析</span><span class="card-sub" id="welfare-badge">福利 --</span></div>
-            <div class="card-body">
-              <div class="section-title">终端用户</div>
-              <div style="display:flex;gap:16px;min-height:100px">
-                <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-                  <div class="pl-row"><div class="dot"></div><span class="k">应缴电网电费</span><span class="v" id="w-bill-no">--</span></div>
-                  <div class="pl-row"><div class="dot"></div><span class="k">实缴电网电费</span><span class="v" id="w-bill-with">--</span></div>
-                  <div class="pl-row"><div class="dot"></div><span class="k">节约电费</span><span class="v" id="w-saving">--</span></div>
-                  <div class="pl-row"><div class="dot"></div><span class="k">返还储能费用</span><span class="v" id="w-return">--</span></div>
-                  <div class="pl-row"><div class="dot"></div><span class="k">用户总电费</span><span class="v" id="w-total">--</span></div>
+            <div class="card-hd"><span class="card-title">多方收益分析</span><span class="card-sub" id="welfare-badge">总社会福利提升 --</span></div>
+            <div class="card-body" style="flex-direction:row;gap:16px">
+              <div style="flex:2;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+                <div class="section-title">终端用户</div>
+                <div class="kv-grid" style="grid-template-columns:1fr">
+                  <div class="kv-row"><span class="k"><span class="kv-icon">💡</span>总用网电费</span><span class="v" id="w-bill-no">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">💰</span>总节约电费</span><span class="v" id="w-saving">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能收益返还</span><span class="v" id="w-return">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">📊</span>实际用电成本</span><span class="v" id="w-total">--</span></div>
                 </div>
-                <div class="mini-bars" style="width:180px" id="user-bars"></div>
+                <div class="section-title">储能投资方</div>
+                <div class="kv-grid" style="grid-template-columns:1fr">
+                  <div class="kv-row"><span class="k"><span class="kv-icon">📈</span>储能分成收益</span><span class="v" id="w-inv-share">--</span></div>
+                </div>
+                <div class="section-title">售电公司</div>
+                <div class="kv-grid" style="grid-template-columns:1fr">
+                  <div class="kv-row"><span class="k"><span class="kv-icon">📅</span>中长期购电成本</span><span class="v" id="w-cp-long">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">📆</span>日前购电成本</span><span class="v" id="w-cp-day">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>实时购电成本</span><span class="v" id="w-cp-real">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">🔋</span>储能造成的成本变化</span><span class="v" id="w-cp-ess">--</span></div>
+                </div>
               </div>
-              <div class="section-title">储售一体用户</div>
-              <div style="display:flex;gap:16px;min-height:100px">
-                <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-                  <div class="pl-row green"><div class="dot"></div><span class="k">应缴电网电费</span><span class="v" id="cb-bill-no">--</span></div>
-                  <div class="pl-row green"><div class="dot"></div><span class="k">实缴电网电费</span><span class="v" id="cb-bill-with">--</span></div>
-                  <div class="pl-row green"><div class="dot"></div><span class="k">节约电费</span><span class="v" id="cb-saving">--</span></div>
-                  <div class="pl-row green"><div class="dot"></div><span class="k">返还储能费用</span><span class="v" id="cb-return">--</span></div>
-                  <div class="pl-row green"><div class="dot"></div><span class="k">用户总电费</span><span class="v" id="cb-total">--</span></div>
-                </div>
-                <div class="mini-bars" style="width:180px" id="cb-bars"></div>
+              <div style="flex:3;display:flex;flex-direction:column;gap:8px">
+                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">终端用户收益对比</div>
+                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">储能投资方收益</div>
+                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">售电公司成本构成</div>
               </div>
             </div>
           </div>
@@ -448,32 +451,11 @@ function renderResult(r) {
   document.getElementById('tag-bm').textContent = document.getElementById('sel-bm').selectedOptions[0]?.text || '储售一体';
 
   // 多方收益
-  document.getElementById('welfare-badge').textContent = `福利 ${welfare.total_welfare_wan.toFixed(1)} 万`;
+  document.getElementById('welfare-badge').textContent = `总社会福利提升 ${welfare.total_welfare_wan.toFixed(1)} 万`;
   document.getElementById('w-bill-no').textContent = `${welfare.user_bill_no_ess_wan.toFixed(1)} 万`;
-  document.getElementById('w-bill-with').textContent = `${welfare.user_bill_with_ess_wan.toFixed(1)} 万`;
   document.getElementById('w-saving').textContent = `${welfare.user_savings_wan.toFixed(1)} 万`;
   document.getElementById('w-return').textContent = `${welfare.user_return_wan.toFixed(1)} 万`;
   document.getElementById('w-total').textContent = `${welfare.user_total_wan.toFixed(1)} 万`;
-  document.getElementById('cb-bill-no').textContent = `${welfare.combined_bill_no_ess_wan.toFixed(1)} 万`;
-  document.getElementById('cb-bill-with').textContent = `${welfare.combined_bill_with_ess_wan.toFixed(1)} 万`;
-  document.getElementById('cb-saving').textContent = `${welfare.combined_savings_wan.toFixed(1)} 万`;
-  document.getElementById('cb-return').textContent = `${welfare.combined_return_wan.toFixed(1)} 万`;
-  document.getElementById('cb-total').textContent = `${welfare.combined_total_wan.toFixed(1)} 万`;
-
-  renderMiniBars('user-bars', [
-    { label: '应缴', pct: 100, cls: '' },
-    { label: '实缴', pct: (welfare.user_bill_with_ess_wan / welfare.user_bill_no_ess_wan * 100), cls: '' },
-    { label: '节约', pct: (welfare.user_savings_wan / welfare.user_bill_no_ess_wan * 100), cls: '' },
-    { label: '返还', pct: (welfare.user_return_wan / welfare.user_bill_no_ess_wan * 100), cls: '' },
-    { label: '总计', pct: (welfare.user_total_wan / welfare.user_bill_no_ess_wan * 100), cls: '' },
-  ]);
-  renderMiniBars('cb-bars', [
-    { label: '应缴', pct: 100, cls: 'green' },
-    { label: '实缴', pct: (welfare.combined_bill_with_ess_wan / welfare.combined_bill_no_ess_wan * 100), cls: 'green' },
-    { label: '节约', pct: (welfare.combined_savings_wan / welfare.combined_bill_no_ess_wan * 100), cls: 'green' },
-    { label: '返还', pct: (welfare.combined_return_wan / welfare.combined_bill_no_ess_wan * 100), cls: 'green' },
-    { label: '总计', pct: (welfare.combined_total_wan / welfare.combined_bill_no_ess_wan * 100), cls: 'green' },
-  ]);
 
   // 储能本体
   document.getElementById('fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
