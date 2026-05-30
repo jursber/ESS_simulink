@@ -39,7 +39,7 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 
 /* 3. 顶部导航栏（替代侧栏） */
 .topbar{height:48px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;justify-content:space-between}
-.topbar .logo{font-size:var(--fs-15);font-weight:var(--fw-semi);color:var(--text-1);letter-spacing:.02em;display:flex;align-items:center;gap:10px}
+.topbar .logo{font-size:18px;font-weight:700;color:var(--text-1);letter-spacing:.08em;display:flex;align-items:center;gap:10px}
 .topbar .logo .icon{color:var(--primary);font-size:16px}
 
 /* 顶部导航居中 */
@@ -65,15 +65,17 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .p-analysis{flex:1;display:flex;gap:var(--gap-panel);padding:var(--gap);overflow:hidden}
 .p-analysis .center{flex:1;display:flex;flex-direction:column;gap:var(--gap);min-width:0}
 .p-analysis .row{display:flex;gap:var(--gap-inner);flex:1;min-height:0}
+.p-analysis .row.row-top{flex:1.02 1 0%}
+.p-analysis .row.row-bottom{flex:0.98 1 0%}
 
 /* CARD */
-.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:0;position:relative;line-height:var(--lh-card)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex:1;min-width:0;position:relative;line-height:var(--lh-card)}
 .card::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
 .card:hover{border-color:#3a4158}
 .card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);flex-shrink:0}
-.card-title{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);padding-left:10px;border-left:3px solid var(--primary);line-height:1.3}
-.card-sub{font-size:var(--fs-11);color:var(--text-3);background:var(--bg-strip);border:1px solid var(--border);padding:2px 10px;border-radius:10px;font-weight:var(--fw-normal)}
-.card-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.card-title{font-size:16px;font-weight:700;color:var(--text-1);padding-left:10px;border-left:3px solid var(--primary);line-height:1.3}
+.card-sub{font-size:var(--fs-14);color:#f0c040;font-weight:var(--fw-semi)}
+.card-body{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 
 /* RIGHT PANEL */
 .right-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column}
@@ -137,7 +139,7 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .fin-cell .val{font-size:var(--fs-15);font-weight:var(--fw-semi);color:var(--success);line-height:var(--lh-tight)}
 
 /* 9. SECTION 标题字号放大 */
-.section-title{font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-2);margin:12px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4}
+.section-title{font-size:var(--fs-13);font-weight:700;color:var(--text-2);margin:12px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4}
 .section-title:first-child{margin-top:0}
 
 /* PL ROW */
@@ -150,11 +152,9 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 
 /* TABLE */
 .data-table{width:100%;border-collapse:collapse;font-size:var(--fs-12)}
-.data-table th{background:var(--bg-strip);color:var(--text-2);font-weight:var(--fw-semi);padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.03em}
+.data-table th{background:var(--bg-strip);color:var(--text-2);font-weight:700;padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:var(--fs-12)}
 .data-table td{padding:6px 10px;text-align:center;border-bottom:1px solid var(--border-light);color:var(--text-1)}
 .data-table tr:nth-child(even) td{background:rgba(255,255,255,0.015)}
-.data-table td:first-child{text-align:left;color:var(--text-2)}
-.data-table td:not(:first-child){text-align:right}
 
 /* MINI BAR */
 .mini-bars{display:flex;flex-direction:column;gap:4px;flex:1;justify-content:flex-end;min-height:0}
@@ -207,10 +207,10 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
   <div class="page-wrap active" id="page-analysis">
     <div class="p-analysis">
       <div class="center">
-        <div class="row">
+        <div class="row row-top">
           <!-- 方案概览：4. 图在左，文本在右 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">方案概览</span></div>
+            <div class="card-hd"><span class="card-title">方案与关键特征概览</span></div>
             <div class="card-body">
               <div class="overview-layout">
                 <div class="architecture-container">
@@ -243,20 +243,14 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
                         </div>
                       </div>
                     </div>
-                    <div class="overview-info" style="height:320px;display:flex;flex-direction:column;justify-content:space-between">
-                      <div class="kv-grid" style="grid-template-columns:1fr">
+                    <div class="kv-grid overview-info" style="grid-template-columns:1fr;gap:0;align-content:start">
                         <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能日均充放次数</span><span class="v" id="op-cycles-day">1.2<span class="u">次/日</span></span></div>
-                        <div class="kv-row"><span class="k"><span class="kv-icon">📉</span>单次最大放电深度</span><span class="v" id="op-dod-max">83%<span class="u">(1.7h)</span></span></div>
-                        <div class="kv-row"><span class="k"><span class="kv-icon">📊</span>单次最小放电深度</span><span class="v" id="op-dod-min">22%<span class="u">(0.3h)</span></span></div>
-                      </div>
-                      <div class="kv-grid" style="grid-template-columns:1fr">
-                        <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>现货市场峰谷价差</span><span class="v" id="price-spot">333<span class="u">元/MWh</span></span></div>
-                        <div class="kv-row"><span class="k"><span class="kv-icon">💰</span>分时电价峰谷价差</span><span class="v" id="price-tou">712<span class="u">元/MWh</span></span></div>
-                        <div class="kv-row"><span class="k"><span class="kv-icon">⏰</span>分时电价时段构成</span><span class="v" id="price-struct">2峰2谷</span></div>
-                      </div>
-                      <div class="kv-grid" style="grid-template-columns:1fr">
-                        <div class="kv-row"><span class="k"><span class="kv-icon">📈</span>净负荷特征</span><span class="v" id="load-feature">高峰谷差，有尖峰负荷</span></div>
-                      </div>
+                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">📉</span>单次最大放电深度</span><span class="v" id="op-dod-max">83%<span class="u">(1.7h)</span></span></div>
+                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">📊</span>单次最小放电深度</span><span class="v" id="op-dod-min">22%<span class="u">(0.3h)</span></span></div>
+                        <div class="kv-row" style="margin-top:18px"><span class="k"><span class="kv-icon">⚡</span>现货市场峰谷价差</span><span class="v" id="price-spot">333<span class="u">元/MWh</span></span></div>
+                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">💰</span>分时电价峰谷价差</span><span class="v" id="price-tou">712<span class="u">元/MWh</span></span></div>
+                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">⏰</span>分时电价时段构成</span><span class="v" id="price-struct">2峰2谷</span></div>
+                        <div class="kv-row" style="margin-top:18px"><span class="k"><span class="kv-icon">📈</span>净负荷特征</span><span class="v" id="load-feature">高峰谷差，有尖峰负荷</span></div>
                     </div>
                   </div>
                 </div>
@@ -292,34 +286,29 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
             </div>
           </div>
         </div>
-        <div class="row">
-          <!-- 储能本体：5. 修复财务数据标签 -->
+        <div class="row row-bottom">
+          <!-- 储能投资分析 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">储能本体建设收益</span><span class="card-sub">固化版本</span></div>
+            <div class="card-hd"><span class="card-title">储能投资分析</span><span class="card-sub">1MWh/0.5MW</span></div>
             <div class="card-body">
-              <div class="section-title">基本参数</div>
-              <div class="kv-grid">
-                <div class="kv-row"><span class="k">储能容量</span><span class="v"><span id="inv-cap">--</span><span class="u">MWh</span></span></div>
-                <div class="kv-row"><span class="k">建设单价</span><span class="v"><span id="inv-unit">--</span><span class="u">元/Wh</span></span></div>
-                <div class="kv-row"><span class="k">总投资</span><span class="v"><span id="inv-total">--</span><span class="u">万元</span></span></div>
-                <div class="kv-row"><span class="k">运维成本</span><span class="v"><span id="inv-om">--</span><span class="u">%建设成本/年</span></span></div>
-                <div class="kv-row"><span class="k">储能效率</span><span class="v"><span id="inv-eta">--</span><span class="u">%</span></span></div>
-                <div class="kv-row"><span class="k">项目寿命</span><span class="v"><span id="inv-life">--</span><span class="u">年</span></span></div>
-              </div>
-              <div class="section-title">财务数据</div>
-              <div class="fin-strip">
-                <div class="fin-cell"><div class="lbl">静态回收期 ROI</div><div class="val" id="fin-roi">--</div></div>
+              <div class="fin-strip" style="flex-shrink:0">
+                <div class="fin-cell"><div class="lbl">项目总投资</div><div class="val" id="fin-total">--</div></div>
                 <div class="fin-cell"><div class="lbl">内部收益率 IRR</div><div class="val" id="fin-irr">--</div></div>
+                <div class="fin-cell"><div class="lbl">静态回收期 ROI</div><div class="val" id="fin-roi">--</div></div>
                 <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="fin-cf">--</div></div>
               </div>
-              <div class="section-title">经营数据</div>
-              <table class="data-table">
-                <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
-                <tr><td>套利收入</td><td id="op-daily-arb">--</td><td id="op-annual-arb">--</td></tr>
-                <tr><td>总充电量</td><td id="op-charge">--</td><td id="op-annual-charge">--</td></tr>
-                <tr><td>总放电量</td><td id="op-discharge">--</td><td id="op-annual-discharge">--</td></tr>
-                <tr><td>等效循环次数</td><td id="op-cycles">--</td><td id="op-annual-cycles">--</td></tr>
-              </table>
+              <div style="flex:1;overflow-y:auto">
+                <div class="section-title" style="margin-top:10px">经营数据</div>
+                <table class="data-table">
+                  <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
+                  <tr><td>总套利创值（按用户侧电价）</td><td id="op-daily-arb">--</td><td id="op-annual-arb">--</td></tr>
+                  <tr><td>分成后收入</td><td id="op-daily-share">--</td><td id="op-annual-share">--</td></tr>
+                  <tr><td>售电公司批发侧成本变化</td><td id="op-daily-wholesale">--</td><td id="op-annual-wholesale">--</td></tr>
+                  <tr><td>储能总充电量</td><td id="op-charge">--</td><td id="op-annual-charge">--</td></tr>
+                  <tr><td>储能总放电量</td><td id="op-discharge">--</td><td id="op-annual-discharge">--</td></tr>
+                  <tr><td>储能等效循环次数</td><td id="op-cycles">--</td><td id="op-annual-cycles">--</td></tr>
+                </table>
+              </div>
             </div>
           </div>
           <!-- 调度曲线：7. 改用 ECharts -->
@@ -487,15 +476,10 @@ function renderResult(r) {
   ]);
 
   // 储能本体
-  document.getElementById('inv-cap').textContent = investment.ess_cap_mwh.toFixed(2);
-  document.getElementById('inv-unit').textContent = investment.unit_cost.toFixed(2);
-  document.getElementById('inv-total').textContent = investment.initial_invest_wan.toFixed(1);
-  document.getElementById('inv-om').textContent = investment.om_pct.toFixed(1);
-  document.getElementById('inv-eta').textContent = investment.eta_pct.toFixed(0);
-  document.getElementById('inv-life').textContent = investment.design_life;
+  document.getElementById('fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
+  document.getElementById('fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(2)}%` : 'N/A';
   document.getElementById('fin-roi').textContent = investment.roi_years != null ? `${investment.roi_years.toFixed(2)} 年` : 'N/A';
-  document.getElementById('fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(1)}%` : 'N/A';
-  document.getElementById('fin-cf').textContent = `${investment.cum_cf_wan.toFixed(1)} 万元`;
+  document.getElementById('fin-cf').textContent = `${Math.round(investment.cum_cf_wan)} 万元`;
   document.getElementById('op-daily-arb').textContent = `${investment.daily_arbitrage_yuan.toFixed(0)} 元`;
   document.getElementById('op-annual-arb').textContent = `${investment.annual_arbitrage_wan.toFixed(1)} 万元`;
   document.getElementById('op-charge').textContent = `${investment.total_charge_kwh.toFixed(0)} kWh`;
