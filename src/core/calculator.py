@@ -80,7 +80,7 @@ def calculate(
     fin_defaults = ConfigLoader.load_financial_defaults(region)
     r_user_map = {"B1": float(fin_defaults["r_user_b1"]),
                   "B2": float(fin_defaults["r_user_b2"]),
-                  "B3": float(fin_defaults["r_user_b3"])}
+                  "B3": float(fin_defaults.get("r_user_b2", 0.5))}
     bm_code = config.business_model
     bm_prefix = "B1" if bm_code == "B1" else ("B2" if bm_code.startswith("B2") else ("B3" if bm_code.startswith("B3") else "B2"))
 

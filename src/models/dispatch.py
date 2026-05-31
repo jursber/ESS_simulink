@@ -26,19 +26,23 @@ class BusinessModel(str, Enum):
 @dataclass
 class ESSParams:
     """储能系统参数。"""
-    cap_rated: float = 5000          # kWh
-    c_rate: float = 0.5               # 倍率
-    eta_roundtrip: float = 0.85       # 往返效率
+    cap_rated: float = 1000           # kWh（显示为 MWh）
+    power_rated: float = 0.5          # MW（额定功率）
+    eta_roundtrip: float = 0.87       # 往返效率 RTE
+    eta_charge: float = 0.92          # 单程充电效率 η
     soc_min: float = 0.10             # SOC 下限
     soc_max: float = 0.90             # SOC 上限
-    unit_cost: float = 0.9            # 元/Wh
-    r_om: float = 0.01                # 年运维比例
     design_life: int = 10             # 年
-    r_degrade: float = 0.025          # 年衰减率
+    r_degrade: float = 0.025          # 储能容量年衰减比例
+    degrade_enabled: bool = False     # 启用年衰减
+    cycle_life: int = 5000            # 储能循环次数（100% DoD）
+    cycle_enabled: bool = False       # 启用循环次数约束
+    unit_cost: float = 0.9            # 元/Wh（财务参数）
+    r_om: float = 0.01                # 年运维支出比例（财务参数）
 
     @property
     def max_power(self) -> float:
-        return self.cap_rated * self.c_rate
+        return self.power_rated * 1000  # MW → kW
 
     @property
     def eta_single(self) -> float:

@@ -1,0 +1,8 @@
+param,value,unit,editable
+cap_rated,1.0,kWp,true
+unit_cost,3.5,元/Wp,true
+r_om,0.015,-,true
+design_life,25,年,true
+r_degrade,0.005,-,true
+region,jiangsu,-,true
+curve_type,annual_avg,-,true

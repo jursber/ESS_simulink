@@ -259,14 +259,18 @@ def get_global_params():
     return GlobalParamsResponse(
         ess={
             "cap_rated": ess.cap_rated,
-            "c_rate": ess.c_rate,
+            "power_rated": ess.power_rated,
             "eta_roundtrip": ess.eta_roundtrip,
+            "eta_charge": ess.eta_charge,
             "soc_min": ess.soc_min,
             "soc_max": ess.soc_max,
             "unit_cost": ess.unit_cost,
             "r_om": ess.r_om,
             "design_life": ess.design_life,
             "r_degrade": ess.r_degrade,
+            "degrade_enabled": ess.degrade_enabled,
+            "cycle_life": ess.cycle_life,
+            "cycle_enabled": ess.cycle_enabled,
         },
         financial={k: float(v) for k, v in fin.items()},
         wholesale=wcfg.to_flat_dict(),
@@ -286,15 +290,19 @@ def update_global_params(req: GlobalParamsUpdate):
     )
     # 保存 ESS
     ess = ESSParams(
-        cap_rated=req.ess.get("cap_rated", 5000),
-        c_rate=req.ess.get("c_rate", 0.5),
-        eta_roundtrip=req.ess.get("eta_roundtrip", 0.85),
+        cap_rated=req.ess.get("cap_rated", 1000),
+        power_rated=req.ess.get("power_rated", 0.5),
+        eta_roundtrip=req.ess.get("eta_roundtrip", 0.87),
+        eta_charge=req.ess.get("eta_charge", 0.92),
         soc_min=req.ess.get("soc_min", 0.10),
         soc_max=req.ess.get("soc_max", 0.90),
-        unit_cost=req.ess.get("unit_cost", 0.9),
-        r_om=req.ess.get("r_om", 0.01),
         design_life=int(req.ess.get("design_life", 10)),
         r_degrade=req.ess.get("r_degrade", 0.025),
+        degrade_enabled=req.ess.get("degrade_enabled", False),
+        cycle_life=int(req.ess.get("cycle_life", 5000)),
+        cycle_enabled=req.ess.get("cycle_enabled", False),
+        unit_cost=req.ess.get("unit_cost", 0.9),
+        r_om=req.ess.get("r_om", 0.01),
     )
     ConfigLoader.save_ess_defaults(ess)
     # 保存财务
@@ -327,3 +335,26 @@ def get_contract_position():
 def get_dayahead_position():
     df = ConfigLoader.load_dayahead_position("henan", None, profile="mock_henan")
     return df.to_dict(orient="records")
+
+
+@router.get("/params/pv")
+def get_pv_params():
+    params = ConfigLoader.load_pv_defaults("henan")
+    curves = ConfigLoader.list_pv_curves()
+    curve_data = ConfigLoader.load_pv_curve(
+        params.get("region", "jiangsu"),
+        params.get("curve_type", "annual_avg"),
+    )
+    return {"params": params, "curves": curves, "curve_data": curve_data}
+
+
+@router.put("/params/pv")
+def update_pv_params(req: dict):
+    ConfigLoader.save_pv_defaults(req)
+    return {"status": "ok"}
+
+
+@router.get("/params/pv-curve/{region}/{curve_type}")
+def get_pv_curve(region: str, curve_type: str):
+    data = ConfigLoader.load_pv_curve(region, curve_type)
+    return {"region": region, "curve_type": curve_type, "data": data}

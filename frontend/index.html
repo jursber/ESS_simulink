@@ -78,7 +78,7 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .card-sub{font-size:var(--fs-14);color:#f0c040;font-weight:var(--fw-semi)}
 .card-body{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 
-/* 光出投资分析 tab 切换 */
+/* 光储投资分析 tab 切换 */
 .inv-tabs{display:flex;gap:0;margin-left:auto}
 .inv-tab{padding:3px 14px;font-size:var(--fs-12);font-weight:var(--fw-medium);color:var(--text-3);cursor:pointer;border:1px solid var(--border);background:transparent;transition:all .15s;user-select:none}
 .inv-tab:first-child{border-radius:4px 0 0 4px}
@@ -372,10 +372,10 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
           </div>
         </div>
         <div class="row row-bottom">
-          <!-- 光出投资分析 -->
+          <!-- 光储投资分析 -->
           <div class="card">
             <div class="card-hd">
-              <span class="card-title">光出投资分析</span>
+              <span class="card-title">光储投资分析</span>
               <div class="inv-tabs">
                 <div class="inv-tab active" id="tab-ess" onclick="switchInvTab('ess')">储能</div>
                 <div class="inv-tab" id="tab-pv" onclick="switchInvTab('pv')">光伏</div>
@@ -580,7 +580,7 @@ async function selectScenario(id) {
   await runCalculation();
 }
 
-// ============ 光出投资分析 tab 切换 ============
+// ============ 光储投资分析 tab 切换 ============
 let currentInvTab = 'ess';
 
 function switchInvTab(tab) {
@@ -682,7 +682,7 @@ function renderResult(r) {
     if (el && el.textContent === '--') el.textContent = '--';
   });
 
-  // 光出投资分析 - 储能
+  // 光储投资分析 - 储能
   document.getElementById('ess-fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
   document.getElementById('ess-fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(2)}%` : 'N/A';
   document.getElementById('ess-fin-roi').textContent = investment.roi_years != null ? `${investment.roi_years.toFixed(2)} 年` : 'N/A';
@@ -695,7 +695,7 @@ function renderResult(r) {
   document.getElementById('ess-op-annual-discharge').textContent = `${investment.annual_discharge_mwh.toFixed(1)} MWh`;
   document.getElementById('ess-op-cycles').textContent = `${investment.equivalent_cycles.toFixed(2)} 次`;
   document.getElementById('ess-op-annual-cycles').textContent = `${investment.annual_cycles.toFixed(0)} 次`;
-  // 光出投资分析 - 光伏（暂用占位值）
+  // 光储投资分析 - 光伏（暂用占位值）
   document.getElementById('pv-fin-total').textContent = '--';
   document.getElementById('pv-fin-irr').textContent = '--';
   document.getElementById('pv-fin-roi').textContent = '--';
@@ -924,7 +924,10 @@ function tablePanelHTML(title, headers, rows) {
 
 // 参数表单面板模板
 function formPanelHTML(title, fields) {
-  return `<div class="params-section"><div class="params-section-hd">${title}</div><div class="params-grid cols-3">${fields.map(f=>`<div class="params-field"><label>${f.label}</label><input type="number" id="${f.id}" step="${f.step||1}" value="${f.value||''}"></div>`).join('')}</div></div>`;
+  return `<div class="params-section"><div class="params-section-hd">${title}</div><div class="params-grid cols-3">${fields.map(f=>{
+    const cb = f.checkbox ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:var(--fs-11);color:var(--text-2);cursor:pointer;white-space:nowrap"><input type="checkbox" id="${f.checkbox.id}" ${f.checkbox.checked?'checked':''} style="margin:0"> 启用</span>` : '';
+    return `<div class="params-field"><div style="display:flex;align-items:center;margin-bottom:4px"><span style="font-size:var(--fs-11);color:var(--text-3);font-weight:var(--fw-medium)">${f.label}</span>${cb}</div><input type="number" id="${f.id}" step="${f.step||1}" value="${f.value||''}"></div>`;
+  }).join('')}</div></div>`;
 }
 
 // 渲染各面板内容
@@ -939,41 +942,47 @@ async function renderPanelContent(panelId) {
   switch(panelId) {
     case 'ess':
       panel.innerHTML = formPanelHTML('储能系统参数', [
-        {label:'额定容量 (kWh)', id:'gp-cap-rated', step:100, value:d.ess.cap_rated},
-        {label:'充放电倍率', id:'gp-c-rate', step:0.1, value:d.ess.c_rate},
-        {label:'往返效率', id:'gp-eta', step:0.01, value:d.ess.eta_roundtrip},
-        {label:'SOC 下限', id:'gp-soc-min', step:0.05, value:d.ess.soc_min},
-        {label:'SOC 上限', id:'gp-soc-max', step:0.05, value:d.ess.soc_max},
-        {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost},
-        {label:'年运维比例', id:'gp-r-om', step:0.001, value:d.ess.r_om},
-        {label:'设计寿命 (年)', id:'gp-design-life', step:1, value:d.ess.design_life},
-        {label:'年衰减率', id:'gp-r-degrade', step:0.005, value:d.ess.r_degrade},
+        {label:'额定容量 (MWh)', id:'gp-cap-rated', step:0.1, value:(d.ess.cap_rated/1000).toFixed(2)},
+        {label:'额定功率 (MW)', id:'gp-power-rated', step:0.1, value:d.ess.power_rated||0.5},
+        {label:'往返效率 RTE (%)', id:'gp-eta', step:1, value:((d.ess.eta_roundtrip||0.87)*100).toFixed(0)},
+        {label:'单程充电效率 η (%)', id:'gp-eta-charge', step:1, value:((d.ess.eta_charge||0.92)*100).toFixed(0)},
+        {label:'SOC 下限 (%)', id:'gp-soc-min', step:1, value:((d.ess.soc_min||0.1)*100).toFixed(0)},
+        {label:'SOC 上限 (%)', id:'gp-soc-max', step:1, value:((d.ess.soc_max||0.9)*100).toFixed(0)},
+        {label:'设计寿命 (年)', id:'gp-design-life', step:1, value:d.ess.design_life||10},
+        {label:'储能容量年衰减比例 (%)', id:'gp-r-degrade', step:0.5, value:((d.ess.r_degrade||0.025)*100).toFixed(1), checkbox:{id:'gp-degrade-enabled', checked:d.ess.degrade_enabled}},
+        {label:'储能循环次数 (100% DoD)', id:'gp-cycle-life', step:100, value:d.ess.cycle_life||5000, checkbox:{id:'gp-cycle-enabled', checked:d.ess.cycle_enabled}},
       ]) + formPanelHTML('财务参数', [
-        {label:'折现率', id:'gp-r-discount', step:0.01, value:d.financial.r_discount||0.06},
-        {label:'用户分成 B1', id:'gp-r-user-b1', step:0.05, value:d.financial.r_user_b1||0.3},
-        {label:'用户分成 B2', id:'gp-r-user-b2', step:0.05, value:d.financial.r_user_b2||0.5},
-        {label:'用户分成 B3', id:'gp-r-user-b3', step:0.05, value:d.financial.r_user_b3||0.4},
+        {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost||0.9},
+        {label:'年运维支出比例 (%)', id:'gp-r-om', step:0.1, value:((d.ess.r_om||0.01)*100).toFixed(1)},
+        {label:'折现率 (%)', id:'gp-r-discount', step:0.5, value:((d.financial.r_discount||0.06)*100).toFixed(1)},
+        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1||0.3)*100).toFixed(0)},
+        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2||0.5)*100).toFixed(0)},
       ]);
+      appendEssNotes(panel);
       break;
     case 'pv':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">光伏参数</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
-        光伏模块尚未建模，以下为预留参数框架：<br><br>
-        <b style="color:var(--text-1)">基本参数</b><br>
-        · 额定装机容量 (kWp)<br>
-        · 组件类型（单晶/多晶/薄膜）<br>
-        · 逆变器效率<br>
-        · 安装倾角 / 方位角<br><br>
-        <b style="color:var(--text-1)">出力特性</b><br>
-        · 辐照度-出力曲线<br>
-        · 温度衰减系数<br>
-        · 灰尘遮挡损耗<br><br>
-        <b style="color:var(--text-1)">经济参数</b><br>
-        · 单位造价 (元/Wp)<br>
-        · 年运维比例<br>
-        · 设计寿命<br>
-        · 年衰减率<br><br>
-        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要光伏出力模型和辐照度数据支撑</div>
-      </div></div>`;
+      try {
+        const pv = await api('/params/pv');
+        const p = pv.params;
+        const regions = Object.keys(pv.curves);
+        const regionLabels = {jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
+        const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
+        const curRegion = p.region || 'jiangsu';
+        const curCurve = p.curve_type || 'annual_avg';
+        const regionOpts = regions.map(r=>`<option value="${r}" ${r===curRegion?'selected':''}>${regionLabels[r]||r}</option>`).join('');
+        const curveOpts = (pv.curves[curRegion]||[]).map(c=>`<option value="${c}" ${c===curCurve?'selected':''}>${curveLabels[c]||c}</option>`).join('');
+        panel.innerHTML = formPanelHTML('光伏基本参数', [
+          {label:'额定装机容量 (kWp)', id:'pv-cap-rated', step:0.1, value:p.cap_rated||1.0},
+        ]) + formPanelHTML('光伏经济参数', [
+          {label:'单位造价 (元/Wp)', id:'pv-unit-cost', step:0.1, value:p.unit_cost||3.5},
+          {label:'年运维费用比例 (%)', id:'pv-r-om', step:0.1, value:((p.r_om||0.015)*100).toFixed(1)},
+          {label:'设计寿命 (年)', id:'pv-design-life', step:1, value:p.design_life||25},
+          {label:'年衰减率 (%)', id:'pv-r-degrade', step:0.1, value:((p.r_degrade||0.005)*100).toFixed(1)},
+        ]) + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">出力特性</div><div class="params-grid cols-2" style="margin-bottom:12px"><div class="params-field"><label>地区</label><select id="pv-region" onchange="onPvCurveChange()">${regionOpts}</select></div><div class="params-field"><label>曲线类型</label><select id="pv-curve-type" onchange="onPvCurveChange()">${curveOpts}</select></div></div><div id="pv-curve-chart" style="height:260px"></div></div>`;
+        renderPvCurveChart(pv.curve_data, curRegion, curCurve);
+      } catch(e) {
+        panel.innerHTML = placeholderHTML('光伏参数 — 加载失败');
+      }
       break;
     case 'contract':
       try {
@@ -1071,10 +1080,11 @@ async function renderPanelContent(panelId) {
       break;
     case 'ess-biz':
       panel.innerHTML = formPanelHTML('储能商业模式', [
-        {label:'折现率', id:'gp-r-discount', step:0.01, value:d.financial.r_discount||0.06},
-        {label:'用户分成 B1 (用户+储能)', id:'gp-r-user-b1', step:0.05, value:d.financial.r_user_b1||0.3},
-        {label:'用户分成 B2 (售电公司)', id:'gp-r-user-b2', step:0.05, value:d.financial.r_user_b2||0.5},
-        {label:'用户分成 B3 (储售一体)', id:'gp-r-user-b3', step:0.05, value:d.financial.r_user_b3||0.4},
+        {label:'折现率 (%)', id:'gp-r-discount', step:0.5, value:((d.financial.r_discount||0.06)*100).toFixed(1)},
+        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1||0.3)*100).toFixed(0)},
+        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2||0.5)*100).toFixed(0)},
+        {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost||0.9},
+        {label:'年运维支出比例 (%)', id:'gp-r-om', step:0.1, value:((d.ess.r_om||0.01)*100).toFixed(1)},
       ]);
       break;
     case 'biz-note':
@@ -1141,6 +1151,52 @@ function renderLoadCurveChart() {
     series:[{name:'净负荷',type:'line',data:mockLoad,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:0.5},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
   });
   window.addEventListener('resize',()=>chart.resize());
+}
+
+// 光伏出力曲线图表
+let pvCurveChart = null;
+function renderPvCurveChart(data, region, curveType) {
+  const el = document.getElementById('pv-curve-chart');
+  if (!el) return;
+  if (pvCurveChart) pvCurveChart.dispose();
+  pvCurveChart = echarts.init(el);
+  const regionLabels = {jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
+  const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
+  pvCurveChart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    grid:{left:46,right:46,top:30,bottom:20},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
+    yAxis:{type:'value',name:'归一化出力',nameTextStyle:{color:'#7a8298',fontSize:8},min:0,max:1,axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{name:(regionLabels[region]||region)+' '+(curveLabels[curveType]||curveType),type:'line',data:data,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
+  });
+  window.addEventListener('resize',()=>pvCurveChart&&pvCurveChart.resize());
+}
+
+async function onPvCurveChange() {
+  const region = document.getElementById('pv-region').value;
+  const curveType = document.getElementById('pv-curve-type').value;
+  // 更新二级下拉选项
+  const curves = await api('/params/pv');
+  const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
+  const sel = document.getElementById('pv-curve-type');
+  const opts = (curves.curves[region]||[]).map(c=>`<option value="${c}" ${c===curveType?'selected':''}>${curveLabels[c]||c}</option>`).join('');
+  sel.innerHTML = opts;
+  // 加载曲线数据
+  const res = await api(`/params/pv-curve/${region}/${sel.value}`);
+  renderPvCurveChart(res.data, region, sel.value);
+}
+
+// 储能指标说明
+function appendEssNotes(panel) {
+  const note = document.createElement('div');
+  note.className = 'params-section';
+  note.style.marginTop = '16px';
+  note.innerHTML = `<div style="font-size:var(--fs-11);color:var(--text-3);line-height:1.8;white-space:pre-line">指标说明：
+1、RTE = η_charge × η_discharge，因此不再单独列出单程放电效率，该指标为考虑公辅的工程实测指标，与厂商宣称的只考虑线损的单程指标有所区别，η指标仅在虚拟电厂等需要计算单边收益的场景中生效
+2、启用储能循环（默认不启用）次数约束后，储能计算将按照实际充放电次数折算实际寿命，部分工况激进的场景储能无法支撑10年的稳定运行。
+3、为简化计算，建设单价按照大EPC均价计算，无额外其他建设成本
+4、本仿真系统暂不考虑融资相关的财务指标</div>`;
+  panel.appendChild(note);
 }
 
 // 菜单切换

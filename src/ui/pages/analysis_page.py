@@ -398,7 +398,7 @@ def show() -> None:
                             r_user_map = {
                                 "B1": float(fin_defaults["r_user_b1"]),
                                 "B2": float(fin_defaults["r_user_b2"]),
-                                "B3": float(fin_defaults["r_user_b3"]),
+                                "B3": float(fin_defaults.get("r_user_b2", 0.5)),
                             }
                             bm_code = work.business_model
                             bm_prefix = (

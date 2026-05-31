@@ -42,17 +42,30 @@ class ConfigLoader:
         """从 ess_defaults.csv 加载储能系统默认参数。"""
         path = CONFIG_DIR / "ess_defaults.csv"
         df = pd.read_csv(path)
-        row = {r['param']: float(r['value']) for _, r in df.iterrows()}
+        row = {}
+        for _, r in df.iterrows():
+            k = str(r['param'])
+            v = r['value']
+            if k in ('design_life', 'cycle_life'):
+                row[k] = int(v)
+            elif k in ('degrade_enabled', 'cycle_enabled'):
+                row[k] = bool(int(v))
+            else:
+                row[k] = float(v)
         return ESSParams(
-            cap_rated=row.get('cap_rated', 5000),
-            c_rate=row.get('c_rate', 0.5),
-            eta_roundtrip=row.get('eta_roundtrip', 0.85),
+            cap_rated=row.get('cap_rated', 1000),
+            power_rated=row.get('power_rated', 0.5),
+            eta_roundtrip=row.get('eta_roundtrip', 0.87),
+            eta_charge=row.get('eta_charge', 0.92),
             soc_min=row.get('soc_min', 0.10),
             soc_max=row.get('soc_max', 0.90),
-            unit_cost=row.get('unit_cost', 0.9),
-            r_om=row.get('r_om', 0.01),
             design_life=int(row.get('design_life', 10)),
             r_degrade=row.get('r_degrade', 0.025),
+            degrade_enabled=row.get('degrade_enabled', False),
+            cycle_life=int(row.get('cycle_life', 5000)),
+            cycle_enabled=row.get('cycle_enabled', False),
+            unit_cost=row.get('unit_cost', 0.9),
+            r_om=row.get('r_om', 0.01),
         )
 
     @staticmethod
@@ -62,17 +75,82 @@ class ConfigLoader:
             path = CONFIG_DIR / "ess_defaults.csv"
         rows = [
             ("cap_rated", params.cap_rated, "kWh", "true"),
-            ("c_rate", params.c_rate, "-", "true"),
+            ("power_rated", params.power_rated, "MW", "true"),
             ("eta_roundtrip", params.eta_roundtrip, "-", "true"),
+            ("eta_charge", params.eta_charge, "-", "true"),
             ("soc_min", params.soc_min, "-", "true"),
             ("soc_max", params.soc_max, "-", "true"),
-            ("unit_cost", params.unit_cost, "元/Wh", "true"),
-            ("r_om", params.r_om, "-", "true"),
             ("design_life", params.design_life, "年", "true"),
             ("r_degrade", params.r_degrade, "-", "true"),
+            ("degrade_enabled", int(params.degrade_enabled), "-", "true"),
+            ("cycle_life", params.cycle_life, "次", "true"),
+            ("cycle_enabled", int(params.cycle_enabled), "-", "true"),
+            ("unit_cost", params.unit_cost, "元/Wh", "true"),
+            ("r_om", params.r_om, "-", "true"),
         ]
         df = pd.DataFrame(rows, columns=["param", "value", "unit", "editable"])
         df.to_csv(path, index=False, encoding="utf-8-sig")
+
+    # ---- 光伏参数 ----
+
+    @staticmethod
+    def load_pv_defaults(region: str) -> dict:
+        """从 pv_defaults.csv 加载光伏默认参数。"""
+        path = CONFIG_DIR / "pv_defaults.csv"
+        if not path.exists():
+            return {
+                "cap_rated": 1.0, "unit_cost": 3.5, "r_om": 0.015,
+                "design_life": 25, "r_degrade": 0.005,
+                "region": "jiangsu", "curve_type": "annual_avg",
+            }
+        df = pd.read_csv(path)
+        row = {}
+        for _, r in df.iterrows():
+            k = str(r['param'])
+            v = r['value']
+            if k in ('design_life',):
+                row[k] = int(v)
+            elif k in ('region', 'curve_type'):
+                row[k] = str(v)
+            else:
+                row[k] = float(v)
+        return row
+
+    @staticmethod
+    def save_pv_defaults(data: dict, path: Path = None) -> None:
+        """保存光伏参数到 CSV。"""
+        if path is None:
+            path = CONFIG_DIR / "pv_defaults.csv"
+        rows = [(k, v, "-", "true") for k, v in data.items()]
+        df = pd.DataFrame(rows, columns=["param", "value", "unit", "editable"])
+        df.to_csv(path, index=False, encoding="utf-8-sig")
+
+    @staticmethod
+    def load_pv_curve(region: str, curve_type: str) -> list[float]:
+        """加载光伏出力曲线（24 小时归一化出力，0~1）。"""
+        path = CONFIG_DIR / "pv_curves.csv"
+        if not path.exists():
+            return [0.0] * 24
+        df = pd.read_csv(path)
+        match = df[(df["region"] == region) & (df["curve_type"] == curve_type)]
+        if match.empty:
+            match = df[(df["region"] == region) & (df["curve_type"] == "annual_avg")]
+        if match.empty:
+            return [0.0] * 24
+        row = match.iloc[0]
+        return [float(row[str(h)]) for h in range(24)]
+
+    @staticmethod
+    def list_pv_curves() -> dict[str, list[str]]:
+        """返回可用的光伏曲线列表 {region: [curve_types]}。"""
+        path = CONFIG_DIR / "pv_curves.csv"
+        if not path.exists():
+            return {}
+        df = pd.read_csv(path)
+        result = {}
+        for region, group in df.groupby("region"):
+            result[str(region)] = sorted(group["curve_type"].unique().tolist())
+        return result
 
     # ---- 电价表 ----
 
