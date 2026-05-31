@@ -8,11 +8,14 @@ from fastapi import APIRouter, HTTPException
 from api.schemas import (
     CalculateRequest,
     CalculateResponse,
+    GlobalParamsResponse,
+    GlobalParamsUpdate,
     InvestmentData,
     OptionItem,
     OptionsResponse,
     OverviewData,
     ScenarioBrief,
+    TariffRow,
     TimeSeries,
     WelfareData,
     WholesaleOverrides,
@@ -217,6 +220,110 @@ def run_calculation(req: CalculateRequest):
     # 获取 load_real 用于前端图表
     load_real = _load_real_series(config.region, config.selected_date)
 
+    # 获取电价曲线
+    try:
+        price_da, price_rt = DataLoader.load_spot_prices(config.region, config.selected_date)
+    except Exception:
+        price_da, price_rt = [], []
+
     resp = _build_response(result, config, ess, prod_mwh, 20.0)
     resp.time_series.load_real = load_real
+    resp.time_series.price_da = price_da
+    resp.time_series.price_rt = price_rt
+    resp.time_series.price_user = list(result.P_user_curve) if hasattr(result, 'P_user_curve') else []
     return resp
+
+
+# ---------- 全局参数 ----------
+
+def _tariff_to_rows(df: pd.DataFrame) -> list[TariffRow]:
+    rows = []
+    for _, r in df.iterrows():
+        rows.append(TariffRow(
+            period=str(r.get("period", "")),
+            start=int(r.get("start_hour", r.get("start", 0))),
+            end=int(r.get("end_hour", r.get("end", 0))),
+            price=float(r.get("price_yuan_per_kwh", r.get("price", 0))),
+        ))
+    return rows
+
+
+@router.get("/global-params", response_model=GlobalParamsResponse)
+def get_global_params():
+    ess = ConfigLoader.load_ess_defaults("henan")
+    fin = ConfigLoader.load_financial_defaults("henan")
+    wcfg = ConfigLoader.load_wholesale_settlement()
+    tariff_admin = ConfigLoader.load_tariff("henan", "admin")
+    tariff_contract = ConfigLoader.load_tariff("henan", "contract")
+    tariff_jiangsu = ConfigLoader.load_tariff("henan", "jiangsu")
+    return GlobalParamsResponse(
+        ess={
+            "cap_rated": ess.cap_rated,
+            "c_rate": ess.c_rate,
+            "eta_roundtrip": ess.eta_roundtrip,
+            "soc_min": ess.soc_min,
+            "soc_max": ess.soc_max,
+            "unit_cost": ess.unit_cost,
+            "r_om": ess.r_om,
+            "design_life": ess.design_life,
+            "r_degrade": ess.r_degrade,
+        },
+        financial={k: float(v) for k, v in fin.items()},
+        wholesale=wcfg.to_flat_dict(),
+        tariff_admin=_tariff_to_rows(tariff_admin),
+        tariff_contract=_tariff_to_rows(tariff_contract),
+        tariff_jiangsu=tariff_jiangsu,
+        flat_price=0.55,
+    )
+
+
+@router.put("/global-params")
+def update_global_params(req: GlobalParamsUpdate):
+    from src.models.dispatch import ESSParams
+    from src.models.wholesale import (
+        MarketRegionCode, SettlementMode, TimeGranularity,
+        DaQuantityDefinition, PriceNode,
+    )
+    # 保存 ESS
+    ess = ESSParams(
+        cap_rated=req.ess.get("cap_rated", 5000),
+        c_rate=req.ess.get("c_rate", 0.5),
+        eta_roundtrip=req.ess.get("eta_roundtrip", 0.85),
+        soc_min=req.ess.get("soc_min", 0.10),
+        soc_max=req.ess.get("soc_max", 0.90),
+        unit_cost=req.ess.get("unit_cost", 0.9),
+        r_om=req.ess.get("r_om", 0.01),
+        design_life=int(req.ess.get("design_life", 10)),
+        r_degrade=req.ess.get("r_degrade", 0.025),
+    )
+    ConfigLoader.save_ess_defaults(ess)
+    # 保存财务
+    ConfigLoader.save_financial_defaults(req.financial)
+    # 保存批发结算
+    wflat = req.wholesale
+    wcfg = WholesaleSettlementConfig(
+        market_region_code=MarketRegionCode(wflat.get("market_region_code", "CN")),
+        settlement_mode=SettlementMode(wflat.get("settlement_mode", "GUANGDONG_STYLE")),
+        time_granularity=TimeGranularity(wflat.get("time_granularity", "1h")),
+        da_quantity_definition=DaQuantityDefinition(wflat.get("da_quantity_definition", "declaration")),
+        price_node=PriceNode(wflat.get("price_node", "unified")),
+        contract_curve_profile=wflat.get("contract_curve_profile", "mock_henan"),
+        dayahead_curve_profile=wflat.get("dayahead_curve_profile", "mock_henan"),
+        purchase_monthly_constant_yuan=float(wflat.get("purchase_monthly_constant_yuan", 0)),
+        guangxi_month_smooth_yuan=float(wflat.get("guangxi_month_smooth_yuan", 0)),
+        shanxi_wholesale_addon_yuan=float(wflat.get("shanxi_wholesale_addon_yuan", 0)),
+    )
+    ConfigLoader.save_wholesale_settlement(wcfg)
+    return {"status": "ok"}
+
+
+@router.get("/params/contract-position")
+def get_contract_position():
+    df = ConfigLoader.load_contract_position("henan", None, profile="mock_henan")
+    return df.to_dict(orient="records")
+
+
+@router.get("/params/dayahead-position")
+def get_dayahead_position():
+    df = ConfigLoader.load_dayahead_position("henan", None, profile="mock_henan")
+    return df.to_dict(orient="records")

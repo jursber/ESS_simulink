@@ -1,7 +1,7 @@
 """请求/响应 Pydantic 模型。"""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -39,6 +39,9 @@ class TimeSeries(BaseModel):
     soc: list[float]
     load_grid: list[float]
     load_real: list[float]
+    price_da: list[float] = []
+    price_rt: list[float] = []
+    price_user: list[float] = []
 
 
 class OverviewData(BaseModel):
@@ -101,3 +104,29 @@ class OptionsResponse(BaseModel):
     settlement_modes: list[OptionItem]
     contract_profiles: list[OptionItem]
     dayahead_profiles: list[OptionItem]
+
+
+# ---------- 全局参数 ----------
+
+class TariffRow(BaseModel):
+    period: str
+    start: int
+    end: int
+    price: float
+
+
+class GlobalParamsResponse(BaseModel):
+    ess: dict[str, Any]
+    financial: dict[str, Any]
+    wholesale: dict[str, Any]
+    tariff_admin: list[TariffRow]
+    tariff_contract: list[TariffRow]
+    tariff_jiangsu: dict[str, Any]
+    flat_price: float
+
+
+class GlobalParamsUpdate(BaseModel):
+    ess: dict[str, Any]
+    financial: dict[str, Any]
+    wholesale: dict[str, Any]
+    flat_price: float = 0.55

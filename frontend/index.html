@@ -51,6 +51,7 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .topbar-actions{display:flex;gap:8px}
 .btn{background:transparent;border:1px solid var(--border);color:var(--text-2);padding:5px 16px;border-radius:6px;font-size:var(--fs-12);cursor:pointer;transition:all .15s;font-weight:var(--fw-medium)}
 .btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:var(--fw-semi)}
 .btn-primary:hover{background:var(--primary-hover)}
 
@@ -65,8 +66,8 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .p-analysis{flex:1;display:flex;gap:var(--gap-panel);padding:var(--gap);overflow:hidden}
 .p-analysis .center{flex:1;display:flex;flex-direction:column;gap:var(--gap);min-width:0}
 .p-analysis .row{display:flex;gap:var(--gap-inner);flex:1;min-height:0}
-.p-analysis .row.row-top{flex:1.02 1 0%}
-.p-analysis .row.row-bottom{flex:0.98 1 0%}
+.p-analysis .row.row-top{flex:0 0 auto}
+.p-analysis .row.row-bottom{flex:1}
 
 /* CARD */
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex:1;min-width:0;position:relative;line-height:var(--lh-card)}
@@ -76,6 +77,15 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .card-title{font-size:16px;font-weight:700;color:var(--text-1);padding-left:10px;border-left:3px solid var(--primary);line-height:1.3}
 .card-sub{font-size:var(--fs-14);color:#f0c040;font-weight:var(--fw-semi)}
 .card-body{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
+
+/* 光出投资分析 tab 切换 */
+.inv-tabs{display:flex;gap:0;margin-left:auto}
+.inv-tab{padding:3px 14px;font-size:var(--fs-12);font-weight:var(--fw-medium);color:var(--text-3);cursor:pointer;border:1px solid var(--border);background:transparent;transition:all .15s;user-select:none}
+.inv-tab:first-child{border-radius:4px 0 0 4px}
+.inv-tab:last-child{border-radius:0 4px 4px 0;border-left:none}
+.inv-tab:hover:not(.inv-tab-disabled){color:var(--text-2);border-color:var(--primary)}
+.inv-tab.active{background:var(--primary-dim);color:var(--primary);border-color:var(--primary);font-weight:var(--fw-semi)}
+.inv-tab-disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 
 /* RIGHT PANEL */
 .right-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column}
@@ -105,16 +115,53 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 
 /* 架构图容器 */
 .architecture-container{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
-.architecture-header{display:flex;gap:8px;flex-wrap:nowrap;margin-bottom:4px}
-.architecture-mode-tag{background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.30);border-radius:4px;padding:3px 10px;font-size:var(--fs-12);color:var(--success);font-weight:var(--fw-medium);white-space:nowrap}
-.architecture-tag-calc{background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.30);color:var(--danger);margin-left:auto}
-.architecture-tag-calc.done{background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.30);color:var(--success)}
-.architecture-image-wrap{position:relative;width:430px;height:320px;flex-shrink:0;background:#1a1f2d;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.architecture-header{display:flex;gap:8px;flex-wrap:nowrap;margin-bottom:8px;padding-bottom:10px;border-bottom:1px dashed rgba(94,163,255,0.25)}
+.architecture-mode-tag{background:rgba(94,163,255,0.12);border-radius:4px;padding:3px 10px;font-size:var(--fs-12);color:var(--primary);font-weight:var(--fw-medium);white-space:nowrap;border:none}
+.architecture-tag-calc{font-size:var(--fs-12);font-weight:var(--fw-medium);white-space:nowrap;background:rgba(248,113,113,0.12);border:none;color:var(--danger)}
+.architecture-tag-calc.done{color:var(--success);background:rgba(52,211,153,0.12)}
+.architecture-image-wrap{position:relative;width:516px;height:320px;flex-shrink:0;background:#1a1f2d;border:1px solid var(--border);border-radius:6px;overflow:hidden}
 .architecture-image{width:100%;height:100%;object-fit:contain}
 .architecture-labels{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:space-around;padding:0 40px;z-index:2}
 .architecture-label{text-align:center}
 .architecture-label .name{font-size:var(--fs-12);font-weight:var(--fw-semi);color:var(--text-1);text-shadow:0 1px 3px rgba(0,0,0,0.8)}
 .architecture-label .capacity{font-size:var(--fs-11);color:var(--primary);margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,0.8)}
+
+/* 能量流动图 */
+.flow-line-solid{stroke-width:1.5;fill:none}
+.flow-line-dash{stroke-width:1.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round}
+@keyframes flowForward{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-20}}
+@keyframes flowReverse{0%{stroke-dashoffset:0}100%{stroke-dashoffset:20}}
+.flow-forward{animation:flowForward 1s linear infinite}
+.flow-reverse{animation:flowReverse 1s linear infinite}
+.flow-dim .flow-node{opacity:.25}
+.flow-dim .flow-line-solid,.flow-dim .flow-line-dash{opacity:.15}
+.flow-node{transition:opacity .4s}
+.flow-line-solid,.flow-line-dash{transition:opacity .4s}
+
+/* 缺省参数页面 - 左右分栏 */
+.p-params-layout{flex:1;display:flex;overflow:hidden}
+.params-sidebar{width:200px;flex-shrink:0;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.params-sidebar-hd{padding:16px 18px 12px;font-size:16px;font-weight:700;color:var(--text-1);border-bottom:1px solid var(--border);flex-shrink:0}
+.params-menu{flex:1;overflow-y:auto;padding:8px 0}
+.params-menu-group{margin-bottom:4px}
+.params-menu-group-hd{padding:8px 18px 4px;font-size:var(--fs-11);font-weight:var(--fw-semi);color:var(--text-3);text-transform:uppercase;letter-spacing:.05em}
+.params-menu-item{padding:7px 18px 7px 28px;font-size:var(--fs-12);color:var(--text-2);cursor:pointer;transition:all .12s;border-left:3px solid transparent}
+.params-menu-item:hover{background:var(--primary-dim);color:var(--text-1)}
+.params-menu-item.active{background:var(--primary-dim);color:var(--primary);border-left-color:var(--primary);font-weight:var(--fw-semi)}
+.params-content{flex:1;overflow-y:auto;padding:20px 24px}
+.params-panel{display:none}
+.params-panel.active{display:block}
+.params-placeholder{display:flex;align-items:center;justify-content:center;height:100%}
+.params-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+.params-section-hd{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.params-grid{display:grid;gap:12px}
+.params-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.params-grid.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.params-grid.cols-2{grid-template-columns:1fr 1fr}
+.params-field label{display:block;font-size:var(--fs-11);color:var(--text-3);margin-bottom:4px;font-weight:var(--fw-medium)}
+.params-field input,.params-field select{width:100%;background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text-1);font-size:var(--fs-12);font-family:inherit;outline:none;transition:border-color .15s}
+.params-field input:focus,.params-field select:focus{border-color:var(--primary)}
+.params-field select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a8298'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 
 /* METRIC STRIP */
 .metric-strip{display:flex;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0}
@@ -139,7 +186,9 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .fin-cell .val{font-size:var(--fs-15);font-weight:var(--fw-semi);color:var(--success);line-height:var(--lh-tight)}
 
 /* 9. SECTION 标题字号放大 */
-.section-title{font-size:var(--fs-13);font-weight:700;color:var(--text-2);margin:12px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4}
+.section-title{display:flex;align-items:center;gap:6px;margin:4px 0 2px;font-size:var(--fs-11);font-weight:700;color:#fff;white-space:nowrap}
+.section-title::before{content:'';width:16px;height:1px;background:var(--border);flex-shrink:0}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
 .section-title:first-child{margin-top:0}
 
 /* PL ROW */
@@ -186,14 +235,14 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 
 <div class="topbar">
   <div class="logo">
-    <span class="icon">&#9889;</span>荷源网储售综合模拟仿真系统
+    <span class="icon">&#9889;</span>荷源网储售综合模拟仿真系统&nbsp;&nbsp;<span class="architecture-mode-tag architecture-tag-calc" id="tag-calc" style="font-size:var(--fs-12)">参数已修改</span>
   </div>
   <!-- 3. 顶部导航居中 -->
   <div class="top-nav">
     <div class="top-nav-item active" data-page="analysis">单方案分析</div>
     <div class="top-nav-item" data-page="compare">多方案对比</div>
     <div class="top-nav-item" data-page="scenarios">方案管理</div>
-    <div class="top-nav-item" data-page="params">全局参数</div>
+    <div class="top-nav-item" data-page="params">缺省参数</div>
   </div>
   <div class="topbar-actions">
     <button class="btn" onclick="loadScenarios()">加载</button>
@@ -210,38 +259,64 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
         <div class="row row-top">
           <!-- 方案概览：4. 图在左，文本在右 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">方案与关键特征概览</span></div>
+            <div class="card-hd" style="gap:12px"><span class="card-title">方案与关键特征概览</span><div style="display:flex;gap:6px;margin-left:auto"><span class="architecture-mode-tag" id="tag-pm">合同分时</span><span class="architecture-mode-tag" id="tag-arch">单储能</span><span class="architecture-mode-tag" id="tag-bm">储售一体</span><span class="architecture-mode-tag" id="tag-dispatch">用户收益最优模式调度</span></div></div>
             <div class="card-body">
               <div class="overview-layout">
                 <div class="architecture-container">
-                  <div class="architecture-header">
-                    <span class="architecture-mode-tag" id="tag-pm">合同分时</span>
-                    <span class="architecture-mode-tag" id="tag-arch">单储能</span>
-                    <span class="architecture-mode-tag" id="tag-bm">储售一体</span>
-                    <span class="architecture-mode-tag" id="tag-dispatch">用户收益最优模式调度</span>
-                    <span class="architecture-mode-tag architecture-tag-calc" id="tag-calc">未计算</span>
+                  <div class="fin-strip" style="margin-bottom:10px">
+                    <div class="fin-cell"><div class="lbl">储能容量</div><div class="val" id="lbl-ess">--</div></div>
+                    <div class="fin-cell"><div class="lbl">光伏容量</div><div class="val" id="lbl-pv" data-unit="kWp">--</div></div>
+                    <div class="fin-cell"><div class="lbl">最大净生产负荷</div><div class="val" id="lbl-flex">--</div></div>
+                    <div class="fin-cell"><div class="lbl">最小净生产负荷</div><div class="val" id="lbl-prod">--</div></div>
                   </div>
                   <div style="display:flex;gap:16px;flex:1;min-height:0">
-                    <div class="architecture-image-wrap">
-                      <img src="assets/architecture.png" alt="系统架构图" class="architecture-image">
-                      <div class="architecture-labels">
-                        <div class="architecture-label">
-                          <div class="name">储能</div>
-                          <div class="capacity" id="lbl-ess">-- MWh</div>
-                        </div>
-                        <div class="architecture-label">
-                          <div class="name">光伏</div>
-                          <div class="capacity" id="lbl-pv">-- kW</div>
-                        </div>
-                        <div class="architecture-label">
-                          <div class="name">可调负荷</div>
-                          <div class="capacity" id="lbl-flex">-- kW</div>
-                        </div>
-                        <div class="architecture-label">
-                          <div class="name">生产负荷</div>
-                          <div class="capacity" id="lbl-prod">-- MWh</div>
-                        </div>
-                      </div>
+                    <div class="architecture-image-wrap" style="background:#12161f">
+                      <svg viewBox="0 0 516 320" width="516" height="320" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 连线 -->
+                        <!-- 电网→结算点 -->
+                        <line x1="175" y1="56" x2="175" y2="84" class="flow-line-solid" stroke="#5ea3ff"/>
+                        <!-- 结算点→母线 -->
+                        <line x1="175" y1="108" x2="175" y2="176" class="flow-line-solid" stroke="#5ea3ff"/>
+                        <!-- 母线 -->
+                        <line x1="60" y1="176" x2="456" y2="176" stroke="#3d8bfd" stroke-width="3" stroke-linecap="round" fill="none" class="flow-node"/>
+                        <!-- 母线→储能 -->
+                        <line x1="100" y1="176" x2="100" y2="218" class="flow-line-solid" stroke="#34d399"/>
+                        <!-- 母线→光伏 -->
+                        <line x1="205" y1="176" x2="205" y2="218" class="flow-line-solid" stroke="#34d399" opacity=".35"/>
+                        <!-- 母线→刚性净负荷 -->
+                        <line x1="310" y1="176" x2="310" y2="218" class="flow-line-solid" stroke="#34d399"/>
+                        <!-- 母线→可调负荷 -->
+                        <line x1="416" y1="176" x2="416" y2="218" class="flow-line-solid" stroke="#34d399" opacity=".35"/>
+                        <!-- 电力市场→售电公司 -->
+                        <line x1="340" y1="56" x2="340" y2="84" class="flow-line-dash flow-forward" stroke="#a78bfa"/>
+                        <!-- 结算点→售电公司 (水平虚线，两端顶住框线) -->
+                        <line x1="199" y1="96" x2="302" y2="96" class="flow-line-dash flow-forward" stroke="#a78bfa"/>
+                        <!-- 节点 -->
+                        <!-- 电网 -->
+                        <rect x="137" y="20" width="76" height="36" rx="5" fill="#1a2332" stroke="#3d8bfd" stroke-width="1" class="flow-node"/>
+                        <text x="175" y="43" text-anchor="middle" fill="#5ea3ff" font-size="11" font-weight="600">电网</text>
+                        <!-- 电力市场 (虚线框) -->
+                        <rect x="302" y="20" width="76" height="36" rx="5" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="5 3" class="flow-node"/>
+                        <text x="340" y="43" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">电力市场</text>
+                        <!-- 售电公司 (虚线框，与结算点同 y 对齐) -->
+                        <rect x="302" y="84" width="76" height="36" rx="5" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="5 3" class="flow-node"/>
+                        <text x="340" y="107" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">售电公司</text>
+                        <!-- 电网结算点 (虚线框) -->
+                        <rect x="151" y="84" width="48" height="24" rx="3" fill="none" stroke="#5ea3ff" stroke-width="1" stroke-dasharray="4 2" class="flow-node"/>
+                        <text x="175" y="100" text-anchor="middle" fill="#5ea3ff" font-size="9">结算点</text>
+                        <!-- 储能 -->
+                        <rect x="60" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" class="flow-node" id="flow-ess"/>
+                        <text x="100" y="241" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">储能</text>
+                        <!-- 光伏 -->
+                        <rect x="165" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" opacity=".35" class="flow-node" id="flow-pv"/>
+                        <text x="205" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-pv-text">光伏</text>
+                        <!-- 刚性净负荷 -->
+                        <rect x="270" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" class="flow-node"/>
+                        <text x="310" y="241" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">刚性净负荷</text>
+                        <!-- 可调负荷 -->
+                        <rect x="376" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" opacity=".35" class="flow-node" id="flow-load-flex"/>
+                        <text x="416" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
+                      </svg>
                     </div>
                     <div class="kv-grid overview-info" style="grid-template-columns:1fr;gap:0;align-content:start">
                         <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能日均充放次数</span><span class="v" id="op-cycles-day">1.2<span class="u">次/日</span></span></div>
@@ -260,57 +335,93 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
           <!-- 多方收益：6. 左文右图高度对齐 -->
           <div class="card">
             <div class="card-hd"><span class="card-title">多方收益分析</span><span class="card-sub" id="welfare-badge">总社会福利提升 --</span></div>
-            <div class="card-body" style="flex-direction:row;gap:16px">
-              <div style="flex:2;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
-                <div class="section-title">终端用户</div>
-                <div class="kv-grid" style="grid-template-columns:1fr">
-                  <div class="kv-row"><span class="k"><span class="kv-icon">💡</span>总用网电费</span><span class="v" id="w-bill-no">--</span></div>
-                  <div class="kv-row"><span class="k"><span class="kv-icon">💰</span>总节约电费</span><span class="v" id="w-saving">--</span></div>
-                  <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能收益返还</span><span class="v" id="w-return">--</span></div>
+            <div class="card-body" style="flex-direction:column;gap:0">
+              <div style="flex:0 0 148px;display:flex;gap:12px;min-height:0">
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-11);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">终端用户</div>
+                <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:start">
+                  <div class="kv-row"><span class="k"><span class="kv-icon">💡</span>总用网电费（向电网支付）</span><span class="v" id="w-bill-no">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能收益返还（向储能运营商支付）</span><span class="v" id="w-return">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">📊</span>实际用电成本</span><span class="v" id="w-total">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>需量电费节约</span><span class="v" id="w-demand-saving">--</span></div>
                 </div>
-                <div class="section-title">储能投资方</div>
-                <div class="kv-grid" style="grid-template-columns:1fr">
+                <div style="flex:3;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-user-price"></div>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,0.15);margin:6px 0;flex-shrink:0"></div>
+              <div style="flex:0 0 148px;display:flex;gap:12px;min-height:0">
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-11);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">光储投资方</div>
+                <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:start">
                   <div class="kv-row"><span class="k"><span class="kv-icon">📈</span>储能分成收益</span><span class="v" id="w-inv-share">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">💰</span>需量分成收益</span><span class="v" id="w-inv-demand">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">☀️</span>光伏上网收益</span><span class="v" id="w-inv-pv-out">--</span></div>
+                  <div class="kv-row"><span class="k"><span class="kv-icon">🔋</span>光伏消纳收益</span><span class="v" id="w-inv-pv-self">--</span></div>
                 </div>
-                <div class="section-title">售电公司</div>
-                <div class="kv-grid" style="grid-template-columns:1fr">
+                <div style="flex:3;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-ess-power"></div>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,0.15);margin:6px 0;flex-shrink:0"></div>
+              <div style="flex:0 0 148px;display:flex;gap:12px;min-height:0">
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-11);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">售电公司</div>
+                <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:start">
                   <div class="kv-row"><span class="k"><span class="kv-icon">📅</span>中长期购电成本</span><span class="v" id="w-cp-long">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">📆</span>日前购电成本</span><span class="v" id="w-cp-day">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>实时购电成本</span><span class="v" id="w-cp-real">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">🔋</span>储能造成的成本变化</span><span class="v" id="w-cp-ess">--</span></div>
                 </div>
-              </div>
-              <div style="flex:3;display:flex;flex-direction:column;gap:8px">
-                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">终端用户收益对比</div>
-                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">储能投资方收益</div>
-                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:var(--fs-12)">售电公司成本构成</div>
+                <div style="flex:3;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-price-curve"></div>
               </div>
             </div>
           </div>
         </div>
         <div class="row row-bottom">
-          <!-- 储能投资分析 -->
+          <!-- 光出投资分析 -->
           <div class="card">
-            <div class="card-hd"><span class="card-title">储能投资分析</span><span class="card-sub">1MWh/0.5MW</span></div>
-            <div class="card-body">
-              <div class="fin-strip" style="flex-shrink:0">
-                <div class="fin-cell"><div class="lbl">项目总投资</div><div class="val" id="fin-total">--</div></div>
-                <div class="fin-cell"><div class="lbl">内部收益率 IRR</div><div class="val" id="fin-irr">--</div></div>
-                <div class="fin-cell"><div class="lbl">静态回收期 ROI</div><div class="val" id="fin-roi">--</div></div>
-                <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="fin-cf">--</div></div>
+            <div class="card-hd">
+              <span class="card-title">光出投资分析</span>
+              <div class="inv-tabs">
+                <div class="inv-tab active" id="tab-ess" onclick="switchInvTab('ess')">储能</div>
+                <div class="inv-tab" id="tab-pv" onclick="switchInvTab('pv')">光伏</div>
               </div>
-              <div style="flex:1;overflow-y:auto">
-                <div class="section-title" style="margin-top:10px">经营数据</div>
-                <table class="data-table">
-                  <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
-                  <tr><td>总套利创值（按用户侧电价）</td><td id="op-daily-arb">--</td><td id="op-annual-arb">--</td></tr>
-                  <tr><td>分成后收入</td><td id="op-daily-share">--</td><td id="op-annual-share">--</td></tr>
-                  <tr><td>售电公司批发侧成本变化</td><td id="op-daily-wholesale">--</td><td id="op-annual-wholesale">--</td></tr>
-                  <tr><td>储能总充电量</td><td id="op-charge">--</td><td id="op-annual-charge">--</td></tr>
-                  <tr><td>储能总放电量</td><td id="op-discharge">--</td><td id="op-annual-discharge">--</td></tr>
-                  <tr><td>储能等效循环次数</td><td id="op-cycles">--</td><td id="op-annual-cycles">--</td></tr>
-                </table>
+            </div>
+            <div class="card-body">
+              <div id="inv-ess-content">
+                <div class="fin-strip" style="flex-shrink:0">
+                  <div class="fin-cell"><div class="lbl">项目总投资</div><div class="val" id="ess-fin-total">--</div></div>
+                  <div class="fin-cell"><div class="lbl">内部收益率 IRR</div><div class="val" id="ess-fin-irr">--</div></div>
+                  <div class="fin-cell"><div class="lbl">静态回收期 ROI</div><div class="val" id="ess-fin-roi">--</div></div>
+                  <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="ess-fin-cf">--</div></div>
+                </div>
+                <div style="flex:1;overflow-y:auto">
+                  <div style="font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-2);margin:10px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4">经营数据</div>
+                  <table class="data-table">
+                    <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
+                    <tr><td>总套利创值（按用户侧电价）</td><td id="ess-op-daily-arb">--</td><td id="ess-op-annual-arb">--</td></tr>
+                    <tr><td>分成后收入</td><td id="ess-op-daily-share">--</td><td id="ess-op-annual-share">--</td></tr>
+                    <tr><td>售电公司批发侧成本变化</td><td id="ess-op-daily-wholesale">--</td><td id="ess-op-annual-wholesale">--</td></tr>
+                    <tr><td>储能总充电量</td><td id="ess-op-charge">--</td><td id="ess-op-annual-charge">--</td></tr>
+                    <tr><td>储能总放电量</td><td id="ess-op-discharge">--</td><td id="ess-op-annual-discharge">--</td></tr>
+                    <tr><td>储能等效循环次数</td><td id="ess-op-cycles">--</td><td id="ess-op-annual-cycles">--</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div id="inv-pv-content" style="display:none">
+                <div class="fin-strip" style="flex-shrink:0">
+                  <div class="fin-cell"><div class="lbl">项目总投资</div><div class="val" id="pv-fin-total">--</div></div>
+                  <div class="fin-cell"><div class="lbl">内部收益率 IRR</div><div class="val" id="pv-fin-irr">--</div></div>
+                  <div class="fin-cell"><div class="lbl">静态回收期 ROI</div><div class="val" id="pv-fin-roi">--</div></div>
+                  <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="pv-fin-cf">--</div></div>
+                </div>
+                <div style="flex:1;overflow-y:auto">
+                  <div style="font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-2);margin:10px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4">经营数据</div>
+                  <table class="data-table">
+                    <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
+                    <tr><td>光伏上网收益</td><td id="pv-op-daily-out">--</td><td id="pv-op-annual-out">--</td></tr>
+                    <tr><td>光伏消纳收益</td><td id="pv-op-daily-self">--</td><td id="pv-op-annual-self">--</td></tr>
+                    <tr><td>光伏总发电量</td><td id="pv-op-gen">--</td><td id="pv-op-annual-gen">--</td></tr>
+                    <tr><td>光伏自用率</td><td id="pv-op-self-rate">--</td><td id="pv-op-annual-self-rate">--</td></tr>
+                  </table>
+                </div>
+              </div>
+              <div id="inv-none-content" style="display:none;flex:1;align-items:center;justify-content:center">
+                <div style="font-size:16px;color:var(--text-3);font-weight:var(--fw-medium)">无能源设施</div>
               </div>
             </div>
           </div>
@@ -351,7 +462,71 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
   <!-- PAGE 2-4 占位 -->
   <div class="page-wrap" id="page-compare"><div class="p-compare">多方案对比（待实现）</div></div>
   <div class="page-wrap" id="page-scenarios"><div class="p-scenarios">方案管理（待实现）</div></div>
-  <div class="page-wrap" id="page-params"><div class="p-params">全局参数（待实现）</div></div>
+  <div class="page-wrap" id="page-params">
+    <div class="p-params-layout">
+      <!-- 左侧菜单 -->
+      <div class="params-sidebar">
+        <div class="params-sidebar-hd">缺省参数</div>
+        <div class="params-menu" id="params-menu">
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">能源设施</div>
+            <div class="params-menu-item" data-panel="pv">光伏</div>
+            <div class="params-menu-item" data-panel="ess">储能</div>
+          </div>
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">电力市场</div>
+            <div class="params-menu-item" data-panel="contract">中长期量价曲线</div>
+            <div class="params-menu-item" data-panel="dayahead">日前节点电价</div>
+            <div class="params-menu-item" data-panel="realtime">实时节点电价</div>
+          </div>
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">电价信息</div>
+            <div class="params-menu-item" data-panel="pricing-mode">模式选择</div>
+            <div class="params-menu-item" data-panel="tariff-admin">行政分时电价</div>
+            <div class="params-menu-item" data-panel="tariff-contract">合同分时电价</div>
+            <div class="params-menu-item" data-panel="tariff-flat">固定价格</div>
+            <div class="params-menu-item" data-panel="tariff-spot">电力市场联动价格</div>
+          </div>
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">发用负荷</div>
+            <div class="params-menu-item" data-panel="load-curve">用户净负荷曲线</div>
+            <div class="params-menu-item" data-panel="pv-curve">光伏发电功率曲线</div>
+          </div>
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">商业模式</div>
+            <div class="params-menu-item" data-panel="wholesale">批发侧结算配置</div>
+            <div class="params-menu-item" data-panel="pv-biz">光伏商业模式</div>
+            <div class="params-menu-item" data-panel="ess-biz">储能商业模式</div>
+            <div class="params-menu-item" data-panel="biz-note">其他模式说明</div>
+          </div>
+        </div>
+      </div>
+      <!-- 右侧内容区 -->
+      <div class="params-content" id="params-content">
+        <!-- 默认提示 -->
+        <div class="params-placeholder" id="params-default-hint">
+          <div style="color:var(--text-3);font-size:var(--fs-14)">← 请从左侧菜单选择参数类别</div>
+        </div>
+        <!-- 各面板（默认隐藏，JS 切换） -->
+        <div class="params-panel" id="panel-ess"></div>
+        <div class="params-panel" id="panel-pv"></div>
+        <div class="params-panel" id="panel-contract"></div>
+        <div class="params-panel" id="panel-dayahead"></div>
+        <div class="params-panel" id="panel-realtime"></div>
+        <div class="params-panel" id="panel-pricing-mode"></div>
+        <div class="params-panel" id="panel-tariff-admin"></div>
+        <div class="params-panel" id="panel-tariff-contract"></div>
+        <div class="params-panel" id="panel-tariff-flat"></div>
+        <div class="params-panel" id="panel-tariff-spot"></div>
+        <div class="params-panel" id="panel-load-curve"></div>
+        <div class="params-panel" id="panel-pv-curve"></div>
+        <div class="params-panel" id="panel-wholesale"></div>
+        <div class="params-panel" id="panel-pv-biz"></div>
+        <div class="params-panel" id="panel-ess-biz"></div>
+        <div class="params-panel" id="panel-biz-note"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -405,6 +580,52 @@ async function selectScenario(id) {
   await runCalculation();
 }
 
+// ============ 光出投资分析 tab 切换 ============
+let currentInvTab = 'ess';
+
+function switchInvTab(tab) {
+  const essCap = state.result?.overview?.ess_cap_mwh || 0;
+  const pvCap = state.result?.overview?.pv_cap_kw || 0;
+  if (essCap === 0 && pvCap === 0) return;
+  if (tab === 'ess' && essCap === 0) return;
+  if (tab === 'pv' && pvCap === 0) return;
+
+  currentInvTab = tab;
+  document.getElementById('tab-ess').classList.toggle('active', tab === 'ess');
+  document.getElementById('tab-pv').classList.toggle('active', tab === 'pv');
+  document.getElementById('inv-ess-content').style.display = tab === 'ess' ? '' : 'none';
+  document.getElementById('inv-pv-content').style.display = tab === 'pv' ? '' : 'none';
+  document.getElementById('inv-none-content').style.display = 'none';
+}
+
+function updateInvTabs(essCapMwh, pvCapKw) {
+  const tabEss = document.getElementById('tab-ess');
+  const tabPv = document.getElementById('tab-pv');
+  const essContent = document.getElementById('inv-ess-content');
+  const pvContent = document.getElementById('inv-pv-content');
+  const noneContent = document.getElementById('inv-none-content');
+
+  tabEss.classList.remove('inv-tab-disabled');
+  tabPv.classList.remove('inv-tab-disabled');
+
+  if (essCapMwh === 0 && pvCapKw === 0) {
+    tabEss.classList.add('inv-tab-disabled');
+    tabPv.classList.add('inv-tab-disabled');
+    essContent.style.display = 'none';
+    pvContent.style.display = 'none';
+    noneContent.style.display = 'flex';
+    currentInvTab = null;
+  } else if (essCapMwh === 0) {
+    tabEss.classList.add('inv-tab-disabled');
+    switchInvTab('pv');
+  } else if (pvCapKw === 0) {
+    tabPv.classList.add('inv-tab-disabled');
+    switchInvTab('ess');
+  } else {
+    switchInvTab(currentInvTab || 'ess');
+  }
+}
+
 // ============ 计算 ============
 async function runCalculation() {
   const scenarioId = document.getElementById('sel-scenario').value;
@@ -427,7 +648,7 @@ async function runCalculation() {
     state.result = result;
     state.currentScenario = scenarioId;
     const tagCalc = document.getElementById('tag-calc');
-    tagCalc.textContent = '已计算';
+    tagCalc.textContent = '计算完成';
     tagCalc.classList.add('done');
     renderResult(result);
   } catch (e) {
@@ -441,38 +662,61 @@ function renderResult(r) {
   const { time_series, overview, welfare, investment } = r;
 
   // 概览 - 更新架构图上的容量标注
-  document.getElementById('lbl-ess').textContent = `${overview.ess_cap_mwh.toFixed(2)} MWh`;
-  document.getElementById('lbl-pv').textContent = overview.pv_cap_kw ? `${overview.pv_cap_kw.toFixed(0)} kW` : '0 kW';
-  document.getElementById('lbl-flex').textContent = overview.flex_load_kw ? `${overview.flex_load_kw.toFixed(0)} kW` : '0 kW';
-  document.getElementById('lbl-prod').textContent = `${overview.prod_load_mwh.toFixed(2)} MWh`;
+  document.getElementById('lbl-ess').textContent = `${overview.ess_cap_mwh.toFixed(2)} MWh / ${(overview.ess_power_kw / 1000).toFixed(2)} MW`;
+  document.getElementById('lbl-pv').textContent = overview.pv_cap_kw ? `${overview.pv_cap_kw.toFixed(0)} kWp` : '0 kWp';
+  document.getElementById('lbl-flex').textContent = overview.flex_load_kw ? `${(overview.flex_load_kw / 1000).toFixed(2)} MW` : '0 MW';
+  document.getElementById('lbl-prod').textContent = `${(overview.prod_load_mwh).toFixed(2)} MW`;
 
   // 更新模式标签
   document.getElementById('tag-pm').textContent = document.getElementById('sel-pm').selectedOptions[0]?.text || '合同分时';
   document.getElementById('tag-bm').textContent = document.getElementById('sel-bm').selectedOptions[0]?.text || '储售一体';
 
   // 多方收益
-  document.getElementById('welfare-badge').textContent = `总社会福利提升 ${welfare.total_welfare_wan.toFixed(1)} 万`;
+  document.getElementById('welfare-badge').textContent = `总社会福利提升 ${welfare.total_welfare_wan.toFixed(2)}万元`;
   document.getElementById('w-bill-no').textContent = `${welfare.user_bill_no_ess_wan.toFixed(1)} 万`;
-  document.getElementById('w-saving').textContent = `${welfare.user_savings_wan.toFixed(1)} 万`;
   document.getElementById('w-return').textContent = `${welfare.user_return_wan.toFixed(1)} 万`;
   document.getElementById('w-total').textContent = `${welfare.user_total_wan.toFixed(1)} 万`;
+  // 新增标签（API暂无对应字段时显示 --）
+  ['w-demand-saving','w-inv-share','w-inv-demand','w-inv-pv-out','w-inv-pv-self','w-cp-long','w-cp-day','w-cp-real','w-cp-ess'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.textContent === '--') el.textContent = '--';
+  });
 
-  // 储能本体
-  document.getElementById('fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
-  document.getElementById('fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(2)}%` : 'N/A';
-  document.getElementById('fin-roi').textContent = investment.roi_years != null ? `${investment.roi_years.toFixed(2)} 年` : 'N/A';
-  document.getElementById('fin-cf').textContent = `${Math.round(investment.cum_cf_wan)} 万元`;
-  document.getElementById('op-daily-arb').textContent = `${investment.daily_arbitrage_yuan.toFixed(0)} 元`;
-  document.getElementById('op-annual-arb').textContent = `${investment.annual_arbitrage_wan.toFixed(1)} 万元`;
-  document.getElementById('op-charge').textContent = `${investment.total_charge_kwh.toFixed(0)} kWh`;
-  document.getElementById('op-annual-charge').textContent = `${investment.annual_charge_mwh.toFixed(1)} MWh`;
-  document.getElementById('op-discharge').textContent = `${investment.total_discharge_kwh.toFixed(0)} kWh`;
-  document.getElementById('op-annual-discharge').textContent = `${investment.annual_discharge_mwh.toFixed(1)} MWh`;
-  document.getElementById('op-cycles').textContent = `${investment.equivalent_cycles.toFixed(2)} 次`;
-  document.getElementById('op-annual-cycles').textContent = `${investment.annual_cycles.toFixed(0)} 次`;
+  // 光出投资分析 - 储能
+  document.getElementById('ess-fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
+  document.getElementById('ess-fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(2)}%` : 'N/A';
+  document.getElementById('ess-fin-roi').textContent = investment.roi_years != null ? `${investment.roi_years.toFixed(2)} 年` : 'N/A';
+  document.getElementById('ess-fin-cf').textContent = `${Math.round(investment.cum_cf_wan)} 万元`;
+  document.getElementById('ess-op-daily-arb').textContent = `${investment.daily_arbitrage_yuan.toFixed(0)} 元`;
+  document.getElementById('ess-op-annual-arb').textContent = `${investment.annual_arbitrage_wan.toFixed(1)} 万元`;
+  document.getElementById('ess-op-charge').textContent = `${investment.total_charge_kwh.toFixed(0)} kWh`;
+  document.getElementById('ess-op-annual-charge').textContent = `${investment.annual_charge_mwh.toFixed(1)} MWh`;
+  document.getElementById('ess-op-discharge').textContent = `${investment.total_discharge_kwh.toFixed(0)} kWh`;
+  document.getElementById('ess-op-annual-discharge').textContent = `${investment.annual_discharge_mwh.toFixed(1)} MWh`;
+  document.getElementById('ess-op-cycles').textContent = `${investment.equivalent_cycles.toFixed(2)} 次`;
+  document.getElementById('ess-op-annual-cycles').textContent = `${investment.annual_cycles.toFixed(0)} 次`;
+  // 光出投资分析 - 光伏（暂用占位值）
+  document.getElementById('pv-fin-total').textContent = '--';
+  document.getElementById('pv-fin-irr').textContent = '--';
+  document.getElementById('pv-fin-roi').textContent = '--';
+  document.getElementById('pv-fin-cf').textContent = '--';
+  document.getElementById('pv-op-daily-out').textContent = '--';
+  document.getElementById('pv-op-annual-out').textContent = '--';
+  document.getElementById('pv-op-daily-self').textContent = '--';
+  document.getElementById('pv-op-annual-self').textContent = '--';
+  document.getElementById('pv-op-gen').textContent = '--';
+  document.getElementById('pv-op-annual-gen').textContent = '--';
+  document.getElementById('pv-op-self-rate').textContent = '--';
+  document.getElementById('pv-op-annual-self-rate').textContent = '--';
+  // tab 状态
+  updateInvTabs(overview.ess_cap_mwh || 0, overview.pv_cap_kw || 0);
 
-  // 7. ECharts 调度曲线
+  // ECharts 调度曲线
   renderDispatchChart(time_series);
+  // 多方收益图表
+  renderWelfareCharts(time_series);
+  // 能量流动图
+  updateFlowDiagram(overview);
 }
 
 function renderMiniBars(id, items) {
@@ -509,7 +753,7 @@ function renderDispatchChart(ts) {
       type: 'category',
       data: ts.hours.map(h => `${h}:00`),
       axisLine: { lineStyle: { color: '#2e3446' } },
-      axisLabel: { color: '#7a8298', fontSize: 10 },
+      axisLabel: { color: '#7a8298', fontSize: 10, interval: 0 },
     },
     yAxis: [
       {
@@ -538,7 +782,7 @@ function renderDispatchChart(ts) {
         data: ts.load_real,
         smooth: true,
         symbol: 'none',
-        lineStyle: { color: '#b0b8c8', width: 2 },
+        lineStyle: { color: '#b0b8c8', width: 0.5 },
         areaStyle: { color: 'rgba(176,184,200,0.08)' },
       },
       {
@@ -547,7 +791,7 @@ function renderDispatchChart(ts) {
         data: ts.load_ess,
         smooth: true,
         symbol: 'none',
-        lineStyle: { color: '#5ea3ff', width: 2 },
+        lineStyle: { color: '#5ea3ff', width: 0.5 },
         areaStyle: { color: 'rgba(94,163,255,0.12)' },
       },
       {
@@ -557,7 +801,7 @@ function renderDispatchChart(ts) {
         data: ts.soc,
         smooth: true,
         symbol: 'none',
-        lineStyle: { color: '#34d399', width: 2, type: 'dashed' },
+        lineStyle: { color: '#34d399', width: 0.5, type: 'dashed' },
       },
     ],
   });
@@ -566,26 +810,428 @@ function renderDispatchChart(ts) {
   window.addEventListener('resize', () => dispatchChart && dispatchChart.resize());
 }
 
+// ============ 能量流动图 ============
+function updateFlowDiagram(overview) {
+  const essActive = (overview.ess_cap_mwh || 0) > 0;
+  const pvActive = (overview.pv_cap_kw || 0) > 0;
+  const wrap = document.querySelector('.architecture-image-wrap');
+  if (!essActive && !pvActive) {
+    wrap.classList.add('flow-dim');
+  } else {
+    wrap.classList.remove('flow-dim');
+  }
+  const essNode = document.getElementById('flow-ess');
+  const pvNode = document.getElementById('flow-pv');
+  const pvText = document.getElementById('flow-pv-text');
+  const flexNode = document.getElementById('flow-load-flex');
+  const flexText = document.getElementById('flow-flex-text');
+  if (essNode) essNode.style.opacity = essActive ? '1' : '.25';
+  if (pvNode) pvNode.style.opacity = pvActive ? '1' : '.35';
+  if (pvText) pvText.setAttribute('fill', pvActive ? '#34d399' : '#6b7280');
+  if (flexNode) flexNode.style.opacity = '.35';
+  if (flexText) flexText.setAttribute('fill', '#6b7280');
+}
+
+// ============ 多方收益图表 ============
+let chartUserPrice = null, chartEssPower = null, chartPriceCurve = null;
+
+const chartTooltip = { trigger: 'axis', backgroundColor: '#1e2330', borderColor: '#2e3446', textStyle: { color: '#f0f2f5', fontSize: 11 } };
+const chartGrid = { left: 46, right: 46, top: 30, bottom: 20 };
+const axisStyle = { axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } };
+
+function renderWelfareCharts(ts) {
+  const hours = ts.hours.map(h => `${h}`);
+  // mock 数据（API 无数据时使用）
+  const mockPriceUser = Array.from({length:24},(_,i)=>{
+    const base=0.45;const peak=Math.sin((i-6)*Math.PI/12)*0.35;
+    return +(base+(i>=8&&i<=21?peak:(i>=0&&i<=6?-0.15:0))).toFixed(4);
+  });
+  const mockPriceDa = Array.from({length:24},(_,i)=>{
+    const base=0.35;const wave=Math.sin((i-5)*Math.PI/13)*0.25;
+    return +(base+(i>=7&&i<=20?wave:(i<=5?-0.1:0))).toFixed(4);
+  });
+  const mockPriceRt = mockPriceDa.map((v,i)=>+(v+(Math.sin(i*1.5)*0.05-0.02)).toFixed(4));
+
+  // 1. 用户侧购电电价曲线
+  if (chartUserPrice) chartUserPrice.dispose();
+  chartUserPrice = echarts.init(document.getElementById('chart-user-price'));
+  chartUserPrice.setOption({
+    tooltip: chartTooltip,
+    grid: chartGrid,
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
+    series: [{
+      name: '用户侧电价', type: 'line', data: (ts.price_user && ts.price_user.length ? ts.price_user : mockPriceUser),
+      smooth: true, symbol: 'none',
+      lineStyle: { color: '#f0c040', width: 0.5 },
+      areaStyle: { color: 'rgba(240,192,64,0.10)' },
+    }],
+  });
+
+  // 2. 储能功率 + SOC
+  if (chartEssPower) chartEssPower.dispose();
+  chartEssPower = echarts.init(document.getElementById('chart-ess-power'));
+  chartEssPower.setOption({
+    tooltip: chartTooltip,
+    legend: { data: ['储能功率', 'SOC'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
+    grid: { left: 46, right: 46, top: 30, bottom: 20 },
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: [
+      { type: 'value', name: 'kW', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
+      { type: 'value', name: 'SOC %', nameTextStyle: { color: '#7a8298', fontSize: 8 }, min: 0, max: 100, axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8 }, splitLine: { show: false } },
+    ],
+    series: [
+      { name: '储能功率', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: '#5ea3ff', width: 0.5 }, areaStyle: { color: 'rgba(94,163,255,0.10)' } },
+      { name: 'SOC', type: 'line', yAxisIndex: 1, data: (ts.soc || []).map(v => v * 100), smooth: true, symbol: 'none', lineStyle: { color: '#34d399', width: 0.5, type: 'dashed' } },
+    ],
+  });
+
+  // 3. 日前电价 + 实时电价
+  if (chartPriceCurve) chartPriceCurve.dispose();
+  chartPriceCurve = echarts.init(document.getElementById('chart-price-curve'));
+  chartPriceCurve.setOption({
+    tooltip: chartTooltip,
+    legend: { data: ['日前电价', '实时电价'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
+    grid: chartGrid,
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
+    series: [
+      { name: '日前电价', type: 'line', data: (ts.price_da && ts.price_da.length ? ts.price_da : mockPriceDa), smooth: true, symbol: 'none', lineStyle: { color: '#a78bfa', width: 0.5 } },
+      { name: '实时电价', type: 'line', data: (ts.price_rt && ts.price_rt.length ? ts.price_rt : mockPriceRt), smooth: true, symbol: 'none', lineStyle: { color: '#f87171', width: 0.5, type: 'dashed' } },
+    ],
+  });
+
+  window.addEventListener('resize', () => {
+    chartUserPrice && chartUserPrice.resize();
+    chartEssPower && chartEssPower.resize();
+    chartPriceCurve && chartPriceCurve.resize();
+  });
+}
+
+// ============ 缺省参数页面 ============
+let globalParamsData = null;
+let currentPanel = null;
+
+// 占位面板模板
+function placeholderHTML(title) {
+  return `<div class="params-placeholder"><div style="text-align:center;color:var(--text-3)"><div style="font-size:16px;margin-bottom:8px">${title}</div><div style="font-size:var(--fs-12)">待实现</div></div></div>`;
+}
+
+// 表格面板模板
+function tablePanelHTML(title, headers, rows) {
+  return `<div class="params-section"><div class="params-section-hd">${title}</div><div style="overflow-x:auto"><table class="data-table"><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table></div></div>`;
+}
+
+// 参数表单面板模板
+function formPanelHTML(title, fields) {
+  return `<div class="params-section"><div class="params-section-hd">${title}</div><div class="params-grid cols-3">${fields.map(f=>`<div class="params-field"><label>${f.label}</label><input type="number" id="${f.id}" step="${f.step||1}" value="${f.value||''}"></div>`).join('')}</div></div>`;
+}
+
+// 渲染各面板内容
+async function renderPanelContent(panelId) {
+  const d = globalParamsData;
+  const panel = document.getElementById('panel-' + panelId);
+  if (!d) {
+    panel.innerHTML = '<div class="params-placeholder"><div style="color:var(--danger);font-size:var(--fs-14)">参数数据未加载，请刷新页面重试</div></div>';
+    return;
+  }
+
+  switch(panelId) {
+    case 'ess':
+      panel.innerHTML = formPanelHTML('储能系统参数', [
+        {label:'额定容量 (kWh)', id:'gp-cap-rated', step:100, value:d.ess.cap_rated},
+        {label:'充放电倍率', id:'gp-c-rate', step:0.1, value:d.ess.c_rate},
+        {label:'往返效率', id:'gp-eta', step:0.01, value:d.ess.eta_roundtrip},
+        {label:'SOC 下限', id:'gp-soc-min', step:0.05, value:d.ess.soc_min},
+        {label:'SOC 上限', id:'gp-soc-max', step:0.05, value:d.ess.soc_max},
+        {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost},
+        {label:'年运维比例', id:'gp-r-om', step:0.001, value:d.ess.r_om},
+        {label:'设计寿命 (年)', id:'gp-design-life', step:1, value:d.ess.design_life},
+        {label:'年衰减率', id:'gp-r-degrade', step:0.005, value:d.ess.r_degrade},
+      ]) + formPanelHTML('财务参数', [
+        {label:'折现率', id:'gp-r-discount', step:0.01, value:d.financial.r_discount||0.06},
+        {label:'用户分成 B1', id:'gp-r-user-b1', step:0.05, value:d.financial.r_user_b1||0.3},
+        {label:'用户分成 B2', id:'gp-r-user-b2', step:0.05, value:d.financial.r_user_b2||0.5},
+        {label:'用户分成 B3', id:'gp-r-user-b3', step:0.05, value:d.financial.r_user_b3||0.4},
+      ]);
+      break;
+    case 'pv':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">光伏参数</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+        光伏模块尚未建模，以下为预留参数框架：<br><br>
+        <b style="color:var(--text-1)">基本参数</b><br>
+        · 额定装机容量 (kWp)<br>
+        · 组件类型（单晶/多晶/薄膜）<br>
+        · 逆变器效率<br>
+        · 安装倾角 / 方位角<br><br>
+        <b style="color:var(--text-1)">出力特性</b><br>
+        · 辐照度-出力曲线<br>
+        · 温度衰减系数<br>
+        · 灰尘遮挡损耗<br><br>
+        <b style="color:var(--text-1)">经济参数</b><br>
+        · 单位造价 (元/Wp)<br>
+        · 年运维比例<br>
+        · 设计寿命<br>
+        · 年衰减率<br><br>
+        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要光伏出力模型和辐照度数据支撑</div>
+      </div></div>`;
+      break;
+    case 'contract':
+      try {
+        const ct = await api('/params/contract-position');
+        panel.innerHTML = tablePanelHTML('中长期量价曲线',
+          ['时段','合约电量 (kWh)','合约电价 (元/kWh)','P_ref (元/kWh)','阻塞费 (元)'],
+          ct.map(r=>[r.hour+':00', r.q_contract_kwh, r.p_contract_yuan_per_kwh, r.p_ref_yuan_per_kwh, r.c_lt_block_yuan])
+        );
+      } catch(e) { panel.innerHTML = placeholderHTML('中长期量价曲线 — 加载失败'); }
+      break;
+    case 'dayahead':
+      try {
+        const da = await api('/params/dayahead-position');
+        panel.innerHTML = tablePanelHTML('日前节点电价',
+          ['时段','申报电量 (kWh)','出清电量 (kWh)'],
+          da.map(r=>[r.hour+':00', r.q_dayahead_kwh, r.q_dayahead_cleared_kwh])
+        );
+      } catch(e) { panel.innerHTML = placeholderHTML('日前节点电价 — 加载失败'); }
+      break;
+    case 'realtime':
+      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">实时节点电价</div><div id="rt-price-chart" style="height:300px"></div></div>';
+      renderRealtimeChart();
+      break;
+    case 'pricing-mode':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电价模式选择</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+        <b style="color:var(--text-1)">M1 行政分时</b> — 政府核定的峰谷平电价，固定时段划分<br>
+        <b style="color:var(--text-1)">M2 江苏模式</b> — 基础电价 × 时段系数（峰/平/谷）<br>
+        <b style="color:var(--text-1)">M3 合同分时</b> — 售电公司与用户签订的合同电价<br>
+        <b style="color:var(--text-1)">M4 现货联动</b> — 电价与电力市场日前价格联动<br>
+        <b style="color:var(--text-1)">M5 一口价</b> — 固定单价，不区分时段
+      </div></div>`;
+      break;
+    case 'tariff-admin':
+      panel.innerHTML = tablePanelHTML('行政分时电价',
+        ['时段','起始','结束','电价 (元/kWh)'],
+        d.tariff_admin.map(r=>[r.period, r.start+':00', r.end+':00', r.price])
+      );
+      break;
+    case 'tariff-contract':
+      panel.innerHTML = tablePanelHTML('合同分时电价',
+        ['时段','起始','结束','电价 (元/kWh)'],
+        d.tariff_contract.map(r=>[r.period, r.start+':00', r.end+':00', r.price])
+      );
+      break;
+    case 'tariff-flat':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">固定价格</div><div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.55}"></div></div></div>`;
+      break;
+    case 'tariff-spot':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>price_henan.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
+      renderSpotPriceChart();
+      break;
+    case 'load-curve':
+      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">用户净负荷曲线</div><div id="load-curve-chart" style="height:300px"></div></div>';
+      renderLoadCurveChart();
+      break;
+    case 'pv-curve':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">光伏发电功率曲线</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+        光伏发电功率曲线用于计算光伏出力随时间的变化，典型形状为倒抛物线（白天高、夜间为零）。<br><br>
+        <b style="color:var(--text-1)">数据需求</b><br>
+        · 逐时辐照度数据（kW/m²）<br>
+        · 组件效率曲线<br>
+        · 温度修正系数<br><br>
+        <b style="color:var(--text-1)">典型日发电曲线特征</b><br>
+        · 0:00~6:00 — 出力为零（夜间）<br>
+        · 6:00~10:00 — 逐渐上升（日出）<br>
+        · 10:00~14:00 — 峰值区间（正午）<br>
+        · 14:00~18:00 — 逐渐下降（日落）<br>
+        · 18:00~24:00 — 出力为零（夜间）<br><br>
+        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要辐照度数据源</div>
+      </div></div>`;
+      break;
+    case 'wholesale':
+      panel.innerHTML = formPanelHTML('批发侧结算配置', [
+        {label:'月度外生费用 (元)', id:'gp-pm-const', step:100, value:d.wholesale.purchase_monthly_constant_yuan||0},
+        {label:'广西月度调平 (元)', id:'gp-gx-smooth', step:50, value:d.wholesale.guangxi_month_smooth_yuan||0},
+        {label:'山西批发附加 (元)', id:'gp-sx-addon', step:50, value:d.wholesale.shanxi_wholesale_addon_yuan||0},
+      ]) + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">结算模式配置</div><div class="params-grid cols-2"><div class="params-field"><label>市场区域</label><input type="text" value="${d.wholesale.market_region_code}" disabled></div><div class="params-field"><label>结算模式</label><input type="text" value="${d.wholesale.settlement_mode}" disabled></div><div class="params-field"><label>时间粒度</label><input type="text" value="${d.wholesale.time_granularity}" disabled></div><div class="params-field"><label>合约曲线</label><input type="text" value="${d.wholesale.contract_curve_profile}" disabled></div></div></div>`;
+      break;
+    case 'pv-biz':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">光伏商业模式</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+        光伏商业模式定义光伏资产的归属、收益分配和并网方式。<br><br>
+        <b style="color:var(--text-1)">资产归属模式</b><br>
+        · <b>自建自用</b> — 用户投资建设，自发自用余电上网<br>
+        · <b>EMC 合同能源管理</b> — 第三方投资，用户按折扣电价购电<br>
+        · <b>屋顶租赁</b> — 租用用户屋顶，光伏运营商独立运营<br><br>
+        <b style="color:var(--text-1)">收益分配</b><br>
+        · 自用节省电费（按用户侧电价计算）<br>
+        · 余电上网收益（按上网电价计算）<br>
+        · 需量电费节约（降低最大需量）<br><br>
+        <b style="color:var(--text-1)">与储能的协同</b><br>
+        · 光储联合调度：光伏余量优先充储<br>
+        · 储能削峰填谷配合光伏出力波动<br><br>
+        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要光伏模块和电价模型完善</div>
+      </div></div>`;
+      break;
+    case 'ess-biz':
+      panel.innerHTML = formPanelHTML('储能商业模式', [
+        {label:'折现率', id:'gp-r-discount', step:0.01, value:d.financial.r_discount||0.06},
+        {label:'用户分成 B1 (用户+储能)', id:'gp-r-user-b1', step:0.05, value:d.financial.r_user_b1||0.3},
+        {label:'用户分成 B2 (售电公司)', id:'gp-r-user-b2', step:0.05, value:d.financial.r_user_b2||0.5},
+        {label:'用户分成 B3 (储售一体)', id:'gp-r-user-b3', step:0.05, value:d.financial.r_user_b3||0.4},
+      ]);
+      break;
+    case 'biz-note':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">其他模式说明</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+        <b style="color:var(--text-1)">B1 用户+储能</b> — 用户拥有储能，直接获取套利收益<br>
+        <b style="color:var(--text-1)">B2a 售电公司最优</b> — 售电公司控制储能调度，最大化自身利润<br>
+        <b style="color:var(--text-1)">B2b 储能运营商最优</b> — 储能运营商独立运营，最大化储能收益<br>
+        <b style="color:var(--text-1)">B2c 用户最优</b> — 以用户侧成本最小化为目标<br>
+        <b style="color:var(--text-1)">B3a 储售一体最优</b> — 售电公司同时运营储能，联合优化<br>
+        <b style="color:var(--text-1)">B3b 用户最优(储售一体)</b> — 储售一体模式下以用户利益为主<br>
+        <b style="color:var(--text-1)">B4 总社会福利最高</b> — 最大化用户+售电+储能三方总收益
+      </div></div>`;
+      break;
+  }
+  bindDirtyTracking();
+}
+
+// 实时电价图表
+function renderRealtimeChart() {
+  const el = document.getElementById('rt-price-chart');
+  if (!el) return;
+  const chart = echarts.init(el);
+  chart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    legend:{data:['日前电价','实时电价'],textStyle:{color:'#b0b8c8',fontSize:8},top:0},
+    grid:{left:46,right:46,top:30,bottom:20},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
+    yAxis:{type:'value',name:'元/kWh',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[
+      {name:'日前电价',type:'line',data:Array.from({length:24},(_,i)=>+(0.35+Math.sin((i-5)*Math.PI/13)*0.25).toFixed(4)),smooth:true,symbol:'none',lineStyle:{color:'#a78bfa',width:0.5}},
+      {name:'实时电价',type:'line',data:Array.from({length:24},(_,i)=>+(0.33+Math.sin((i-5)*Math.PI/13)*0.25+Math.sin(i*1.5)*0.05).toFixed(4)),smooth:true,symbol:'none',lineStyle:{color:'#f87171',width:0.5,type:'dashed'}},
+    ],
+  });
+  window.addEventListener('resize',()=>chart.resize());
+}
+
+// 现货价格图表
+function renderSpotPriceChart() {
+  const el = document.getElementById('spot-price-chart');
+  if (!el) return;
+  const chart = echarts.init(el);
+  const mockDa = Array.from({length:24},(_,i)=>+(0.35+Math.sin((i-5)*Math.PI/13)*0.25).toFixed(4));
+  chart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    grid:{left:46,right:46,top:20,bottom:20},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
+    yAxis:{type:'value',name:'元/kWh',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{name:'日前均价',type:'line',data:mockDa,smooth:true,symbol:'none',lineStyle:{color:'#a78bfa',width:0.5},areaStyle:{color:'rgba(167,139,250,0.10)'}}],
+  });
+  window.addEventListener('resize',()=>chart.resize());
+}
+
+// 负荷曲线图表
+function renderLoadCurveChart() {
+  const el = document.getElementById('load-curve-chart');
+  if (!el) return;
+  const chart = echarts.init(el);
+  const mockLoad = [120,110,105,100,105,130,200,350,420,450,460,440,420,400,380,360,380,420,480,500,460,380,280,180];
+  chart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    grid:{left:46,right:46,top:20,bottom:20},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
+    yAxis:{type:'value',name:'kW',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{name:'净负荷',type:'line',data:mockLoad,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:0.5},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
+  });
+  window.addEventListener('resize',()=>chart.resize());
+}
+
+// 菜单切换
+let paramsMenuInited = false;
+function initParamsMenu() {
+  if (paramsMenuInited) return;
+  paramsMenuInited = true;
+  document.querySelectorAll('.params-menu-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      if (!globalParamsData) { await loadGlobalParams(); }
+      document.querySelectorAll('.params-menu-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const panelId = item.dataset.panel;
+      document.querySelectorAll('.params-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('params-default-hint').style.display = 'none';
+      const panel = document.getElementById('panel-' + panelId);
+      panel.classList.add('active');
+      currentPanel = panelId;
+      await renderPanelContent(panelId);
+    });
+  });
+}
+
+// 加载数据
+async function loadGlobalParams() {
+  try {
+    globalParamsData = await api('/global-params');
+    paramsDirty = false;
+    console.log('Global params loaded:', globalParamsData);
+  } catch (e) {
+    console.error('Failed to load global params:', e);
+    alert('加载全局参数失败: ' + e.message);
+  }
+}
+
 // ============ 导航 ============
+let paramsDirty = false;
+
+function markParamsDirty() { paramsDirty = true; }
+
+function bindDirtyTracking() {
+  document.querySelectorAll('#params-content input, #params-content select').forEach(el => {
+    el.addEventListener('change', markParamsDirty);
+    el.addEventListener('input', markParamsDirty);
+  });
+}
+
+// 覆盖 renderPanelContent，在渲染后绑定 dirty tracking
+const _origRenderPanel = typeof renderPanelContent === 'function' ? renderPanelContent : null;
+
 document.querySelectorAll('.top-nav-item[data-page]').forEach(item => {
   item.addEventListener('click', () => {
     const page = item.dataset.page;
+    // dirty check
+    if (currentPage === 'params' && paramsDirty) {
+      if (!confirm('当前修改未保存，切换后将丢失。是否继续？')) return;
+      paramsDirty = false;
+    }
+    currentPage = page;
     document.querySelectorAll('.top-nav-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
     document.querySelectorAll('.page-wrap').forEach(p => p.classList.remove('active'));
     document.getElementById(`page-${page}`).classList.add('active');
+    // 加载按钮状态
+    const btnLoad = document.querySelector('.topbar-actions .btn');
+    if (btnLoad) btnLoad.disabled = (page === 'params');
+    if (page === 'params') { loadGlobalParams(); initParamsMenu(); }
   });
 });
 
+let currentPage = 'analysis';
+
 function loadScenarios() { init(); }
 function saveScenario() { alert('保存方案功能待实现'); }
-function resetParams() { if (state.scenarios.length > 0) selectScenario(state.scenarios[0].id); }
+function resetParams() {
+  if (currentPage === 'params') {
+    if (!confirm('这会将当前页面所有参数重置为系统初始值，但您已录入的自定义数据不会被删除。是否确定？')) return;
+    paramsDirty = false;
+    loadGlobalParams().then(() => {
+      if (currentPanel) renderPanelContent(currentPanel);
+    });
+  } else {
+    if (state.scenarios.length > 0) selectScenario(state.scenarios[0].id);
+  }
+}
 
 // ============ 参数变化监听 ============
 document.querySelectorAll('.param-select').forEach(sel => {
   sel.addEventListener('change', () => {
     const tagCalc = document.getElementById('tag-calc');
-    tagCalc.textContent = '未计算';
+    tagCalc.textContent = '参数已修改';
     tagCalc.classList.remove('done');
   });
 });

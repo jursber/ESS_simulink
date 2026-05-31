@@ -108,3 +108,8 @@ class DispatchResult:
     payback_years: float = 0.0
     equivalent_cycles: float = 0.0
     daily_arbitrage: float = 0.0
+
+    # 电价曲线（用于前端图表）
+    P_user_curve: list[float] = field(default_factory=lambda: [0.0] * 24)
+    P_da_curve: list[float] = field(default_factory=lambda: [0.0] * 24)
+    P_rt_curve: list[float] = field(default_factory=lambda: [0.0] * 24)

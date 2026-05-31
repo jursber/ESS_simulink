@@ -279,6 +279,11 @@ def run_dispatch(
     total_discharge = sum(max(0, load_ESS[h]) for h in range(24))
     result.equivalent_cycles = total_discharge / params.cap_rated
 
+    # 9. 电价曲线（供前端图表使用）
+    result.P_user_curve = P_user
+    result.P_da_curve = P_da
+    result.P_rt_curve = P_rt
+
     return result
 
 
