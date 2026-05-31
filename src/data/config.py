@@ -48,8 +48,11 @@ class ConfigLoader:
             v = r['value']
             if k in ('design_life', 'cycle_life'):
                 row[k] = int(v)
-            elif k in ('degrade_enabled', 'cycle_enabled'):
-                row[k] = bool(int(v))
+            elif k in ('degrade_enabled', 'cycle_enabled', 'r_ess_share'):
+                if k in ('degrade_enabled', 'cycle_enabled'):
+                    row[k] = bool(int(v))
+                else:
+                    row[k] = float(v)
             else:
                 row[k] = float(v)
         return ESSParams(
@@ -66,6 +69,7 @@ class ConfigLoader:
             cycle_enabled=row.get('cycle_enabled', False),
             unit_cost=row.get('unit_cost', 0.9),
             r_om=row.get('r_om', 0.01),
+            r_ess_share=row.get('r_ess_share', 0.20),
         )
 
     @staticmethod
@@ -87,6 +91,7 @@ class ConfigLoader:
             ("cycle_enabled", int(params.cycle_enabled), "-", "true"),
             ("unit_cost", params.unit_cost, "元/Wh", "true"),
             ("r_om", params.r_om, "-", "true"),
+            ("r_ess_share", params.r_ess_share, "-", "true"),
         ]
         df = pd.DataFrame(rows, columns=["param", "value", "unit", "editable"])
         df.to_csv(path, index=False, encoding="utf-8-sig")
@@ -99,8 +104,9 @@ class ConfigLoader:
         path = CONFIG_DIR / "pv_defaults.csv"
         if not path.exists():
             return {
-                "cap_rated": 1.0, "unit_cost": 3.5, "r_om": 0.015,
-                "design_life": 25, "r_degrade": 0.005,
+                "cap_rated": 1.0, "feed_in_tariff": 0.4, "self_use_discount": 0.80,
+                "unit_cost": 3.5, "r_om": 0.015,
+                "design_life": 25, "r_degrade_first": 0.02, "r_degrade": 0.005,
                 "region": "jiangsu", "curve_type": "annual_avg",
             }
         df = pd.read_csv(path)

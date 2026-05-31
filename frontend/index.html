@@ -95,14 +95,38 @@
                         <text x="416" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
                       </svg>
                     </div>
-                    <div class="kv-grid overview-info" style="grid-template-columns:1fr;gap:0;align-content:start">
-                        <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能日均充放次数</span><span class="v" id="op-cycles-day">1.2<span class="u">次/日</span></span></div>
-                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">📉</span>单次最大放电深度</span><span class="v" id="op-dod-max">83%<span class="u">(1.7h)</span></span></div>
-                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">📊</span>单次最小放电深度</span><span class="v" id="op-dod-min">22%<span class="u">(0.3h)</span></span></div>
-                        <div class="kv-row" style="margin-top:18px"><span class="k"><span class="kv-icon">⚡</span>现货市场峰谷价差</span><span class="v" id="price-spot">333<span class="u">元/MWh</span></span></div>
-                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">💰</span>分时电价峰谷价差</span><span class="v" id="price-tou">712<span class="u">元/MWh</span></span></div>
-                        <div class="kv-row" style="margin-top:7px"><span class="k"><span class="kv-icon">⏰</span>分时电价时段构成</span><span class="v" id="price-struct">2峰2谷</span></div>
-                        <div class="kv-row" style="margin-top:18px"><span class="k"><span class="kv-icon">📈</span>净负荷特征</span><span class="v" id="load-feature">高峰谷差，有尖峰负荷</span></div>
+                    <!-- 区域2.2: 各方经济性评价 -->
+                    <div class="econ-card" id="econ-card">
+                      <div class="econ-title">当前模式下各方经济性</div>
+                      <div class="econ-group">
+                        <div class="econ-row" id="econ-user"><span class="econ-subject">终端用户</span><span class="econ-val" id="econ-val-user">--</span><span class="econ-badge" id="econ-badge-user">--</span></div>
+                        <div class="econ-metric-label">度电收益</div>
+                      </div>
+                      <div class="econ-group">
+                        <div class="econ-row" id="econ-ess"><span class="econ-subject">储能投资</span><span class="econ-val" id="econ-val-ess">--</span><span class="econ-badge" id="econ-badge-ess">--</span></div>
+                        <div class="econ-metric-label">内部收益率</div>
+                      </div>
+                      <div class="econ-group">
+                        <div class="econ-row" id="econ-pv"><span class="econ-subject">光伏投资</span><span class="econ-val" id="econ-val-pv">--</span><span class="econ-badge" id="econ-badge-pv">--</span></div>
+                        <div class="econ-metric-label">内部收益率</div>
+                      </div>
+                      <div class="econ-group">
+                        <div class="econ-row" id="econ-retail"><span class="econ-subject">售电公司</span><span class="econ-val" id="econ-val-retail">--</span><span class="econ-badge" id="econ-badge-retail">--</span></div>
+                        <div class="econ-metric-label">度电盈利</div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 区域3: 运营状态标签 -->
+                  <div class="op-status-strip">
+                    <div class="op-status-row">
+                      <div class="op-tag"><span class="op-tag-icon">🔄</span><span class="op-tag-lbl">储能日均充放次数</span><span class="op-tag-val" id="op-cycles-day">--</span></div>
+                      <div class="op-tag"><span class="op-tag-icon">📉</span><span class="op-tag-lbl">单次最大放电深度</span><span class="op-tag-val" id="op-dod-max">--</span></div>
+                      <div class="op-tag"><span class="op-tag-icon">📊</span><span class="op-tag-lbl">单次最小放电深度</span><span class="op-tag-val" id="op-dod-min">--</span></div>
+                    </div>
+                    <div class="op-status-row">
+                      <div class="op-tag"><span class="op-tag-icon">☀️</span><span class="op-tag-lbl">光伏本地消纳率</span><span class="op-tag-val" id="op-pv-self-rate">--</span></div>
+                      <div class="op-tag"><span class="op-tag-icon">⏱</span><span class="op-tag-lbl">光伏年利用小时数</span><span class="op-tag-val" id="op-pv-util-hours">--</span></div>
+                      <div class="op-tag"><span class="op-tag-icon">📈</span><span class="op-tag-lbl">用户负荷变异系数</span><span class="op-tag-val" id="op-load-cv">--</span></div>
                     </div>
                   </div>
                 </div>
@@ -247,8 +271,8 @@
         <div class="params-menu" id="params-menu">
           <div class="params-menu-group">
             <div class="params-menu-group-hd">能源设施</div>
-            <div class="params-menu-item" data-panel="pv" onclick="App.params.selectPanel('pv')">光伏</div>
-            <div class="params-menu-item" data-panel="ess" onclick="App.params.selectPanel('ess')">储能</div>
+            <div class="params-menu-item" data-panel="pv" onclick="App.params.selectPanel('pv')">光伏参数</div>
+            <div class="params-menu-item" data-panel="ess" onclick="App.params.selectPanel('ess')">储能参数</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电力市场</div>
@@ -258,16 +282,15 @@
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电价信息</div>
-            <div class="params-menu-item" data-panel="pricing-mode" onclick="App.params.selectPanel('pricing-mode')">模式选择</div>
+            <div class="params-menu-item" data-panel="pricing-mode" onclick="App.params.selectPanel('pricing-mode')">模式说明</div>
             <div class="params-menu-item" data-panel="tariff-admin" onclick="App.params.selectPanel('tariff-admin')">行政分时电价</div>
             <div class="params-menu-item" data-panel="tariff-contract" onclick="App.params.selectPanel('tariff-contract')">合同分时电价</div>
             <div class="params-menu-item" data-panel="tariff-flat" onclick="App.params.selectPanel('tariff-flat')">固定价格</div>
             <div class="params-menu-item" data-panel="tariff-spot" onclick="App.params.selectPanel('tariff-spot')">电力市场联动价格</div>
           </div>
           <div class="params-menu-group">
-            <div class="params-menu-group-hd">发用负荷</div>
+            <div class="params-menu-group-hd">用户负荷</div>
             <div class="params-menu-item" data-panel="load-curve" onclick="App.params.selectPanel('load-curve')">用户净负荷曲线</div>
-            <div class="params-menu-item" data-panel="pv-curve" onclick="App.params.selectPanel('pv-curve')">光伏发电功率曲线</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">商业模式</div>
@@ -296,7 +319,6 @@
         <div class="params-panel" id="panel-tariff-flat"></div>
         <div class="params-panel" id="panel-tariff-spot"></div>
         <div class="params-panel" id="panel-load-curve"></div>
-        <div class="params-panel" id="panel-pv-curve"></div>
         <div class="params-panel" id="panel-wholesale"></div>
         <div class="params-panel" id="panel-pv-biz"></div>
         <div class="params-panel" id="panel-ess-biz"></div>
@@ -327,6 +349,9 @@ window.loadGlobalParams = () => App.params?.loadGlobalParams?.();
 window.selectPanel = (id) => App.params?.selectPanel?.(id);
 window.onContractModeChange = () => App.params?.onContractModeChange?.();
 window.onContractCurveChange = () => App.params?.onContractCurveChange?.();
+window.onContractCurveTypeChange = () => App.params?.onContractCurveTypeChange?.();
+window.onTariffAdminCurveChange = () => App.params?.onTariffAdminCurveChange?.();
+window.onTariffContractCurveChange = () => App.params?.onTariffContractCurveChange?.();
 
 // 启动
 init();

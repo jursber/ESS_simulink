@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from api.schemas import (
     CalculateRequest,
     CalculateResponse,
+    EconRating,
     GlobalParamsResponse,
     GlobalParamsUpdate,
     InvestmentData,
@@ -154,6 +155,7 @@ def _build_response(
             annual_discharge_mwh=total_discharge * 365 / 1000,
             equivalent_cycles=result.equivalent_cycles,
             annual_cycles=result.equivalent_cycles * 365,
+            retail_profit_wan=result.retail_profit / 10000 if result.retail_profit else 0,
         ),
     )
 
@@ -250,6 +252,14 @@ def run_calculation(req: CalculateRequest):
     resp.time_series.price_rt = price_rt
     resp.time_series.price_user = list(result.P_user_curve) if hasattr(result, 'P_user_curve') else []
 
+    # 负荷变异系数
+    import numpy as np
+    load_arr = np.array(load_real)
+    resp.load_cv = float(np.std(load_arr) / np.mean(load_arr)) if np.mean(load_arr) > 0 else 0
+
+    # 经济性评级
+    resp.econ_ratings = _compute_econ_ratings(resp, result)
+
     # 缓存结果
     if len(_result_cache) >= CACHE_MAX_SIZE:
         _result_cache.pop(next(iter(_result_cache)))
@@ -295,13 +305,14 @@ def get_global_params():
             "degrade_enabled": ess.degrade_enabled,
             "cycle_life": ess.cycle_life,
             "cycle_enabled": ess.cycle_enabled,
+            "r_ess_share": ess.r_ess_share,
         },
         financial={k: float(v) for k, v in fin.items()},
         wholesale=wcfg.to_flat_dict(),
         tariff_admin=_tariff_to_rows(tariff_admin),
         tariff_contract=_tariff_to_rows(tariff_contract),
         tariff_jiangsu=tariff_jiangsu,
-        flat_price=0.55,
+        flat_price=0.5,
     )
 
 
@@ -327,6 +338,7 @@ def update_global_params(req: GlobalParamsUpdate):
         cycle_enabled=req.ess.get("cycle_enabled", False),
         unit_cost=req.ess.get("unit_cost", 0.9),
         r_om=req.ess.get("r_om", 0.01),
+        r_ess_share=req.ess.get("r_ess_share", 0.20),
     )
     ConfigLoader.save_ess_defaults(ess)
     # 保存财务
@@ -347,6 +359,94 @@ def update_global_params(req: GlobalParamsUpdate):
     )
     ConfigLoader.save_wholesale_settlement(wcfg)
     return {"status": "ok"}
+
+
+def _rate_irr(irr_pct: float) -> str:
+    if irr_pct is None:
+        return "--"
+    if irr_pct <= 0:
+        return "极差"
+    if irr_pct <= 2:
+        return "较差"
+    if irr_pct <= 4:
+        return "差"
+    if irr_pct <= 8:
+        return "达标"
+    if irr_pct <= 12:
+        return "优秀"
+    return "无敌"
+
+
+def _rate_retail(yuan_per_mwh: float) -> str:
+    if yuan_per_mwh < 0:
+        return "极差"
+    if yuan_per_mwh < 1:
+        return "较差"
+    if yuan_per_mwh < 3:
+        return "差"
+    if yuan_per_mwh < 5:
+        return "达标"
+    if yuan_per_mwh < 8:
+        return "优秀"
+    return "无敌"
+
+
+def _rate_user(wan_per_mwh: float) -> str:
+    if wan_per_mwh < 0:
+        return "极差"
+    if wan_per_mwh < 2:
+        return "较差"
+    if wan_per_mwh < 4:
+        return "差"
+    if wan_per_mwh < 7:
+        return "达标"
+    if wan_per_mwh < 10:
+        return "优秀"
+    return "无敌"
+
+
+def _compute_econ_ratings(resp: CalculateResponse, result) -> list[EconRating]:
+    ratings = []
+
+    # 终端用户：万元/MWh储能 = user_savings_wan / ess_cap_mwh
+    ess_mwh = resp.overview.ess_cap_mwh
+    user_wan_per_mwh = resp.welfare.user_savings_wan / ess_mwh if ess_mwh > 0 else 0
+    ratings.append(EconRating(
+        subject="终端用户",
+        metric_label="储能节费(万元/MWh)",
+        value=round(user_wan_per_mwh, 2),
+        rating=_rate_user(user_wan_per_mwh),
+    ))
+
+    # 光伏投资 IRR（暂无数据）
+    ratings.append(EconRating(
+        subject="光伏投资",
+        metric_label="IRR%",
+        value=None,
+        rating="--",
+    ))
+
+    # 储能投资 IRR
+    irr_pct = resp.investment.irr_pct
+    ratings.append(EconRating(
+        subject="储能投资",
+        metric_label="IRR%",
+        value=round(irr_pct, 2) if irr_pct is not None else None,
+        rating=_rate_irr(irr_pct),
+    ))
+
+    # 售电公司：度电收益(元/MWh) = retail_profit / total_discharge_mwh
+    discharge_mwh = resp.investment.annual_discharge_mwh
+    retail_profit_wan = resp.investment.retail_profit_wan or 0
+    retail_per_mwh = (retail_profit_wan * 10000) / (discharge_mwh * 365) if discharge_mwh > 0 else 0
+    ratings.append(EconRating(
+        subject="售电公司",
+        metric_label="度电收益(元/MWh)",
+        value=round(retail_per_mwh, 2),
+        rating=_rate_retail(retail_per_mwh),
+    ))
+
+    return ratings
 
 
 @router.get("/params/contract-position")
@@ -401,11 +501,41 @@ _TOU_PERIODS = [
     {"period": "flat",   "start": 21, "end": 24, "price": 0.58},
 ]
 
+# 预设电价曲线
+_TARIFF_CURVES = {
+    "typical": [
+        {"period": "valley", "start": 0, "end": 8, "price": 0.28},
+        {"period": "peak",   "start": 8, "end": 12, "price": 0.95},
+        {"period": "flat",   "start": 12, "end": 17, "price": 0.58},
+        {"period": "peak",   "start": 17, "end": 21, "price": 0.95},
+        {"period": "flat",   "start": 21, "end": 24, "price": 0.58},
+    ],
+    "midday_valley": [
+        {"period": "valley",      "start": 0, "end": 6, "price": 0.25},
+        {"period": "flat",        "start": 6, "end": 9, "price": 0.50},
+        {"period": "peak",        "start": 9, "end": 12, "price": 0.90},
+        {"period": "deep_valley", "start": 12, "end": 15, "price": 0.15},
+        {"period": "flat",        "start": 15, "end": 18, "price": 0.50},
+        {"period": "peak",        "start": 18, "end": 22, "price": 0.90},
+        {"period": "valley",      "start": 22, "end": 24, "price": 0.25},
+    ],
+    "summer_peak": [
+        {"period": "valley",     "start": 0, "end": 6, "price": 0.30},
+        {"period": "flat",       "start": 6, "end": 8, "price": 0.55},
+        {"period": "peak",       "start": 8, "end": 11, "price": 0.95},
+        {"period": "super_peak", "start": 11, "end": 14, "price": 1.20},
+        {"period": "flat",       "start": 14, "end": 17, "price": 0.55},
+        {"period": "peak",       "start": 17, "end": 21, "price": 0.95},
+        {"period": "valley",     "start": 21, "end": 24, "price": 0.30},
+    ],
+}
 
-def _get_tou_hour_prices() -> list[float]:
+
+def _get_tou_hour_prices(tariff_curve: str = "typical") -> list[float]:
     """返回 24 小时的分时电价（元/kWh）。"""
+    periods = _TARIFF_CURVES.get(tariff_curve, _TOU_PERIODS)
     prices = [0.0] * 24
-    for p in _TOU_PERIODS:
+    for p in periods:
         for h in range(p["start"], p["end"]):
             prices[h] = p["price"]
     return prices
@@ -427,12 +557,14 @@ def _get_system_load() -> list[float]:
 def decompose_contract(
     total_mwh: float,
     curve_type: str,
+    tariff_curve: str = "typical",
 ) -> list[float]:
     """将合约电量按分解曲线分配到 24 小时。
 
     Args:
         total_mwh: 合约总电量（MWh）
         curve_type: 分解曲线类型
+        tariff_curve: 标的分时电价曲线
 
     Returns:
         24 元素列表，每小时合约电量（MWh）
@@ -444,7 +576,7 @@ def decompose_contract(
             return [total_mwh / 24] * 24
         return [total_mwh * v / total_load for v in load]
 
-    prices = _get_tou_hour_prices()
+    prices = _get_tou_hour_prices(tariff_curve)
 
     if curve_type == "D2":
         # 平均分配
@@ -477,10 +609,11 @@ def decompose_contract(
 def get_contract_curve(
     total_mwh: float = 80.0,
     curve_type: str = "D1",
+    tariff_curve: str = "typical",
 ):
     """返回合约电量 24 小时分解结果。"""
-    data = decompose_contract(total_mwh, curve_type)
-    tou_prices = _get_tou_hour_prices()
+    data = decompose_contract(total_mwh, curve_type, tariff_curve)
+    tou_prices = _get_tou_hour_prices(tariff_curve)
     return {
         "total_mwh": total_mwh,
         "curve_type": curve_type,

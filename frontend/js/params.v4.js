@@ -34,7 +34,7 @@ async function renderPanelContent(panelId) {
 
   switch(panelId) {
     case 'ess':
-      panel.innerHTML = formPanelHTML('储能系统参数', [
+      panel.innerHTML = formPanelHTML('储能基本参数', [
         {label:'额定容量 (MWh)', id:'gp-cap-rated', step:0.1, value:(d.ess.cap_rated/1000).toFixed(2)},
         {label:'额定功率 (MW)', id:'gp-power-rated', step:0.1, value:d.ess.power_rated||0.5},
         {label:'往返效率 RTE (%)', id:'gp-eta', step:1, value:((d.ess.eta_roundtrip||0.87)*100).toFixed(0)},
@@ -44,6 +44,7 @@ async function renderPanelContent(panelId) {
         {label:'设计寿命 (年)', id:'gp-design-life', step:1, value:d.ess.design_life||10},
         {label:'储能容量年衰减比例 (%)', id:'gp-r-degrade', step:0.5, value:((d.ess.r_degrade||0.025)*100).toFixed(1), checkbox:{id:'gp-degrade-enabled', checked:d.ess.degrade_enabled}},
         {label:'储能循环次数 (100% DoD)', id:'gp-cycle-life', step:100, value:d.ess.cycle_life||5000, checkbox:{id:'gp-cycle-enabled', checked:d.ess.cycle_enabled}},
+        {label:'储能收益分成比例 (%)', id:'gp-r-ess-share', step:1, value:((d.ess.r_ess_share||0.20)*100).toFixed(0)},
       ]) + formPanelHTML('财务参数', [
         {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost||0.9},
         {label:'年运维支出比例 (%)', id:'gp-r-om', step:0.1, value:((d.ess.r_om||0.01)*100).toFixed(1)},
@@ -66,10 +67,13 @@ async function renderPanelContent(panelId) {
         const curveOpts = (pv.curves[curRegion]||[]).map(c=>`<option value="${c}" ${c===curCurve?'selected':''}>${curveLabels[c]||c}</option>`).join('');
         panel.innerHTML = formPanelHTML('光伏基本参数', [
           {label:'额定装机容量 (kWp)', id:'pv-cap-rated', step:0.1, value:p.cap_rated||1.0},
+          {label:'光伏上网电价 (元/kWh)', id:'pv-feed-in-tariff', step:0.01, value:p.feed_in_tariff||0.4},
+          {label:'光伏消纳折扣 (%)', id:'pv-self-use-discount', step:1, value:((p.self_use_discount||0.80)*100).toFixed(0)},
         ]) + formPanelHTML('光伏经济参数', [
           {label:'单位造价 (元/Wp)', id:'pv-unit-cost', step:0.1, value:p.unit_cost||3.5},
           {label:'年运维费用比例 (%)', id:'pv-r-om', step:0.1, value:((p.r_om||0.015)*100).toFixed(1)},
           {label:'设计寿命 (年)', id:'pv-design-life', step:1, value:p.design_life||25},
+          {label:'首年衰减率 (%)', id:'pv-r-degrade-first', step:0.1, value:((p.r_degrade_first||0.02)*100).toFixed(1)},
           {label:'年衰减率 (%)', id:'pv-r-degrade', step:0.1, value:((p.r_degrade||0.005)*100).toFixed(1)},
         ]) + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">出力特性</div><div class="params-grid cols-2" style="margin-bottom:12px"><div class="params-field"><label>地区</label><select id="pv-region" onchange="onPvCurveChange()">${regionOpts}</select></div><div class="params-field"><label>曲线类型</label><select id="pv-curve-type" onchange="onPvCurveChange()">${curveOpts}</select></div></div><div id="pv-curve-chart" style="height:260px"></div></div>`;
         renderPvCurveChart(pv.curve_data, curRegion, curCurve);
@@ -95,15 +99,21 @@ async function renderPanelContent(panelId) {
               <span style="font-size:var(--fs-12);color:var(--text-3)">合约单价 (元/MWh)</span>
               <input type="number" id="contract-price" value="372" step="1" style="width:100px;background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
             </div>
-            <div style="display:flex;align-items:center;gap:16px">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
               <span style="font-size:var(--fs-12);color:var(--text-3)">分解曲线</span>
-              <select id="contract-curve-type" onchange="onContractCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+              <select id="contract-curve-type" onchange="onContractCurveChange();onContractCurveTypeChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
                 <option value="load">按统调负荷分解</option>
                 <option value="D1" selected>D1：峰平谷</option>
                 <option value="D2">D2：平均</option>
                 <option value="D3">D3：高峰（含尖峰）</option>
                 <option value="D4">D4：平段</option>
                 <option value="D5">D5：谷段（含深谷）</option>
+              </select>
+              <span style="font-size:var(--fs-12);color:var(--text-3)">标的分时电价</span>
+              <select id="contract-target-tariff" onchange="onContractCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+                <option value="typical" selected>典型峰谷平</option>
+                <option value="midday_valley">午间深谷</option>
+                <option value="summer_peak">夏季尖峰</option>
               </select>
             </div>
           </div>
@@ -114,6 +124,7 @@ async function renderPanelContent(panelId) {
 统调负荷分解曲线由后台数据提供，反映系统实际负荷分布。</div>
       </div>`;
       onContractCurveChange();
+      onContractCurveTypeChange();
       break;
     case 'dayahead':
       try {
@@ -129,7 +140,7 @@ async function renderPanelContent(panelId) {
       renderRealtimeChart();
       break;
     case 'pricing-mode':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电价模式选择</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">模式说明</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
         <b style="color:var(--text-1)">M1 行政分时</b> — 政府核定的峰谷平电价，固定时段划分<br>
         <b style="color:var(--text-1)">M2 江苏模式</b> — 基础电价 × 时段系数（峰/平/谷）<br>
         <b style="color:var(--text-1)">M3 合同分时</b> — 售电公司与用户签订的合同电价<br>
@@ -138,26 +149,44 @@ async function renderPanelContent(panelId) {
       </div></div>`;
       break;
     case 'tariff-admin':
-      panel.innerHTML = tablePanelHTML('行政分时电价',
-        ['时段','起始','结束','电价 (元/kWh)'],
-        d.tariff_admin.map(r=>[r.period, r.start+':00', r.end+':00', r.price])
-      );
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">行政分时电价</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
+          <select id="tariff-admin-curve" onchange="onTariffAdminCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+            <option value="typical" selected>典型峰谷平</option>
+            <option value="midday_valley">午间深谷</option>
+            <option value="summer_peak">夏季尖峰</option>
+          </select>
+        </div>
+        <div id="tariff-admin-chart" style="height:280px;margin-bottom:16px"></div>
+        <div id="tariff-admin-table"></div>
+      </div>`;
+      onTariffAdminCurveChange();
       break;
     case 'tariff-contract':
-      panel.innerHTML = tablePanelHTML('合同分时电价',
-        ['时段','起始','结束','电价 (元/kWh)'],
-        d.tariff_contract.map(r=>[r.period, r.start+':00', r.end+':00', r.price])
-      );
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">合同分时电价</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
+          <select id="tariff-contract-curve" onchange="onTariffContractCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+            <option value="typical" selected>典型峰谷平</option>
+            <option value="midday_valley">午间深谷</option>
+            <option value="summer_peak">夏季尖峰</option>
+          </select>
+        </div>
+        <div id="tariff-contract-chart" style="height:280px;margin-bottom:16px"></div>
+        <div id="tariff-contract-table"></div>
+      </div>`;
+      onTariffContractCurveChange();
       break;
     case 'tariff-flat':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">固定价格</div><div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.55}"></div></div></div>`;
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">固定价格</div><div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.5}"></div></div></div>`;
       break;
     case 'tariff-spot':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>price_henan.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
       renderSpotPriceChart();
       break;
     case 'load-curve':
-      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">用户净负荷曲线</div><div id="load-curve-chart" style="height:300px"></div></div>';
+      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">用户负荷曲线</div><div id="load-curve-chart" style="height:300px"></div></div>';
       renderLoadCurveChart();
       break;
     case 'pv-curve':
@@ -323,6 +352,7 @@ function onContractModeChange() {
 async function onContractCurveChange() {
   const mode = document.querySelector('input[name="contract-mode"]:checked').value;
   const curveType = document.getElementById('contract-curve-type').value;
+  const targetTariff = document.getElementById('contract-target-tariff')?.value || 'typical';
   let totalMwh;
   if (mode === 'absolute') {
     totalMwh = parseFloat(document.getElementById('contract-mwh').value) || 80;
@@ -334,7 +364,7 @@ async function onContractCurveChange() {
   }
 
   try {
-    const res = await api(`/params/contract-curve?total_mwh=${totalMwh}&curve_type=${curveType}`);
+    const res = await api(`/params/contract-curve?total_mwh=${totalMwh}&curve_type=${curveType}&tariff_curve=${targetTariff}`);
     renderContractChart(res);
   } catch(e) {
     console.error('Contract curve error:', e);
@@ -394,6 +424,140 @@ function renderContractChart(res) {
     }],
   });
   window.addEventListener('resize', () => contractChart && contractChart.resize());
+}
+
+// --- 电价曲线预设数据 ---
+const TARIFF_CURVES = {
+  typical: {
+    label: '典型峰谷平',
+    periods: [
+      {period:'valley', start:0, end:8, price:0.28, label:'谷段'},
+      {period:'peak',   start:8, end:12, price:0.95, label:'峰段'},
+      {period:'flat',   start:12, end:17, price:0.58, label:'平段'},
+      {period:'peak',   start:17, end:21, price:0.95, label:'峰段'},
+      {period:'flat',   start:21, end:24, price:0.58, label:'平段'},
+    ]
+  },
+  midday_valley: {
+    label: '午间深谷',
+    periods: [
+      {period:'valley', start:0, end:6, price:0.25, label:'谷段'},
+      {period:'flat',   start:6, end:9, price:0.50, label:'平段'},
+      {period:'peak',   start:9, end:12, price:0.90, label:'峰段'},
+      {period:'deep_valley', start:12, end:15, price:0.15, label:'深谷'},
+      {period:'flat',   start:15, end:18, price:0.50, label:'平段'},
+      {period:'peak',   start:18, end:22, price:0.90, label:'峰段'},
+      {period:'valley', start:22, end:24, price:0.25, label:'谷段'},
+    ]
+  },
+  summer_peak: {
+    label: '夏季尖峰',
+    periods: [
+      {period:'valley', start:0, end:6, price:0.30, label:'谷段'},
+      {period:'flat',   start:6, end:8, price:0.55, label:'平段'},
+      {period:'peak',   start:8, end:11, price:0.95, label:'峰段'},
+      {period:'super_peak', start:11, end:14, price:1.20, label:'尖峰'},
+      {period:'flat',   start:14, end:17, price:0.55, label:'平段'},
+      {period:'peak',   start:17, end:21, price:0.95, label:'峰段'},
+      {period:'valley', start:21, end:24, price:0.30, label:'谷段'},
+    ]
+  }
+};
+
+// 将时段数据展开为 24 小时电价数组
+function tariffCurveToHourly(curveKey) {
+  const curve = TARIFF_CURVES[curveKey] || TARIFF_CURVES.typical;
+  const hourly = new Array(24).fill(0);
+  for (const p of curve.periods) {
+    for (let h = p.start; h < p.end; h++) hourly[h] = p.price;
+  }
+  return hourly;
+}
+
+// 行政分时电价柱状图
+function onTariffAdminCurveChange() {
+  const curveKey = document.getElementById('tariff-admin-curve').value;
+  const hourly = tariffCurveToHourly(curveKey);
+  renderTariffBarChart('tariff-admin-chart', hourly, '行政分时电价');
+  const curve = TARIFF_CURVES[curveKey];
+  const tbl = document.getElementById('tariff-admin-table');
+  if (tbl) {
+    tbl.innerHTML = tablePanelHTML('时段明细',
+      ['时段','起始','结束','电价 (元/kWh)'],
+      curve.periods.map(r=>[r.label, r.start+':00', r.end+':00', r.price])
+    );
+  }
+}
+
+// 合同分时电价柱状图
+function onTariffContractCurveChange() {
+  const curveKey = document.getElementById('tariff-contract-curve').value;
+  const hourly = tariffCurveToHourly(curveKey);
+  renderTariffBarChart('tariff-contract-chart', hourly, '合同分时电价');
+  const curve = TARIFF_CURVES[curveKey];
+  const tbl = document.getElementById('tariff-contract-table');
+  if (tbl) {
+    tbl.innerHTML = tablePanelHTML('时段明细',
+      ['时段','起始','结束','电价 (元/kWh)'],
+      curve.periods.map(r=>[r.label, r.start+':00', r.end+':00', r.price])
+    );
+  }
+}
+
+// 中长期分解曲线类型变化 → 控制标的分时电价下拉
+function onContractCurveTypeChange() {
+  const curveType = document.getElementById('contract-curve-type').value;
+  const targetSel = document.getElementById('contract-target-tariff');
+  if (!targetSel) return;
+  targetSel.disabled = (curveType === 'load');
+  targetSel.style.color = (curveType === 'load') ? 'var(--text-3)' : 'var(--text-1)';
+  targetSel.style.opacity = (curveType === 'load') ? '0.5' : '1';
+}
+
+// 通用电价柱状图渲染
+function renderTariffBarChart(containerId, hourly, seriesName) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const chart = echarts.init(el);
+  const colors = hourly.map(p => {
+    if (p >= 0.9) return '#f87171'; // 峰-红
+    if (p >= 0.5) return '#fbbf24'; // 平-黄
+    return '#5ea3ff';               // 谷-蓝
+  });
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e2330',
+      borderColor: '#2e3446',
+      textStyle: { color: '#f0f2f5', fontSize: 11 },
+      formatter: p => `${p[0].name}:00<br/>电价: ${p[0].value} 元/kWh`
+    },
+    grid: { left: 50, right: 30, top: 30, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: Array.from({length:24}, (_,i) => `${i}`),
+      axisLine: { lineStyle: { color: '#2e3446' } },
+      axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 },
+    },
+    yAxis: {
+      type: 'value',
+      name: '元/kWh',
+      nameTextStyle: { color: '#7a8298', fontSize: 8 },
+      axisLine: { lineStyle: { color: '#2e3446' } },
+      axisLabel: { color: '#7a8298', fontSize: 8 },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+    },
+    series: [{
+      name: seriesName,
+      type: 'bar',
+      data: hourly.map((v, i) => ({
+        value: v,
+        itemStyle: { color: colors[i] }
+      })),
+      barWidth: '60%',
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
 }
 
 // 储能指标说明
@@ -464,6 +628,8 @@ App.params = {
   toggleSection, switchTariffTab, onPvCurveChange,
   renderPvCurveChart, appendEssNotes, markParamsDirty, bindDirtyTracking,
   onContractModeChange, onContractCurveChange, renderContractChart,
+  onTariffAdminCurveChange, onTariffContractCurveChange,
+  onContractCurveTypeChange, renderTariffBarChart,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

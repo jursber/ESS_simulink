@@ -198,6 +198,31 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .btn-calc{background:var(--primary);color:#fff;border:none;border-radius:6px;padding:7px 24px;font-size:var(--fs-13);font-weight:var(--fw-semi);cursor:pointer;transition:all .15s;font-family:inherit}
 .btn-calc:hover{background:var(--primary-hover);box-shadow:0 0 14px var(--primary-glow)}
 
+/* 经济性评价卡片 */
+.econ-card{flex:1;flex-shrink:0;display:flex;flex-direction:column;gap:10px;padding:16px 20px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;justify-content:flex-start}
+.econ-title{font-size:var(--fs-13);font-weight:700;color:var(--text-1);text-align:center;margin-bottom:6px;letter-spacing:.05em}
+.econ-group{display:flex;flex-direction:column;gap:2px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:6px;padding:10px 14px}
+.econ-row{display:flex;align-items:center}
+.econ-subject{font-size:var(--fs-13);font-weight:var(--fw-medium);color:var(--text-1);min-width:70px}
+.econ-val{font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-1);flex:1;text-align:center}
+.econ-badge{font-size:var(--fs-12);font-weight:var(--fw-semi);padding:3px 12px;border-radius:4px;min-width:52px;text-align:center}
+.econ-badge.rating-极差{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3)}
+.econ-badge.rating-较差{background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.3)}
+.econ-badge.rating-差{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
+.econ-badge.rating-达标{background:rgba(52,211,153,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.3)}
+.econ-badge.rating-优秀{background:rgba(129,140,248,0.15);color:#818cf8;border:1px solid rgba(129,140,248,0.3)}
+.econ-badge.rating-无敌{background:rgba(251,191,36,0.20);color:#fcd34d;border:1px solid rgba(251,191,36,0.4)}
+.econ-badge.rating-na{background:var(--tag-bg);color:var(--text-3);border:1px solid var(--tag-border)}
+.econ-metric-label{font-size:var(--fs-11);color:var(--text-3);padding-left:2px}
+
+/* 运营状态标签条 */
+.op-status-strip{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.op-status-row{display:flex;gap:10px}
+.op-tag{flex:1;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:6px}
+.op-tag-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.op-tag-lbl{font-size:var(--fs-11);color:var(--text-3);white-space:nowrap}
+.op-tag-val{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);margin-left:auto}
+
 /* 占位页 */
 .p-compare,.p-scenarios,.p-params{flex:1;padding:var(--gap);overflow:auto;display:flex;align-items:center;justify-content:center;color:var(--text-3)}
 

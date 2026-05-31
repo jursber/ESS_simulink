@@ -1,5 +1,37 @@
 // ===== analysis.js =====
 
+// --- 经济性评级 ---
+const RATING_COLORS = {
+  '极差': 'rating-极差',
+  '较差': 'rating-较差',
+  '差': 'rating-差',
+  '达标': 'rating-达标',
+  '优秀': 'rating-优秀',
+  '无敌': 'rating-无敌',
+};
+
+function renderEconRatings(econRatings) {
+  const config = {
+    '终端用户': { val: 'econ-val-user', badge: 'econ-badge-user', suffix: '元/kWh' },
+    '光伏投资': { val: 'econ-val-pv', badge: 'econ-badge-pv', suffix: '%' },
+    '储能投资': { val: 'econ-val-ess', badge: 'econ-badge-ess', suffix: '%' },
+    '售电公司': { val: 'econ-val-retail', badge: 'econ-badge-retail', suffix: '元/MWh' },
+  };
+  econRatings.forEach(r => {
+    const c = config[r.subject];
+    if (!c) return;
+    // 数值
+    const valEl = document.getElementById(c.val);
+    if (valEl) valEl.textContent = r.value != null ? `${r.value}${c.suffix}` : '--';
+    // 等级标签
+    const badgeEl = document.getElementById(c.badge);
+    if (badgeEl) {
+      badgeEl.textContent = r.rating;
+      badgeEl.className = 'econ-badge ' + (RATING_COLORS[r.rating] || 'rating-na');
+    }
+  });
+}
+
 // --- 光储投资分析 tab 切换 ---
 let currentInvTab = 'ess';
 
@@ -131,6 +163,17 @@ function renderResult(r) {
   // tab 状态
   updateInvTabs(overview.ess_cap_mwh || 0, overview.pv_cap_kw || 0);
 
+  // 运营状态标签
+  document.getElementById('op-cycles-day').textContent = investment.equivalent_cycles ? `${investment.equivalent_cycles.toFixed(2)} 次/日` : '--';
+  document.getElementById('op-dod-max').textContent = '--';
+  document.getElementById('op-dod-min').textContent = '--';
+  document.getElementById('op-pv-self-rate').textContent = overview.pv_cap_kw ? '--' : '--';
+  document.getElementById('op-pv-util-hours').textContent = overview.pv_cap_kw ? '--' : '--';
+  document.getElementById('op-load-cv').textContent = r.load_cv != null ? r.load_cv.toFixed(4) : '--';
+
+  // 经济性评级
+  renderEconRatings(r.econ_ratings || []);
+
   // ECharts 调度曲线
   renderDispatchChart(time_series);
   // 多方收益图表
@@ -150,5 +193,5 @@ function renderMiniBars(id, items) {
 }
 
 // --- App 注册 ---
-App.analysis = { switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars };
+App.analysis = { switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings };
 

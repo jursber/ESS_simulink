@@ -39,6 +39,7 @@ class ESSParams:
     cycle_enabled: bool = False       # 启用循环次数约束
     unit_cost: float = 0.9            # 元/Wh（财务参数）
     r_om: float = 0.01                # 年运维支出比例（财务参数）
+    r_ess_share: float = 0.20         # 储能收益分成比例
 
     @property
     def max_power(self) -> float:

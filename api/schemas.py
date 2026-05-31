@@ -55,6 +55,8 @@ class OverviewData(BaseModel):
     initial_invest_wan: float
     eta_pct: float
     design_life: int
+    pv_cap_kw: float = 0
+    flex_load_kw: float = 0
 
 
 class WelfareData(BaseModel):
@@ -89,6 +91,14 @@ class InvestmentData(BaseModel):
     annual_discharge_mwh: float
     equivalent_cycles: float
     annual_cycles: float
+    retail_profit_wan: Optional[float] = None
+
+
+class EconRating(BaseModel):
+    subject: str
+    metric_label: str
+    value: Optional[float] = None
+    rating: str = "--"
 
 
 class CalculateResponse(BaseModel):
@@ -96,6 +106,8 @@ class CalculateResponse(BaseModel):
     overview: OverviewData
     welfare: WelfareData
     investment: InvestmentData
+    econ_ratings: list[EconRating] = []
+    load_cv: Optional[float] = None
 
 
 class OptionsResponse(BaseModel):
@@ -129,4 +141,4 @@ class GlobalParamsUpdate(BaseModel):
     ess: dict[str, Any]
     financial: dict[str, Any]
     wholesale: dict[str, Any]
-    flat_price: float = 0.55
+    flat_price: float = 0.5

@@ -12,3 +12,4 @@ cycle_life,5000,次,true
 cycle_enabled,0,-,true
 unit_cost,0.9,元/Wh,true
 r_om,0.01,-,true
+r_ess_share,0.20,-,true
