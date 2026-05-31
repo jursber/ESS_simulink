@@ -7,6 +7,7 @@
 import math
 from typing import List, Tuple, Optional
 
+from src.core.registry import register_algorithm
 from src.models.dispatch import (
     ESSParams, FinancialParams, HourlyData, DispatchResult,
     BusinessModel, PricingMode,
@@ -112,6 +113,7 @@ def simulate_sequential(
     return load_ESS, SOC
 
 
+@register_algorithm("greedy_window", "贪心滑窗搜索（默认）——按价格排序后穷举充放电窗口组合")
 def optimize_arbitrage(
     P_eff: List[float],
     params: ESSParams,

@@ -30,6 +30,13 @@ from src.models.wholesale import UI_OPTION_LISTS, WholesaleSettlementConfig
 router = APIRouter()
 ROOT = Path(__file__).resolve().parent.parent
 
+# 计算结果缓存（内存级，重启清空）
+_result_cache: dict[str, CalculateResponse] = {}
+CACHE_MAX_SIZE = 100
+
+def _cache_key(scenario_id: str, pricing_mode: str, business_model: str, settlement: str, contract: str, dayahead: str) -> str:
+    return f"{scenario_id}|{pricing_mode}|{business_model}|{settlement}|{contract}|{dayahead}"
+
 PM_LABELS = {
     "M1": "行政分时", "M2": "江苏模式", "M3": "合同分时",
     "M4": "现货联动", "M5": "一口价",
@@ -188,6 +195,17 @@ def get_options():
 
 @router.post("/calculate", response_model=CalculateResponse)
 def run_calculation(req: CalculateRequest):
+    # 缓存检查
+    ov = req.wholesale_overrides
+    key = _cache_key(
+        req.scenario_id, req.pricing_mode, req.business_model,
+        ov.settlement_mode if ov else "",
+        ov.contract_curve_profile if ov else "",
+        ov.dayahead_curve_profile if ov else "",
+    )
+    if key in _result_cache:
+        return _result_cache[key]
+
     try:
         mgr = ScenarioManager()
         config = mgr.load(req.scenario_id)
@@ -198,7 +216,7 @@ def run_calculation(req: CalculateRequest):
     config.business_model = req.business_model
 
     wholesale_cfg = effective_wholesale_for_scenario(config)
-    if req.wholesale_overrides:
+    if ov:
         flat = wholesale_cfg.to_flat_dict()
         ov = req.wholesale_overrides
         if ov.settlement_mode is not None:
@@ -231,6 +249,12 @@ def run_calculation(req: CalculateRequest):
     resp.time_series.price_da = price_da
     resp.time_series.price_rt = price_rt
     resp.time_series.price_user = list(result.P_user_curve) if hasattr(result, 'P_user_curve') else []
+
+    # 缓存结果
+    if len(_result_cache) >= CACHE_MAX_SIZE:
+        _result_cache.pop(next(iter(_result_cache)))
+    _result_cache[key] = resp
+
     return resp
 
 
@@ -358,3 +382,108 @@ def update_pv_params(req: dict):
 def get_pv_curve(region: str, curve_type: str):
     data = ConfigLoader.load_pv_curve(region, curve_type)
     return {"region": region, "curve_type": curve_type, "data": data}
+
+
+@router.get("/algorithms")
+def list_algorithms():
+    from src.core.registry import list_algorithms as _list
+    return _list()
+
+
+# ---------- 中长期量价曲线 ----------
+
+# 分时电价时段定义（从 tariff_admin_henan.csv 提取）
+_TOU_PERIODS = [
+    {"period": "valley", "start": 0, "end": 8, "price": 0.28},
+    {"period": "peak",   "start": 8, "end": 12, "price": 0.95},
+    {"period": "flat",   "start": 12, "end": 17, "price": 0.58},
+    {"period": "peak",   "start": 17, "end": 21, "price": 0.95},
+    {"period": "flat",   "start": 21, "end": 24, "price": 0.58},
+]
+
+
+def _get_tou_hour_prices() -> list[float]:
+    """返回 24 小时的分时电价（元/kWh）。"""
+    prices = [0.0] * 24
+    for p in _TOU_PERIODS:
+        for h in range(p["start"], p["end"]):
+            prices[h] = p["price"]
+    return prices
+
+
+def _get_system_load() -> list[float]:
+    """加载统调负荷曲线（MW）。"""
+    path = ROOT / "data" / "config" / "system_load_henan.csv"
+    if not path.exists():
+        return [3000.0] * 24
+    df = pd.read_csv(path, dtype={"date": str, "hour": int})
+    latest_date = df["date"].max()
+    day = df[df["date"] == latest_date].sort_values("hour")
+    if len(day) != 24:
+        return [3000.0] * 24
+    return [float(v) for v in day["system_load_mw"].tolist()]
+
+
+def decompose_contract(
+    total_mwh: float,
+    curve_type: str,
+) -> list[float]:
+    """将合约电量按分解曲线分配到 24 小时。
+
+    Args:
+        total_mwh: 合约总电量（MWh）
+        curve_type: 分解曲线类型
+
+    Returns:
+        24 元素列表，每小时合约电量（MWh）
+    """
+    if curve_type == "load":
+        load = _get_system_load()
+        total_load = sum(load)
+        if total_load == 0:
+            return [total_mwh / 24] * 24
+        return [total_mwh * v / total_load for v in load]
+
+    prices = _get_tou_hour_prices()
+
+    if curve_type == "D2":
+        # 平均分配
+        return [total_mwh / 24] * 24
+
+    if curve_type in ("D1", "D3", "D4", "D5"):
+        # 按价格加权分配（仅在指定时段内）
+        if curve_type == "D1":
+            # 峰平谷：所有时段按价格加权
+            weights = prices
+        elif curve_type == "D3":
+            # 高峰（含尖峰）：仅峰段
+            weights = [prices[h] if prices[h] >= 0.9 else 0 for h in range(24)]
+        elif curve_type == "D4":
+            # 平段：仅平段
+            weights = [prices[h] if 0.5 < prices[h] < 0.9 else 0 for h in range(24)]
+        else:
+            # 谷段（含深谷）：仅谷段
+            weights = [prices[h] if prices[h] <= 0.3 else 0 for h in range(24)]
+
+        total_weight = sum(weights)
+        if total_weight == 0:
+            return [0.0] * 24
+        return [total_mwh * w / total_weight for w in weights]
+
+    return [total_mwh / 24] * 24
+
+
+@router.get("/params/contract-curve")
+def get_contract_curve(
+    total_mwh: float = 80.0,
+    curve_type: str = "D1",
+):
+    """返回合约电量 24 小时分解结果。"""
+    data = decompose_contract(total_mwh, curve_type)
+    tou_prices = _get_tou_hour_prices()
+    return {
+        "total_mwh": total_mwh,
+        "curve_type": curve_type,
+        "hourly_mwh": [round(v, 4) for v in data],
+        "tou_prices": tou_prices,
+    }
