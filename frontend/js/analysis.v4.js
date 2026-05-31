@@ -1,5 +1,92 @@
 // ===== analysis.js =====
 
+// --- 方案槽位 ---
+const SLOT_LETTERS = ['A', 'B', 'C', 'D', 'E'];
+let slots = [null, null, null, null, null]; // null = 空, object = 快照
+
+function getActiveSlots() {
+  return slots.map((s, i) => s !== null ? i : -1).filter(i => i >= 0);
+}
+
+function refreshSlotUI() {
+  slots.forEach((snap, i) => {
+    const btn = document.getElementById(`slot-${i}`);
+    if (!btn) return;
+    btn.classList.toggle('active', snap !== null);
+  });
+  const hasActive = slots.some(s => s !== null);
+  const compareBtn = document.getElementById('slot-compare');
+  if (compareBtn) compareBtn.disabled = !hasActive;
+}
+
+function updateAddBtnState() {
+  const btn = document.getElementById('slot-add');
+  if (!btn) return;
+  const tagCalc = document.getElementById('tag-calc');
+  const isCalcDone = tagCalc && tagCalc.classList.contains('done');
+  const hasEmpty = slots.some(s => s === null);
+  btn.disabled = !isCalcDone || !hasEmpty;
+}
+
+function addSlot() {
+  const emptyIdx = slots.findIndex(s => s === null);
+  if (emptyIdx < 0) return;
+  const tagCalc = document.getElementById('tag-calc');
+  if (!tagCalc || !tagCalc.classList.contains('done')) return;
+
+  // 快照当前参数和结果
+  const snap = {
+    scenarioId: document.getElementById('sel-scenario').value,
+    pricingMode: document.getElementById('sel-pm').value,
+    businessModel: document.getElementById('sel-bm').value,
+    settlementMode: document.getElementById('sel-settlement').value,
+    contractProfile: document.getElementById('sel-contract').value,
+    dayaheadProfile: document.getElementById('sel-dayahead').value,
+    result: App.state.result ? JSON.parse(JSON.stringify(App.state.result)) : null,
+    label: SLOT_LETTERS[emptyIdx],
+    timestamp: Date.now(),
+  };
+  slots[emptyIdx] = snap;
+  refreshSlotUI();
+  updateAddBtnState();
+
+  // 记录后标记为已修改，禁用 + 按钮
+  tagCalc.textContent = '参数已修改';
+  tagCalc.classList.remove('done');
+}
+
+function toggleSlot(i) {
+  if (slots[i] === null) return;
+  slots[i] = null;
+  refreshSlotUI();
+  updateAddBtnState();
+}
+
+function openCompareModal() {
+  if (!slots.some(s => s !== null)) return;
+  document.getElementById('modal-compare').style.display = 'flex';
+}
+
+function closeCompareModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modal-compare').style.display = 'none';
+}
+
+// 监听参数变化，禁用 + 按钮
+function onParamChange() {
+  const tagCalc = document.getElementById('tag-calc');
+  if (tagCalc) {
+    tagCalc.textContent = '参数已修改';
+    tagCalc.classList.remove('done');
+  }
+  updateAddBtnState();
+}
+
+// 绑定参数区 select 变化
+document.querySelectorAll('.param-select').forEach(sel => {
+  sel.addEventListener('change', onParamChange);
+});
+
 // --- 经济性评级 ---
 const RATING_COLORS = {
   '极差': 'rating-极差',
@@ -103,6 +190,7 @@ async function runCalculation() {
     tagCalc.textContent = '计算完成';
     tagCalc.classList.add('done');
     renderResult(result);
+    updateAddBtnState();
   } catch (e) {
     console.error('Calculation failed:', e);
     alert('计算失败: ' + e.message);
@@ -193,5 +281,8 @@ function renderMiniBars(id, items) {
 }
 
 // --- App 注册 ---
-App.analysis = { switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings };
+App.analysis = {
+  switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings,
+  addSlot, toggleSlot, openCompareModal, closeCompareModal,
+};
 

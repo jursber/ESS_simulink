@@ -199,21 +199,25 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .btn-calc:hover{background:var(--primary-hover);box-shadow:0 0 14px var(--primary-glow)}
 
 /* 经济性评价卡片 */
-.econ-card{flex:1;flex-shrink:0;display:flex;flex-direction:column;gap:10px;padding:16px 20px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;justify-content:flex-start}
-.econ-title{font-size:var(--fs-13);font-weight:700;color:var(--text-1);text-align:center;margin-bottom:6px;letter-spacing:.05em}
-.econ-group{display:flex;flex-direction:column;gap:2px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:6px;padding:10px 14px}
-.econ-row{display:flex;align-items:center}
-.econ-subject{font-size:var(--fs-13);font-weight:var(--fw-medium);color:var(--text-1);min-width:70px}
-.econ-val{font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-1);flex:1;text-align:center}
-.econ-badge{font-size:var(--fs-12);font-weight:var(--fw-semi);padding:3px 12px;border-radius:4px;min-width:52px;text-align:center}
-.econ-badge.rating-极差{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3)}
-.econ-badge.rating-较差{background:rgba(251,146,60,0.15);color:#fb923c;border:1px solid rgba(251,146,60,0.3)}
-.econ-badge.rating-差{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
-.econ-badge.rating-达标{background:rgba(52,211,153,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.3)}
-.econ-badge.rating-优秀{background:rgba(129,140,248,0.15);color:#818cf8;border:1px solid rgba(129,140,248,0.3)}
-.econ-badge.rating-无敌{background:rgba(251,191,36,0.20);color:#fcd34d;border:1px solid rgba(251,191,36,0.4)}
-.econ-badge.rating-na{background:var(--tag-bg);color:var(--text-3);border:1px solid var(--tag-border)}
-.econ-metric-label{font-size:var(--fs-11);color:var(--text-3);padding-left:2px}
+.econ-card{flex:1;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;line-height:var(--lh-card)}
+.econ-card::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
+.econ-grid{display:flex;flex-direction:column;gap:0}
+.econ-row{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)}
+.econ-row:last-child{border-bottom:none}
+.econ-col1{width:100px;flex-shrink:0;display:flex;flex-direction:column;gap:1px}
+.econ-col2{flex:1;text-align:center}
+.econ-col3{width:64px;flex-shrink:0;text-align:center}
+.econ-subject{font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-1)}
+.econ-sub{font-size:var(--fs-11);color:var(--text-3)}
+.econ-val{font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--primary)}
+.econ-badge{display:inline-block;font-size:var(--fs-11);font-weight:var(--fw-medium);padding:2px 10px;border-radius:3px;white-space:nowrap}
+.econ-badge.rating-极差{background:rgba(248,113,113,0.12);color:#f87171;border:1px solid rgba(248,113,113,0.25)}
+.econ-badge.rating-较差{background:rgba(251,146,60,0.12);color:#fb923c;border:1px solid rgba(251,146,60,0.25)}
+.econ-badge.rating-差{background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)}
+.econ-badge.rating-达标{background:rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25)}
+.econ-badge.rating-优秀{background:var(--primary-dim);color:var(--primary);border:1px solid rgba(94,163,255,0.25)}
+.econ-badge.rating-无敌{background:rgba(251,191,36,0.15);color:#fcd34d;border:1px solid rgba(251,191,36,0.3)}
+.econ-badge.rating-na{background:rgba(122,130,152,0.10);color:var(--text-3);border:1px solid rgba(122,130,152,0.20)}
 
 /* 运营状态标签条 */
 .op-status-strip{display:flex;flex-direction:column;gap:6px;margin-top:10px}
@@ -222,6 +226,32 @@ html,body{height:100vh;overflow:hidden;background:var(--bg);color:var(--text-1);
 .op-tag-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
 .op-tag-lbl{font-size:var(--fs-11);color:var(--text-3);white-space:nowrap}
 .op-tag-val{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);margin-left:auto}
+
+/* 方案槽位栏 */
+.slot-bar{display:flex;align-items:center;gap:8px;padding:12px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-top:10px;position:relative}
+.slot-bar::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
+.slot-group{display:flex;align-items:center;gap:6px}
+.slot-btn{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-3);font-size:var(--fs-12);font-weight:var(--fw-semi);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative}
+.slot-btn:hover{border-color:var(--primary);color:var(--text-2)}
+.slot-btn.active{background:var(--primary-dim);border-color:var(--primary);color:var(--primary)}
+.slot-btn.active::after{content:'';position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);width:12px;height:2px;border-radius:1px;background:var(--primary)}
+.slot-btn .slot-letter{pointer-events:none}
+.slot-add{width:32px;height:32px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--text-3);font-size:16px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.slot-add:hover:not(:disabled){border-color:var(--primary);color:var(--primary);border-style:solid}
+.slot-add:disabled{opacity:.35;cursor:not-allowed}
+.slot-compare{height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-3);font-size:var(--fs-12);font-weight:var(--fw-medium);cursor:pointer;margin-left:auto;transition:all .15s;white-space:nowrap}
+.slot-compare:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.slot-compare:disabled{opacity:.35;cursor:not-allowed}
+
+/* 比较弹窗 */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);width:640px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.modal-title{font-size:var(--fs-15);font-weight:var(--fw-semi);color:var(--text-1)}
+.modal-close{font-size:20px;color:var(--text-3);cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:var(--text-1)}
+.modal-body{flex:1;padding:20px;overflow-y:auto}
+.modal-placeholder{color:var(--text-3);font-size:var(--fs-13);text-align:center;padding:40px 0}
 
 /* 占位页 */
 .p-compare,.p-scenarios,.p-params{flex:1;padding:var(--gap);overflow:auto;display:flex;align-items:center;justify-content:center;color:var(--text-3)}

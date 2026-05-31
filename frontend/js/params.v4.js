@@ -126,18 +126,21 @@ async function renderPanelContent(panelId) {
       onContractCurveChange();
       onContractCurveTypeChange();
       break;
-    case 'dayahead':
-      try {
-        const da = await api('/params/dayahead-position');
-        panel.innerHTML = tablePanelHTML('日前节点电价',
-          ['时段','申报电量 (kWh)','出清电量 (kWh)'],
-          da.map(r=>[r.hour+':00', r.q_dayahead_kwh, r.q_dayahead_cleared_kwh])
-        );
-      } catch(e) { panel.innerHTML = placeholderHTML('日前节点电价 — 加载失败'); }
-      break;
-    case 'realtime':
-      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">实时节点电价</div><div id="rt-price-chart" style="height:300px"></div></div>';
-      renderRealtimeChart();
+    case 'spot-price':
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">现货电价</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <span style="font-size:var(--fs-12);color:var(--text-3)">现货电价组合</span>
+          <select id="spot-price-set" onchange="onSpotPriceSetChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+            <option value="henan_mar" selected>河南3月电价</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:16px">
+          <div style="flex:1"><div id="spot-da-chart" style="height:240px"></div></div>
+          <div style="flex:1"><div id="spot-rt-chart" style="height:240px"></div></div>
+        </div>
+        <div id="spot-spread-chart" style="height:240px"></div>
+      </div>`;
+      renderSpotPriceCharts();
       break;
     case 'pricing-mode':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">模式说明</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
@@ -253,23 +256,71 @@ async function renderPanelContent(panelId) {
   bindDirtyTracking();
 }
 
-// 实时电价图表
-function renderRealtimeChart() {
-  const el = document.getElementById('rt-price-chart');
+// 现货电价图表
+async function renderSpotPriceCharts() {
+  try {
+    const res = await api('/params/spot-prices');
+    const da = res.day_ahead;
+    const rt = res.real_time;
+    const spread = da.map((v, i) => +(rt[i] - v).toFixed(4));
+
+    // 图1：日前电价
+    renderSpotLineChart('spot-da-chart', da, '日前电价', '#a78bfa');
+    // 图2：实时电价
+    renderSpotLineChart('spot-rt-chart', rt, '实时电价', '#f87171');
+    // 图3：价差柱状图
+    renderSpotSpreadChart('spot-spread-chart', spread);
+  } catch(e) {
+    console.error('Spot price charts error:', e);
+  }
+}
+
+function onSpotPriceSetChange() {
+  renderSpotPriceCharts();
+}
+
+function renderSpotLineChart(containerId, data, name, color) {
+  const el = document.getElementById(containerId);
   if (!el) return;
   const chart = echarts.init(el);
   chart.setOption({
-    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
-    legend:{data:['日前电价','实时电价'],textStyle:{color:'#b0b8c8',fontSize:8},top:0},
-    grid:{left:46,right:46,top:30,bottom:20},
-    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
-    yAxis:{type:'value',name:'元/kWh',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
-    series:[
-      {name:'日前电价',type:'line',data:Array.from({length:24},(_,i)=>+(0.35+Math.sin((i-5)*Math.PI/13)*0.25).toFixed(4)),smooth:true,symbol:'none',lineStyle:{color:'#a78bfa',width:0.5}},
-      {name:'实时电价',type:'line',data:Array.from({length:24},(_,i)=>+(0.33+Math.sin((i-5)*Math.PI/13)*0.25+Math.sin(i*1.5)*0.05).toFixed(4)),smooth:true,symbol:'none',lineStyle:{color:'#f87171',width:0.5,type:'dashed'}},
-    ],
+    title: { text: name, textStyle: { color: '#b0b8c8', fontSize: 12 }, left: 'center', top: 0 },
+    tooltip: { trigger: 'axis', backgroundColor: '#1e2330', borderColor: '#2e3446', textStyle: { color: '#f0f2f5', fontSize: 11 } },
+    grid: { left: 46, right: 20, top: 30, bottom: 20 },
+    xAxis: { type: 'category', data: Array.from({length:24}, (_,i) => `${i}`), axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 } },
+    yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } },
+    series: [{ name: name, type: 'line', data: data, smooth: true, symbol: 'none', lineStyle: { color: color, width: 1.5 }, areaStyle: { color: color.replace(')', ',0.12)').replace('rgb', 'rgba') } }],
   });
-  window.addEventListener('resize',()=>chart.resize());
+  window.addEventListener('resize', () => chart.resize());
+}
+
+function renderSpotSpreadChart(containerId, spread) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const chart = echarts.init(el);
+  chart.setOption({
+    title: { text: '价差曲线（实时 - 日前）', textStyle: { color: '#b0b8c8', fontSize: 12 }, left: 'center', top: 0 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1e2330',
+      borderColor: '#2e3446',
+      textStyle: { color: '#f0f2f5', fontSize: 11 },
+      formatter: p => `${p[0].name}:00<br/>价差: ${p[0].value > 0 ? '+' : ''}${p[0].value} 元/kWh`
+    },
+    grid: { left: 50, right: 30, top: 30, bottom: 30 },
+    xAxis: { type: 'category', data: Array.from({length:24}, (_,i) => `${i}`), axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 } },
+    yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } },
+    series: [{
+      name: '价差',
+      type: 'bar',
+      data: spread.map(v => ({
+        value: v,
+        itemStyle: { color: v >= 0 ? '#f87171' : '#5ea3ff' }
+      })),
+      barWidth: '60%',
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
 }
 
 // 现货价格图表
@@ -630,6 +681,7 @@ App.params = {
   onContractModeChange, onContractCurveChange, renderContractChart,
   onTariffAdminCurveChange, onTariffContractCurveChange,
   onContractCurveTypeChange, renderTariffBarChart,
+  renderSpotPriceCharts, onSpotPriceSetChange,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

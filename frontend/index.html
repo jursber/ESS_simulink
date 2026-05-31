@@ -95,24 +95,30 @@
                         <text x="416" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
                       </svg>
                     </div>
-                    <!-- 区域2.2: 各方经济性评价 -->
+                    <!-- 区域2.2: 各方经济性概览 -->
                     <div class="econ-card" id="econ-card">
-                      <div class="econ-title">当前模式下各方经济性</div>
-                      <div class="econ-group">
-                        <div class="econ-row" id="econ-user"><span class="econ-subject">终端用户</span><span class="econ-val" id="econ-val-user">--</span><span class="econ-badge" id="econ-badge-user">--</span></div>
-                        <div class="econ-metric-label">度电收益</div>
-                      </div>
-                      <div class="econ-group">
-                        <div class="econ-row" id="econ-ess"><span class="econ-subject">储能投资</span><span class="econ-val" id="econ-val-ess">--</span><span class="econ-badge" id="econ-badge-ess">--</span></div>
-                        <div class="econ-metric-label">内部收益率</div>
-                      </div>
-                      <div class="econ-group">
-                        <div class="econ-row" id="econ-pv"><span class="econ-subject">光伏投资</span><span class="econ-val" id="econ-val-pv">--</span><span class="econ-badge" id="econ-badge-pv">--</span></div>
-                        <div class="econ-metric-label">内部收益率</div>
-                      </div>
-                      <div class="econ-group">
-                        <div class="econ-row" id="econ-retail"><span class="econ-subject">售电公司</span><span class="econ-val" id="econ-val-retail">--</span><span class="econ-badge" id="econ-badge-retail">--</span></div>
-                        <div class="econ-metric-label">度电盈利</div>
+                      <div class="card-hd" style="margin-bottom:10px;padding-bottom:8px"><span class="card-title" style="font-size:var(--fs-14)">各方经济性概览</span></div>
+                      <div class="econ-grid">
+                        <div class="econ-row">
+                          <div class="econ-col1"><span class="econ-subject">终端用户</span><span class="econ-sub">度电收益</span></div>
+                          <div class="econ-col2"><span class="econ-val" id="econ-val-user">--</span></div>
+                          <div class="econ-col3"><span class="econ-badge" id="econ-badge-user">--</span></div>
+                        </div>
+                        <div class="econ-row">
+                          <div class="econ-col1"><span class="econ-subject">储能投资</span><span class="econ-sub">内部收益率</span></div>
+                          <div class="econ-col2"><span class="econ-val" id="econ-val-ess">--</span></div>
+                          <div class="econ-col3"><span class="econ-badge" id="econ-badge-ess">--</span></div>
+                        </div>
+                        <div class="econ-row">
+                          <div class="econ-col1"><span class="econ-subject">光伏投资</span><span class="econ-sub">内部收益率</span></div>
+                          <div class="econ-col2"><span class="econ-val" id="econ-val-pv">--</span></div>
+                          <div class="econ-col3"><span class="econ-badge" id="econ-badge-pv">--</span></div>
+                        </div>
+                        <div class="econ-row">
+                          <div class="econ-col1"><span class="econ-subject">售电公司</span><span class="econ-sub">度电盈利</span></div>
+                          <div class="econ-col2"><span class="econ-val" id="econ-val-retail">--</span></div>
+                          <div class="econ-col3"><span class="econ-badge" id="econ-badge-retail">--</span></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -256,6 +262,28 @@
             <div class="param-row"><span class="param-label">商业模式</span><select class="param-select" id="sel-bm"></select></div>
           </div>
         </div>
+        <!-- 方案槽位区 -->
+        <div class="slot-bar" id="slot-bar">
+          <div class="slot-group">
+            <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.analysis.toggleSlot(0)"><span class="slot-letter">A</span></button>
+            <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.analysis.toggleSlot(1)"><span class="slot-letter">B</span></button>
+            <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.analysis.toggleSlot(2)"><span class="slot-letter">C</span></button>
+            <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.analysis.toggleSlot(3)"><span class="slot-letter">D</span></button>
+            <button class="slot-btn" data-slot="4" id="slot-4" onclick="App.analysis.toggleSlot(4)"><span class="slot-letter">E</span></button>
+            <button class="slot-add" id="slot-add" onclick="App.analysis.addSlot()" title="记录当前方案">+</button>
+          </div>
+          <button class="slot-compare" id="slot-compare" onclick="App.analysis.openCompareModal()" title="比较" disabled>比较</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 比较弹窗 -->
+  <div class="modal-overlay" id="modal-compare" style="display:none" onclick="App.analysis.closeCompareModal(event)">
+    <div class="modal-box">
+      <div class="modal-hd"><span class="modal-title">方案比较</span><span class="modal-close" onclick="App.analysis.closeCompareModal()">&times;</span></div>
+      <div class="modal-body">
+        <div class="modal-placeholder">选择要比较的方案，自定义对比指标（待实现）</div>
       </div>
     </div>
   </div>
@@ -277,8 +305,7 @@
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电力市场</div>
             <div class="params-menu-item" data-panel="contract" onclick="App.params.selectPanel('contract')">中长期量价曲线</div>
-            <div class="params-menu-item" data-panel="dayahead" onclick="App.params.selectPanel('dayahead')">日前节点电价</div>
-            <div class="params-menu-item" data-panel="realtime" onclick="App.params.selectPanel('realtime')">实时节点电价</div>
+            <div class="params-menu-item" data-panel="spot-price" onclick="App.params.selectPanel('spot-price')">现货电价</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电价信息</div>
@@ -311,8 +338,7 @@
         <div class="params-panel" id="panel-ess"></div>
         <div class="params-panel" id="panel-pv"></div>
         <div class="params-panel" id="panel-contract"></div>
-        <div class="params-panel" id="panel-dayahead"></div>
-        <div class="params-panel" id="panel-realtime"></div>
+        <div class="params-panel" id="panel-spot-price"></div>
         <div class="params-panel" id="panel-pricing-mode"></div>
         <div class="params-panel" id="panel-tariff-admin"></div>
         <div class="params-panel" id="panel-tariff-contract"></div>
@@ -349,6 +375,10 @@ window.loadGlobalParams = () => App.params?.loadGlobalParams?.();
 window.selectPanel = (id) => App.params?.selectPanel?.(id);
 window.onContractModeChange = () => App.params?.onContractModeChange?.();
 window.onContractCurveChange = () => App.params?.onContractCurveChange?.();
+window.toggleSlot = (i) => App.analysis?.toggleSlot?.(i);
+window.addSlot = () => App.analysis?.addSlot?.();
+window.openCompareModal = () => App.analysis?.openCompareModal?.();
+window.closeCompareModal = (e) => App.analysis?.closeCompareModal?.(e);
 window.onContractCurveTypeChange = () => App.params?.onContractCurveTypeChange?.();
 window.onTariffAdminCurveChange = () => App.params?.onTariffAdminCurveChange?.();
 window.onTariffContractCurveChange = () => App.params?.onTariffContractCurveChange?.();

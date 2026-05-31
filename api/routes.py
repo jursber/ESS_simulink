@@ -478,6 +478,24 @@ def update_pv_params(req: dict):
     return {"status": "ok"}
 
 
+@router.get("/params/spot-prices")
+def get_spot_prices():
+    """返回现货电价数据（日前/实时/价差）。"""
+    import pandas as pd
+    from pathlib import Path
+    price_path = ROOT / "data" / "processed" / "spot_price" / "price_henan.csv"
+    if not price_path.exists():
+        return {"day_ahead": [0.0]*24, "real_time": [0.0]*24}
+    df = pd.read_csv(price_path, dtype={"date": str}, encoding="utf-8-sig")
+    latest_date = df["date"].max()
+    day = df[df["date"] == latest_date].sort_values("hour")
+    if len(day) != 24:
+        return {"day_ahead": [0.0]*24, "real_time": [0.0]*24}
+    da = [round(float(v)/1000, 4) for v in day["day_ahead"].tolist()]
+    rt = [round(float(v)/1000, 4) for v in day["real_time"].tolist()]
+    return {"day_ahead": da, "real_time": rt, "date": str(latest_date)}
+
+
 @router.get("/params/pv-curve/{region}/{curve_type}")
 def get_pv_curve(region: str, curve_type: str):
     data = ConfigLoader.load_pv_curve(region, curve_type)

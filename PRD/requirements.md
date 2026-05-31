@@ -119,6 +119,39 @@
 - **R086**：筛选后该日无行或小时不完整时，应抛出明确错误（提示检查 CSV 日期与行数）。**已入PRD**
 - **R087**：购电分项验收：`C_中长期`、`C_日前`、`C_实时` 与 PRD 手工展开式在固定 mock 数据上一致；`C_购电 = 三者之和`。**已入PRD**
 
+## 第 8 轮（前端架构拆分 + 后端架构准备，2026-05-31）
+
+- **R088**：前端从单文件 index.html（1299行）拆分为独立 JS 模块：`app.js`（全局状态/API/导航）、`charts.js`（ECharts图表）、`flow.js`（能量流动图SVG）、`analysis.js`（单方案分析）、`params.js`（缺省参数）、`compare.js`（多方案对比占位），CSS抽取到 `style.css`，通过 `window.App` 命名空间通信，HTML内联onclick通过全局代理转发
+- **R089**：文件名带 `.v4` 后缀用于浏览器缓存破坏，HTML引用 `.v4` 版本
+- **R090**：后端新增算法注册表（`src/core/registry.py`），使用 `@register_algorithm` 装饰器注册调度算法，现有 `optimize_arbitrage` 作为默认算法注册，未来新增算法只需新增文件+装饰器
+- **R091**：后端 API 结果缓存（`routes.py` 中 `_result_cache` 字典，100条LRU），key 为 `scenario_id|pricing_mode|business_model|settlement|contract|dayahead`
+- **R092**：ESS参数重构——`ESSParams` 新增字段：`power_rated`（额定功率MW）、`eta_charge`（单程充电效率）、`degrade_enabled`（年衰减开关）、`cycle_life`（循环次数）、`cycle_enabled`（循环约束开关）；`cap_rated` 默认值从5000改为1000kWh
+- **R093**：新增光伏参数体系——`pv_defaults.csv`（容量、单价、运维比例、设计寿命、衰减率、地区、曲线类型）、`pv_curves.csv`（3地区×3曲线类型，24小时归一化出力数据）、前端光伏参数面板（含曲线选择和ECharts预览）
+- **R094**：财务参数调整——移除 `r_user_b3`，保留 `r_discount`、`r_user_b1`、`r_user_b2`；B3模型 fallback 到 `r_user_b2`
+- **R095**：并行开发规则——两个Claude窗口可并行工作，Session 1 负责 analysis/charts/flow.js，Session 2 负责 params.js，共享文件（app.js/style.css/index.html/routes.py）禁止同时编辑，编辑前需确认对方未在编辑
+- **R096**：缺省参数页面click无响应问题——根因是 JS 拆分后 `toggleSection` 和 `switchTariffTab` 函数缺失导致 params.js 整体加载失败，`App.params` 从未被赋值；修复方法为补全缺失函数定义
+- **R097**：禁止自动 git push——未经用户明确指示，不执行 git push
+
+## 第 9 轮（中长期量价曲线 + 参数面板完善，2026-05-31）
+
+- **R098**：中长期量价曲线面板——缺省参数页面新增"中长期量价曲线"面板，包含：合约电量文本框（MWh）/覆盖比例（%）单选切换、合约价格输入框、分解曲线下拉框（统调负荷/D1~D5）、24小时柱状图（按分时电价着色）、说明文本
+- **R099**：合约电量分解算法——`GET /api/params/contract-curve` 端点，支持6种分解方式：load（统调负荷加权）、D1（全时段价格加权）、D2（平均分配）、D3（仅峰段）、D4（仅平段）、D5（仅谷段）
+- **R100**：统调负荷 mock 数据——`data/config/system_load_henan.csv`，河南地区典型日24小时统调负荷（MW），用于合约分解计算
+- **R101**：分时电价时段定义硬编码在 routes.py 中（valley 0-8, peak 8-12/17-21, flat 12-17/21-24），后续应改为从 CSV 读取
+
+## 第 10 轮（方案概览区重构 + 经济性评价，2026-05-31）
+
+- **R102**：方案概览区重构——移除原有7个KV标签（现货峰谷价差、分时峰谷价差、时段构成、净负荷特征等），保留运营状态标签并移至图片下方
+- **R103**：运营状态标签（区域3）——两行×三列：行1为储能日均充放次数、单次最大放电深度、单次最小放电深度；行2为光伏本地消纳率、光伏年利用小时数、用户负荷变异系数（后三项暂为占位值）
+- **R104**：经济性评价系统（区域2.2）——六级评级：极差/较差/差/达标/优秀/无敌，评价规则：
+  - 光伏/储能投资：IRR% — (≤0, (0,2], (2,4], (4,8], (8,12], >12)
+  - 售电公司：度电收益(元/MWh) — (<0, [0,1), [1,3), [3,5), [5,8), ≥8)
+  - 终端用户：储能节费(万元/MWh) — (<0, [0,2), [2,4), [4,7), [7,10), ≥10)
+- **R105**：经济性评价卡片UI——采用系统一级模块卡片样式（`var(--bg-card)` + `var(--border)` + `var(--radius)` + `18px 20px`内边距），标题用 `.card-hd` + `.card-title`（左侧3px蓝色竖线），内部三列网格（指标说明/核心数据/pill标签），标签色彩：优秀用主色蓝、较差用告警橙、无数据用中性灰
+- **R106**：API新增字段——`CalculateResponse` 新增 `econ_ratings`（经济性评级列表）、`load_cv`（负荷变异系数）；`InvestmentData` 新增 `retail_profit_wan`（售电公司利润万元）；`OverviewData` 新增 `pv_cap_kw`、`flex_load_kw`
+- **R107**：方案槽位系统——参数调节区底部新增5个槽位（A~E）+ `+`按钮 + `比较`按钮。逻辑：点击`+`记录当前参数快照到最左空槽位并亮起字母，`+`随即disable；调整参数后`+`保持disable（联动"参数已修改"标签）；点击"计算"后`+`恢复enable（联动"计算完成"标签）；点击已激活槽位则取消记录；`比较`按钮弹出空弹窗（待实现）
+- **R108**：`+`按钮状态联动——与标题栏"参数已修改"/"计算完成"标签同步：参数修改→disable，计算完成→enable，无空槽位→disable
+
 ---
 
 ## Backlog 与文档索引
