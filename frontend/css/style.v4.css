@@ -163,7 +163,7 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 
 /* KV 标签 */
 .kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 20px}
-.kv-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:5px}
+.kv-row{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:5px}
 .kv-row .k{font-size:var(--fs-13);color:var(--text-3);white-space:nowrap;display:flex;align-items:center;gap:6px}
 .kv-row .v{font-size:var(--fs-13);color:var(--text-1);font-weight:var(--fw-semi);text-align:right}
 .kv-row .u{font-size:var(--fs-11);color:var(--text-3);margin-left:3px}
