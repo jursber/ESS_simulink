@@ -110,7 +110,7 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .architecture-mode-tag{background:rgba(94,163,255,0.12);border-radius:4px;padding:3px 10px;font-size:var(--fs-12);color:var(--primary);font-weight:var(--fw-medium);white-space:nowrap;border:none}
 .architecture-tag-calc{font-size:var(--fs-12);font-weight:var(--fw-medium);white-space:nowrap;background:rgba(248,113,113,0.12);border:none;color:var(--danger)}
 .architecture-tag-calc.done{color:var(--success);background:rgba(52,211,153,0.12)}
-.architecture-image-wrap{position:relative;width:516px;height:320px;flex-shrink:0;background:#1a1f2d;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.architecture-image-wrap{position:relative;width:516px;height:284px;flex-shrink:0;background:#1a1f2d;border:1px solid var(--border);border-radius:6px;overflow:hidden}
 .architecture-image{width:100%;height:100%;object-fit:contain}
 .architecture-labels{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:space-around;padding:0 40px;z-index:2}
 .architecture-label{text-align:center}
