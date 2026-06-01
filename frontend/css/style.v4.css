@@ -81,7 +81,7 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .inv-tab-disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 
 /* 右侧面板 */
-.right-panel{width:280px;flex-shrink:0;display:flex;flex-direction:column}
+.right-panel{width:330px;flex-shrink:0;display:flex;flex-direction:column}
 .param-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;flex:1;overflow-y:auto;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 .param-card::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
 .param-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
