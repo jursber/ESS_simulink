@@ -173,7 +173,7 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .fin-strip{display:flex;background:var(--success-dim);border:1px solid rgba(52,211,153,0.12);border-radius:6px;overflow:hidden;margin:8px 0}
 .fin-cell{flex:1;text-align:center;padding:10px 6px;border-right:1px solid rgba(52,211,153,0.08)}
 .fin-cell:last-child{border-right:none}
-.fin-cell .lbl{font-size:var(--fs-11);color:var(--text-3);margin-bottom:3px;line-height:var(--lh-tight)}
+.fin-cell .lbl{font-size:var(--fs-13);color:var(--text-3);margin-bottom:3px;line-height:var(--lh-tight)}
 .fin-cell .val{font-size:var(--fs-15);font-weight:var(--fw-semi);color:var(--success);line-height:var(--lh-tight)}
 
 /* 分隔标题 */
