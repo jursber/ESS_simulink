@@ -36,7 +36,7 @@
         <div class="row row-top">
           <!-- 方案概览：4. 图在左，文本在右 -->
           <div class="card">
-            <div class="card-hd" style="gap:12px"><span class="card-title">方案与关键特征概览</span><div style="display:flex;gap:6px;margin-left:auto"><span class="architecture-mode-tag" id="tag-pm">合同分时</span><span class="architecture-mode-tag" id="tag-arch">单储能</span><span class="architecture-mode-tag" id="tag-bm">储售一体</span><span class="architecture-mode-tag" id="tag-dispatch">用户收益最优模式调度</span></div></div>
+            <div class="card-hd" style="gap:12px"><span class="card-title">方案概览</span><div style="display:flex;gap:6px;margin-left:auto"><span class="architecture-mode-tag" id="tag-pm">合同分时</span><span class="architecture-mode-tag" id="tag-arch">单储能</span><span class="architecture-mode-tag" id="tag-bm">储售一体</span><span class="architecture-mode-tag" id="tag-dispatch">用户收益最优模式调度</span></div></div>
             <div class="card-body">
               <div class="overview-layout">
                 <div class="architecture-container">
@@ -197,15 +197,14 @@
                   <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="ess-fin-cf">--</div></div>
                 </div>
                 <div style="flex:1;overflow-y:auto">
-                  <div style="font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-2);margin:10px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4">经营数据</div>
                   <table class="data-table">
-                    <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
-                    <tr><td>总套利创值（按用户侧电价）</td><td id="ess-op-daily-arb">--</td><td id="ess-op-annual-arb">--</td></tr>
-                    <tr><td>分成后收入</td><td id="ess-op-daily-share">--</td><td id="ess-op-annual-share">--</td></tr>
-                    <tr><td>售电公司批发侧成本变化</td><td id="ess-op-daily-wholesale">--</td><td id="ess-op-annual-wholesale">--</td></tr>
-                    <tr><td>储能总充电量</td><td id="ess-op-charge">--</td><td id="ess-op-annual-charge">--</td></tr>
-                    <tr><td>储能总放电量</td><td id="ess-op-discharge">--</td><td id="ess-op-annual-discharge">--</td></tr>
-                    <tr><td>储能等效循环次数</td><td id="ess-op-cycles">--</td><td id="ess-op-annual-cycles">--</td></tr>
+                    <tr><th>指标</th><th>典型日</th><th>全年</th><th>评价</th></tr>
+                    <tr><td>总套利创值（按用户侧电价）</td><td id="ess-op-daily-arb">--</td><td id="ess-op-annual-arb">--</td><td id="ess-op-eval-arb">--</td></tr>
+                    <tr><td>分成后收入（投资商）</td><td id="ess-op-daily-share">--</td><td id="ess-op-annual-share">--</td><td id="ess-op-eval-share">--</td></tr>
+                    <tr><td>售电公司批发侧成本变化</td><td id="ess-op-daily-wholesale">--</td><td id="ess-op-annual-wholesale">--</td><td id="ess-op-eval-wholesale">--</td></tr>
+                    <tr><td>储能总充电量</td><td id="ess-op-charge">--</td><td id="ess-op-annual-charge">--</td><td id="ess-op-eval-charge">--</td></tr>
+                    <tr><td>储能总放电量</td><td id="ess-op-discharge">--</td><td id="ess-op-annual-discharge">--</td><td id="ess-op-eval-discharge">--</td></tr>
+                    <tr><td>储能等效循环次数</td><td id="ess-op-cycles">--</td><td id="ess-op-annual-cycles">--</td><td id="ess-op-eval-cycles">--</td></tr>
                   </table>
                 </div>
               </div>
@@ -217,13 +216,12 @@
                   <div class="fin-cell"><div class="lbl">累计现金流</div><div class="val" id="pv-fin-cf">--</div></div>
                 </div>
                 <div style="flex:1;overflow-y:auto">
-                  <div style="font-size:var(--fs-13);font-weight:var(--fw-semi);color:var(--text-2);margin:10px 0 8px;padding-left:8px;border-left:3px solid var(--primary);line-height:1.4">经营数据</div>
                   <table class="data-table">
-                    <tr><th>指标</th><th>典型日</th><th>全年</th></tr>
-                    <tr><td>光伏上网收益</td><td id="pv-op-daily-out">--</td><td id="pv-op-annual-out">--</td></tr>
-                    <tr><td>光伏消纳收益</td><td id="pv-op-daily-self">--</td><td id="pv-op-annual-self">--</td></tr>
-                    <tr><td>光伏总发电量</td><td id="pv-op-gen">--</td><td id="pv-op-annual-gen">--</td></tr>
-                    <tr><td>光伏自用率</td><td id="pv-op-self-rate">--</td><td id="pv-op-annual-self-rate">--</td></tr>
+                    <tr><th>指标</th><th>典型日</th><th>全年</th><th>评价</th></tr>
+                    <tr><td>光伏上网收益</td><td id="pv-op-daily-out">--</td><td id="pv-op-annual-out">--</td><td id="pv-op-eval-out">--</td></tr>
+                    <tr><td>光伏消纳收益</td><td id="pv-op-daily-self">--</td><td id="pv-op-annual-self">--</td><td id="pv-op-eval-self">--</td></tr>
+                    <tr><td>光伏总发电量</td><td id="pv-op-gen">--</td><td id="pv-op-annual-gen">--</td><td id="pv-op-eval-gen">--</td></tr>
+                    <tr><td>光伏自用率</td><td id="pv-op-self-rate">--</td><td id="pv-op-annual-self-rate">--</td><td id="pv-op-eval-self-rate">--</td></tr>
                   </table>
                 </div>
               </div>

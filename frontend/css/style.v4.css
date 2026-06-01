@@ -38,7 +38,7 @@ body{
 body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"HarmonyOS Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:var(--fs-13);line-height:var(--lh-body)}
 
 /* 顶部导航栏 */
-.topbar{height:48px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;justify-content:space-between}
+.topbar{height:68px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 .topbar .logo{font-size:18px;font-weight:700;color:var(--text-1);letter-spacing:.08em;display:flex;align-items:center;gap:10px}
 .topbar .logo .icon{color:var(--primary);font-size:16px}
 .top-nav{display:flex;align-items:center;gap:4px;position:absolute;left:50%;transform:translateX(-50%)}
@@ -53,17 +53,17 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .btn-primary:hover{background:var(--primary-hover)}
 
 /* 布局 */
-.main{display:flex;flex-direction:column;height:calc(100% - 48px)}
+.main{display:flex;flex-direction:column;height:calc(100% - 68px)}
 .page-wrap{flex:1;overflow:hidden;display:none}
 .page-wrap.active{display:flex}
-.p-analysis{flex:1;display:flex;gap:var(--gap-panel);padding:var(--gap);overflow:hidden}
-.p-analysis .center{flex:1;display:flex;flex-direction:column;gap:var(--gap);min-width:0}
-.p-analysis .row{display:flex;gap:var(--gap-inner);flex:1;min-height:0}
+.p-analysis{flex:1;display:flex;gap:12px;padding:12px;overflow:hidden}
+.p-analysis .center{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}
+.p-analysis .row{display:flex;gap:12px;flex:1;min-height:0}
 .p-analysis .row.row-top{flex:0 0 auto}
 .p-analysis .row.row-bottom{flex:1}
 
 /* 卡片 */
-.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex:1;min-width:0;position:relative;line-height:var(--lh-card)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex:1;min-width:0;position:relative;line-height:var(--lh-card);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 .card::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
 .card:hover{border-color:#3a4158}
 .card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -81,8 +81,8 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .inv-tab-disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 
 /* 右侧面板 */
-.right-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column}
-.param-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;flex:1;overflow-y:auto;position:relative}
+.right-panel{width:280px;flex-shrink:0;display:flex;flex-direction:column}
+.param-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;flex:1;overflow-y:auto;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
 .param-card::before{content:'';position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,rgba(94,163,255,0.12),transparent)}
 .param-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
 .param-hd-title{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1)}
@@ -234,7 +234,7 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .op-status-row{display:flex;gap:10px}
 .op-tag{flex:1;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--tag-bg);border:1px solid var(--tag-border);border-radius:6px}
 .op-tag-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
-.op-tag-lbl{font-size:var(--fs-12);color:var(--text-3);white-space:nowrap}
+.op-tag-lbl{font-size:var(--fs-13);color:var(--text-3);white-space:nowrap}
 .op-tag-val{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);margin-left:auto}
 
 /* 方案槽位栏 */
