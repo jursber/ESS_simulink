@@ -230,10 +230,20 @@
               </div>
             </div>
           </div>
-          <!-- 调度曲线：7. 改用 ECharts -->
+          <!-- 典型日能量分析 -->
           <div class="card" style="border-color:rgba(94,163,255,0.2)">
-            <div class="card-hd"><span class="card-title">典型日调度曲线</span><span class="card-sub">负荷 / 储能 / SOC</span></div>
-            <div class="card-body"><div id="chart-dispatch" style="width:100%;flex:1"></div></div>
+            <div class="card-hd"><span class="card-title">典型日能量分析</span></div>
+            <div class="card-body" style="display:flex;gap:12px">
+              <!-- 左侧2/3空间 -->
+              <div style="flex:2;display:flex;flex-direction:column;gap:12px;min-width:0">
+                <!-- 第一张图：全时段成本构成 -->
+                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-cost-composition"></div>
+                <!-- 第二张图：全时段能量构成 -->
+                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-energy-composition"></div>
+              </div>
+              <!-- 右侧1/3空间 -->
+              <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-width:0" id="chart-price-composition"></div>
+            </div>
           </div>
         </div>
       </div>

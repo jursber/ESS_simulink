@@ -117,12 +117,12 @@ function renderWelfareCharts(ts) {
     }],
   });
 
-  // 2. 储能功率 + SOC
+  // 2. 储能功率 + SOC + 光伏功率
   if (chartEssPower) chartEssPower.dispose();
   chartEssPower = echarts.init(document.getElementById('chart-ess-power'));
   chartEssPower.setOption({
     tooltip: chartTooltip,
-    legend: { data: ['储能功率', 'SOC'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
+    legend: { data: ['储能功率', 'SOC', '光伏功率'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
     grid: { left: 46, right: 46, top: 30, bottom: 20 },
     xAxis: { type: 'category', data: hours, ...axisStyle },
     yAxis: [
@@ -132,6 +132,7 @@ function renderWelfareCharts(ts) {
     series: [
       { name: '储能功率', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: '#5ea3ff', width: 0.5 }, areaStyle: { color: 'rgba(94,163,255,0.10)' } },
       { name: 'SOC', type: 'line', yAxisIndex: 1, data: (ts.soc || []).map(v => v * 100), smooth: true, symbol: 'none', lineStyle: { color: '#34d399', width: 0.5, type: 'dashed' } },
+      { name: '光伏功率', type: 'line', data: ts.pv_power || [], smooth: true, symbol: 'none', lineStyle: { color: '#fbbf24', width: 0.5 }, areaStyle: { color: 'rgba(251,191,36,0.10)' } },
     ],
   });
 
@@ -157,6 +158,67 @@ function renderWelfareCharts(ts) {
   });
 }
 
+// --- 典型日能量分析图表 ---
+let chartCostComposition = null, chartEnergyComposition = null, chartPriceComposition = null;
+
+function renderEnergyAnalysisCharts(ts) {
+  const hours = ts.hours.map(h => `${h}:00`);
+
+  // 1. 全时段成本构成（终端用户视角）- 堆积柱状图
+  if (chartCostComposition) chartCostComposition.dispose();
+  chartCostComposition = echarts.init(document.getElementById('chart-cost-composition'));
+  chartCostComposition.setOption({
+    tooltip: { ...chartTooltip, trigger: 'axis' },
+    legend: { data: ['网购电', '储能返还', '光伏消纳', '光伏上网'], textStyle: { color: '#b0b8c8', fontSize: 10 }, top: 0 },
+    grid: { left: 60, right: 20, top: 36, bottom: 24 },
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: { type: 'value', name: '万元', nameTextStyle: { color: '#7a8298', fontSize: 10 }, ...axisStyle },
+    series: [
+      { name: '网购电', type: 'bar', stack: 'cost', data: ts.cost_grid || [], itemStyle: { color: '#5ea3ff' } },
+      { name: '储能返还', type: 'bar', stack: 'cost', data: ts.cost_ess || [], itemStyle: { color: '#34d399' } },
+      { name: '光伏消纳', type: 'bar', stack: 'cost', data: ts.cost_pv_self || [], itemStyle: { color: '#fbbf24' } },
+      { name: '光伏上网', type: 'bar', stack: 'cost', data: ts.cost_pv_out || [], itemStyle: { color: '#a78bfa' }, show: false },
+    ],
+  });
+
+  // 2. 全时段能量构成 - 堆积柱状图
+  if (chartEnergyComposition) chartEnergyComposition.dispose();
+  chartEnergyComposition = echarts.init(document.getElementById('chart-energy-composition'));
+  chartEnergyComposition.setOption({
+    tooltip: { ...chartTooltip, trigger: 'axis' },
+    legend: { data: ['电网供电', '储能充放电', '光伏发电', '用户负荷'], textStyle: { color: '#b0b8c8', fontSize: 10 }, top: 0 },
+    grid: { left: 60, right: 20, top: 36, bottom: 24 },
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#7a8298', fontSize: 10 }, ...axisStyle },
+    series: [
+      { name: '电网供电', type: 'bar', stack: 'energy', data: (ts.energy_grid || []).map(v => -v), itemStyle: { color: '#5ea3ff' } },
+      { name: '储能充放电', type: 'bar', stack: 'energy', data: ts.energy_ess || [], itemStyle: { color: '#34d399' } },
+      { name: '光伏发电', type: 'bar', stack: 'energy', data: (ts.energy_pv || []).map(v => -v), itemStyle: { color: '#fbbf24' } },
+      { name: '用户负荷', type: 'bar', stack: 'energy', data: ts.energy_load || [], itemStyle: { color: '#f87171' } },
+    ],
+  });
+
+  // 3. 分时电价构成 - 条形图
+  if (chartPriceComposition) chartPriceComposition.dispose();
+  chartPriceComposition = echarts.init(document.getElementById('chart-price-composition'));
+  chartPriceComposition.setOption({
+    tooltip: { ...chartTooltip, trigger: 'axis' },
+    legend: { data: ['净负荷'], textStyle: { color: '#b0b8c8', fontSize: 10 }, top: 0 },
+    grid: { left: 60, right: 20, top: 36, bottom: 24 },
+    xAxis: { type: 'category', data: hours, ...axisStyle },
+    yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#7a8298', fontSize: 10 }, ...axisStyle },
+    series: [
+      { name: '净负荷', type: 'bar', data: ts.net_load || [], itemStyle: { color: '#5ea3ff' } },
+    ],
+  });
+
+  window.addEventListener('resize', () => {
+    chartCostComposition && chartCostComposition.resize();
+    chartEnergyComposition && chartEnergyComposition.resize();
+    chartPriceComposition && chartPriceComposition.resize();
+  });
+}
+
 // --- App 注册 ---
-App.charts = { renderDispatchChart, renderWelfareCharts };
+App.charts = { renderDispatchChart, renderWelfareCharts, renderEnergyAnalysisCharts };
 

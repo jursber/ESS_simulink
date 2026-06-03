@@ -266,6 +266,8 @@ function renderResult(r) {
   renderDispatchChart(time_series);
   // 多方收益图表
   renderWelfareCharts(time_series);
+  // 典型日能量分析图表
+  renderEnergyAnalysisCharts(time_series);
   // 能量流动图
   updateFlowDiagram(overview);
 }
