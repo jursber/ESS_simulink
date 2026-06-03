@@ -42,6 +42,13 @@ class TimeSeries(BaseModel):
     price_da: list[float] = []
     price_rt: list[float] = []
     price_user: list[float] = []
+    cost_grid: list[float] = []
+    cost_ess: list[float] = []
+    energy_grid: list[float] = []
+    energy_ess: list[float] = []
+    energy_load: list[float] = []
+    net_load: list[float] = []
+    tou_summary: dict = {}
 
 
 class OverviewData(BaseModel):

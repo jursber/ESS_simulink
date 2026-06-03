@@ -45,6 +45,11 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .top-nav-item{padding:6px 18px;border-radius:6px;font-size:var(--fs-13);color:var(--text-3);cursor:pointer;transition:all .15s;font-weight:var(--fw-medium);border:1px solid transparent}
 .top-nav-item:hover{background:var(--primary-dim);color:var(--text-2)}
 .top-nav-item.active{background:var(--primary-dim);color:var(--primary);font-weight:var(--fw-semi);border-color:rgba(94,163,255,0.3)}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.topbar-tabs{display:flex;align-items:center;gap:4px}
+.topbar-tab{padding:5px 14px;border-radius:6px;font-size:var(--fs-12);color:var(--text-3);cursor:pointer;transition:all .15s;font-weight:var(--fw-medium);border:1px solid transparent}
+.topbar-tab:hover{background:var(--primary-dim);color:var(--text-2)}
+.topbar-tab.active{background:var(--primary-dim);color:var(--primary);border-color:rgba(94,163,255,0.3)}
 .topbar-actions{display:flex;gap:8px}
 .btn{background:transparent;border:1px solid var(--border);color:var(--text-2);padding:5px 16px;border-radius:6px;font-size:var(--fs-12);cursor:pointer;transition:all .15s;font-weight:var(--fw-medium)}
 .btn:hover{border-color:var(--primary);color:var(--primary)}
@@ -145,6 +150,9 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .params-placeholder{display:flex;align-items:center;justify-content:center;height:100%}
 .params-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
 .params-section-hd{font-size:var(--fs-14);font-weight:var(--fw-semi);color:var(--text-1);margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.params-tariff-tab{display:inline-block;padding:8px 16px;font-size:var(--fs-12);color:var(--text-3);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.params-tariff-tab:hover{color:var(--text-2)}
+.params-tariff-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .params-grid{display:grid;gap:12px}
 .params-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
 .params-grid.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
@@ -275,3 +283,12 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* 分时电量汇总 */
+.tou-block{display:flex;flex-direction:column;gap:2px}
+.tou-row1{display:flex;align-items:center;gap:8px}
+.tou-row2{padding-left:40px}
+.tou-label{width:32px;font-size:var(--fs-13);font-weight:600;color:var(--text-2);text-align:right;flex-shrink:0}
+.tou-bar-wrap{flex:1;height:16px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.tou-bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.tou-value{font-size:var(--fs-11);color:var(--text-3)}

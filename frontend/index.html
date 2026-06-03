@@ -21,10 +21,16 @@
     <div class="top-nav-item" data-page="scenarios">方案管理</div>
     <div class="top-nav-item" data-page="params">缺省参数</div>
   </div>
-  <div class="topbar-actions">
-    <button class="btn" onclick="loadScenarios()">加载</button>
-    <button class="btn" onclick="saveScenario()">保存</button>
-    <button class="btn" onclick="resetParams()">重置</button>
+  <div class="topbar-right">
+    <div class="topbar-tabs">
+      <div class="topbar-tab" data-tab="model">模型管理</div>
+      <div class="topbar-tab" data-tab="docs">文档</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" onclick="loadScenarios()">加载</button>
+      <button class="btn" onclick="saveScenario()">保存</button>
+      <button class="btn" onclick="resetParams()">重置</button>
+    </div>
   </div>
 </div>
 
@@ -233,16 +239,36 @@
           <!-- 典型日能量分析 -->
           <div class="card" style="border-color:rgba(94,163,255,0.2)">
             <div class="card-hd"><span class="card-title">典型日能量分析</span></div>
-            <div class="card-body" style="display:flex;gap:12px">
-              <!-- 左侧2/3空间 -->
-              <div style="flex:2;display:flex;flex-direction:column;gap:12px;min-width:0">
-                <!-- 第一张图：全时段成本构成 -->
+            <div class="card-body" style="flex:1;flex-direction:row;display:flex;gap:12px;overflow:hidden">
+              <!-- 左侧 2/3 -->
+              <div style="flex:2;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0">
                 <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-cost-composition"></div>
-                <!-- 第二张图：全时段能量构成 -->
                 <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-energy-composition"></div>
               </div>
-              <!-- 右侧1/3空间 -->
-              <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-width:0" id="chart-price-composition"></div>
+              <!-- 右侧 1/3: 分时电量汇总 -->
+              <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-width:0;min-height:0;padding:12px 16px;display:flex;flex-direction:column;gap:2px" id="tou-summary">
+                <div style="font-size:var(--fs-14);font-weight:700;color:var(--text-1);margin-bottom:8px">各时段电能量统计</div>
+                <div class="tou-block" data-period="尖峰">
+                  <div class="tou-row1"><span class="tou-label">尖峰</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#dc2626"></div></div></div>
+                  <div class="tou-row2"><span class="tou-value">--</span></div>
+                </div>
+                <div class="tou-block" data-period="峰">
+                  <div class="tou-row1"><span class="tou-label">峰段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#f87171"></div></div></div>
+                  <div class="tou-row2"><span class="tou-value">--</span></div>
+                </div>
+                <div class="tou-block" data-period="平">
+                  <div class="tou-row1"><span class="tou-label">平段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#fbbf24"></div></div></div>
+                  <div class="tou-row2"><span class="tou-value">--</span></div>
+                </div>
+                <div class="tou-block" data-period="谷">
+                  <div class="tou-row1"><span class="tou-label">谷段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#5ea3ff"></div></div></div>
+                  <div class="tou-row2"><span class="tou-value">--</span></div>
+                </div>
+                <div class="tou-block" data-period="深谷">
+                  <div class="tou-row1"><span class="tou-label">深谷</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#93c5fd"></div></div></div>
+                  <div class="tou-row2"><span class="tou-value">--</span></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -309,6 +335,7 @@
             <div class="params-menu-group-hd">能源设施</div>
             <div class="params-menu-item" data-panel="pv" onclick="App.params.selectPanel('pv')">光伏参数</div>
             <div class="params-menu-item" data-panel="ess" onclick="App.params.selectPanel('ess')">储能参数</div>
+            <div class="params-menu-item" data-panel="load-curve" onclick="App.params.selectPanel('load-curve')">电力负荷</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电力市场</div>
@@ -318,14 +345,8 @@
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电价信息</div>
             <div class="params-menu-item" data-panel="pricing-mode" onclick="App.params.selectPanel('pricing-mode')">模式说明</div>
-            <div class="params-menu-item" data-panel="tariff-admin" onclick="App.params.selectPanel('tariff-admin')">行政分时电价</div>
-            <div class="params-menu-item" data-panel="tariff-contract" onclick="App.params.selectPanel('tariff-contract')">合同分时电价</div>
-            <div class="params-menu-item" data-panel="tariff-flat" onclick="App.params.selectPanel('tariff-flat')">固定价格</div>
+            <div class="params-menu-item" data-panel="tariff-tou" onclick="App.params.selectPanel('tariff-tou')">分时电价</div>
             <div class="params-menu-item" data-panel="tariff-spot" onclick="App.params.selectPanel('tariff-spot')">电力市场联动价格</div>
-          </div>
-          <div class="params-menu-group">
-            <div class="params-menu-group-hd">用户负荷</div>
-            <div class="params-menu-item" data-panel="load-curve" onclick="App.params.selectPanel('load-curve')">用户净负荷曲线</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">商业模式</div>
@@ -348,9 +369,7 @@
         <div class="params-panel" id="panel-contract"></div>
         <div class="params-panel" id="panel-spot-price"></div>
         <div class="params-panel" id="panel-pricing-mode"></div>
-        <div class="params-panel" id="panel-tariff-admin"></div>
-        <div class="params-panel" id="panel-tariff-contract"></div>
-        <div class="params-panel" id="panel-tariff-flat"></div>
+        <div class="params-panel" id="panel-tariff-tou"></div>
         <div class="params-panel" id="panel-tariff-spot"></div>
         <div class="params-panel" id="panel-load-curve"></div>
         <div class="params-panel" id="panel-wholesale"></div>

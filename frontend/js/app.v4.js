@@ -87,6 +87,28 @@ document.querySelectorAll('.top-nav-item[data-page]').forEach(item => {
   });
 });
 
+// --- 顶部右侧标签 ---
+let currentTopTab = null;
+
+document.querySelectorAll('.topbar-tab[data-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.dataset.tab;
+    if (currentTopTab === tabId) {
+      // 点击已激活的标签，取消选中
+      tab.classList.remove('active');
+      currentTopTab = null;
+      document.querySelectorAll('.topbar-tab').forEach(t => t.classList.remove('active'));
+      // TODO: 隐藏对应面板
+      return;
+    }
+    currentTopTab = tabId;
+    document.querySelectorAll('.topbar-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    // TODO: 显示对应面板
+    console.log('切换到标签:', tabId);
+  });
+});
+
 function loadScenarios() { init(); }
 function saveScenario() { alert('保存方案功能待实现'); }
 function resetParams() {
@@ -125,4 +147,5 @@ App.getCurrentPage = () => currentPage;
 App.setCurrentPage = (p) => { currentPage = p; };
 App.getParamsDirty = () => paramsDirty;
 App.setParamsDirty = (v) => { paramsDirty = v; };
+App.getCurrentTopTab = () => currentTopTab;
 

@@ -151,45 +151,34 @@ async function renderPanelContent(panelId) {
         <b style="color:var(--text-1)">M5 一口价</b> — 固定单价，不区分时段
       </div></div>`;
       break;
-    case 'tariff-admin':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">行政分时电价</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
-          <select id="tariff-admin-curve" onchange="onTariffAdminCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
-            <option value="typical" selected>典型峰谷平</option>
-            <option value="midday_valley">午间深谷</option>
-            <option value="summer_peak">夏季尖峰</option>
-          </select>
+    case 'tariff-tou':
+      panel.innerHTML = `<div class="params-section">
+        <div class="params-section-hd">分时电价</div>
+        <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)">
+          <div class="params-tariff-tab active" data-tariff-tab="admin" onclick="App.params.switchTariffTouTab(this,'admin')">行政分时电价</div>
+          <div class="params-tariff-tab" data-tariff-tab="contract" onclick="App.params.switchTariffTouTab(this,'contract')">合同分时电价</div>
+          <div class="params-tariff-tab" data-tariff-tab="flat" onclick="App.params.switchTariffTouTab(this,'flat')">固定电价</div>
         </div>
-        <div id="tariff-admin-chart" style="height:280px;margin-bottom:16px"></div>
-        <div id="tariff-admin-table"></div>
+        <div id="tariff-tou-content-admin"></div>
+        <div id="tariff-tou-content-contract" style="display:none"></div>
+        <div id="tariff-tou-content-flat" style="display:none"></div>
       </div>`;
-      onTariffAdminCurveChange();
-      break;
-    case 'tariff-contract':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">合同分时电价</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
-          <select id="tariff-contract-curve" onchange="onTariffContractCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
-            <option value="typical" selected>典型峰谷平</option>
-            <option value="midday_valley">午间深谷</option>
-            <option value="summer_peak">夏季尖峰</option>
-          </select>
-        </div>
-        <div id="tariff-contract-chart" style="height:280px;margin-bottom:16px"></div>
-        <div id="tariff-contract-table"></div>
-      </div>`;
-      onTariffContractCurveChange();
-      break;
-    case 'tariff-flat':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">固定价格</div><div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.5}"></div></div></div>`;
+      renderTariffTouTab('admin');
       break;
     case 'tariff-spot':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>price_henan.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
       renderSpotPriceChart();
       break;
     case 'load-curve':
-      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">用户负荷曲线</div><div id="load-curve-chart" style="height:300px"></div></div>';
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力负荷</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <span style="font-size:var(--fs-12);color:var(--text-3)">负荷曲线</span>
+          <select id="load-curve-select" onchange="onLoadCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+            <option value="typical" selected>典型日负荷</option>
+          </select>
+        </div>
+        <div id="load-curve-chart" style="height:300px"></div>
+      </div>`;
       renderLoadCurveChart();
       break;
     case 'pv-curve':
@@ -350,9 +339,61 @@ function renderLoadCurveChart() {
     grid:{left:46,right:46,top:20,bottom:20},
     xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
     yAxis:{type:'value',name:'kW',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
-    series:[{name:'净负荷',type:'line',data:mockLoad,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:0.5},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
+    series:[{name:'负荷',type:'line',data:mockLoad,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:0.5},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
   });
   window.addEventListener('resize',()=>chart.resize());
+}
+
+function onLoadCurveChange() {
+  renderLoadCurveChart();
+}
+
+// 分时电价 tab 切换
+function switchTariffTouTab(el, tabName) {
+  document.querySelectorAll('.params-tariff-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('[id^="tariff-tou-content-"]').forEach(d => d.style.display = 'none');
+  document.getElementById('tariff-tou-content-' + tabName).style.display = '';
+  renderTariffTouTab(tabName);
+}
+
+// 渲染分时电价子 tab 内容
+function renderTariffTouTab(tabName) {
+  const d = globalParamsData;
+  if (!d) return;
+  if (tabName === 'admin') {
+    const container = document.getElementById('tariff-tou-content-admin');
+    if (!container) return;
+    container.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
+      <select id="tariff-admin-curve" onchange="onTariffAdminCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+        <option value="typical" selected>典型峰谷平</option>
+        <option value="midday_valley">午间深谷</option>
+        <option value="summer_peak">夏季尖峰</option>
+      </select>
+    </div>
+    <div id="tariff-admin-chart" style="height:280px;margin-bottom:16px"></div>
+    <div id="tariff-admin-table"></div>`;
+    onTariffAdminCurveChange();
+  } else if (tabName === 'contract') {
+    const container = document.getElementById('tariff-tou-content-contract');
+    if (!container) return;
+    container.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
+      <select id="tariff-contract-curve" onchange="onTariffContractCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+        <option value="typical" selected>典型峰谷平</option>
+        <option value="midday_valley">午间深谷</option>
+        <option value="summer_peak">夏季尖峰</option>
+      </select>
+    </div>
+    <div id="tariff-contract-chart" style="height:280px;margin-bottom:16px"></div>
+    <div id="tariff-contract-table"></div>`;
+    onTariffContractCurveChange();
+  } else if (tabName === 'flat') {
+    const container = document.getElementById('tariff-tou-content-flat');
+    if (!container) return;
+    container.innerHTML = `<div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.5}"></div></div>`;
+  }
 }
 
 // 光伏出力曲线图表
@@ -682,6 +723,7 @@ App.params = {
   onTariffAdminCurveChange, onTariffContractCurveChange,
   onContractCurveTypeChange, renderTariffBarChart,
   renderSpotPriceCharts, onSpotPriceSetChange,
+  switchTariffTouTab, renderTariffTouTab, onLoadCurveChange,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

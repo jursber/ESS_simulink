@@ -71,12 +71,48 @@ def _load_real_series(region: str, date: str) -> list[float]:
     return [float(v) for v in day["Load_real"].tolist()]
 
 
+_PERIOD_CN = {
+    "valley": "谷",
+    "flat": "平",
+    "peak": "峰",
+    "super_peak": "尖峰",
+    "deep_valley": "深谷",
+}
+
+
+def _compute_tou_summary(config: ScenarioConfig, load_real: list[float]) -> dict:
+    """按峰谷平时段汇总全天用电量（kWh）。"""
+    mode = config.pricing_mode
+    # M5 一口价无 period 划分
+    if mode == "M5":
+        return {}
+    # 确定 tariff 加载模式
+    mode_map = {"M1": "admin", "M2": "admin", "M3": "contract", "M4": "admin"}
+    tariff_key = mode_map.get(mode, "admin")
+    try:
+        tariff_df = ConfigLoader.load_tariff(config.region, tariff_key)
+    except Exception:
+        return {}
+    summary: dict[str, float] = {}
+    for _, row in tariff_df.iterrows():
+        period = str(row.get("period", ""))
+        start = int(row.get("start_hour", 0))
+        end = int(row.get("end_hour", 0))
+        cn = _PERIOD_CN.get(period, period)
+        for h in range(start, end):
+            if 0 <= h < 24:
+                summary[cn] = summary.get(cn, 0.0) + load_real[h]
+    summary["_total"] = round(sum(load_real), 1)
+    return {k: round(v, 1) for k, v in summary.items()}
+
+
 def _build_response(
     result,
     config: ScenarioConfig,
     ess,
     prod_mwh: float,
     share_ratio: float,
+    load_real: list[float] | None = None,
 ) -> CalculateResponse:
     ess_mwh = ess.cap_rated / 1000.0
     initial_invest = ess.initial_investment
@@ -104,13 +140,36 @@ def _build_response(
     cb_return = user_return
     cb_total = (result.user_bill_with_ess + (result.user_savings - result.user_net)) / 10000
 
+    # 逐小时数据
+    _load_real = load_real if load_real else [0.0] * 24
+    _load_grid = list(result.load_grid)
+    _load_ess = list(result.load_ESS)
+    _P_user = list(result.P_user_curve) if hasattr(result, 'P_user_curve') else [0.0] * 24
+
+    # 成本（元）
+    cost_grid = [_load_grid[h] * _P_user[h] for h in range(24)]
+    cost_ess = [_load_ess[h] * _P_user[h] for h in range(24)]
+
+    # 峰谷平汇总
+    tou_summary = _compute_tou_summary(config, _load_real)
+
     return CalculateResponse(
         time_series=TimeSeries(
             hours=list(range(24)),
-            load_ess=list(result.load_ESS),
+            load_ess=_load_ess,
             soc=list(result.SOC),
-            load_grid=list(result.load_grid),
-            load_real=list(result.load_real) if hasattr(result, "load_real") else [0.0] * 24,
+            load_grid=_load_grid,
+            load_real=_load_real,
+            price_da=list(result.P_da_curve) if hasattr(result, 'P_da_curve') else [],
+            price_rt=list(result.P_rt_curve) if hasattr(result, 'P_rt_curve') else [],
+            price_user=_P_user,
+            cost_grid=cost_grid,
+            cost_ess=cost_ess,
+            energy_grid=_load_grid,
+            energy_ess=_load_ess,
+            energy_load=_load_real,
+            net_load=_load_grid,
+            tou_summary=tou_summary,
         ),
         overview=OverviewData(
             pricing_mode=config.pricing_mode,
@@ -246,11 +305,7 @@ def run_calculation(req: CalculateRequest):
     except Exception:
         price_da, price_rt = [], []
 
-    resp = _build_response(result, config, ess, prod_mwh, 20.0)
-    resp.time_series.load_real = load_real
-    resp.time_series.price_da = price_da
-    resp.time_series.price_rt = price_rt
-    resp.time_series.price_user = list(result.P_user_curve) if hasattr(result, 'P_user_curve') else []
+    resp = _build_response(result, config, ess, prod_mwh, 20.0, load_real=load_real)
 
     # 负荷变异系数
     import numpy as np
