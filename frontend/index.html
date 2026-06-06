@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920,initial-scale=1">
-<title>荷源网储售综合模拟仿真系统</title>
+<title>源网荷储售综合模拟仿真系统</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <link rel="stylesheet" href="css/style.v4.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -12,9 +12,8 @@
 
 <div class="topbar">
   <div class="logo">
-    <span class="icon">&#9889;</span>荷源网储售综合模拟仿真系统&nbsp;&nbsp;<span class="architecture-mode-tag architecture-tag-calc" id="tag-calc" style="font-size:var(--fs-12)">参数已修改</span>
+    <span class="icon">&#9889;</span>源网荷储售综合模拟仿真系统&nbsp;&nbsp;<span class="architecture-mode-tag architecture-tag-calc" id="tag-calc" style="font-size:var(--fs-12)">参数已修改</span>
   </div>
-  <!-- 3. 顶部导航居中 -->
   <div class="top-nav">
     <div class="top-nav-item active" data-page="analysis">单方案分析</div>
     <div class="top-nav-item" data-page="compare">多方案对比</div>
@@ -38,9 +37,16 @@
   <!-- PAGE 1: 单方案分析 -->
   <div class="page-wrap active" id="page-analysis">
     <div class="p-analysis">
-      <div class="center">
+      <div class="center" id="analysis-center">
+        <!-- 加载遮罩 -->
+        <div class="loading-overlay" id="loading-overlay">
+          <div style="text-align:center">
+            <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+            <div style="margin-top:12px;font-size:var(--fs-13);color:var(--text-2)">仿真计算中...</div>
+          </div>
+        </div>
         <div class="row row-top">
-          <!-- 方案概览：4. 图在左，文本在右 -->
+          <!-- 方案概览 -->
           <div class="card">
             <div class="card-hd" style="gap:12px"><span class="card-title">方案概览</span><div style="display:flex;gap:6px;margin-left:auto"><span class="architecture-mode-tag" id="tag-pm">合同分时</span><span class="architecture-mode-tag" id="tag-arch">单储能</span><span class="architecture-mode-tag" id="tag-bm">储售一体</span><span class="architecture-mode-tag" id="tag-dispatch">用户收益最优模式调度</span></div></div>
             <div class="card-body">
@@ -48,60 +54,52 @@
                 <div class="architecture-container">
                   <div class="fin-strip" style="margin-bottom:10px">
                     <div class="fin-cell"><div class="lbl">储能容量</div><div class="val" id="lbl-ess">--</div></div>
-                    <div class="fin-cell"><div class="lbl">光伏容量</div><div class="val" id="lbl-pv" data-unit="kWp">--</div></div>
+                    <div class="fin-cell"><div class="lbl">光伏容量</div><div class="val" id="lbl-pv">--</div></div>
                     <div class="fin-cell"><div class="lbl">最大净生产负荷</div><div class="val" id="lbl-flex">--</div></div>
                     <div class="fin-cell"><div class="lbl">最小净生产负荷</div><div class="val" id="lbl-prod">--</div></div>
                   </div>
                   <div style="display:flex;gap:16px;flex:1;min-height:0">
-                    <div class="architecture-image-wrap" style="background:#12161f">
+                    <div class="architecture-image-wrap" style="background:#141414">
                       <svg viewBox="0 0 516 284" width="516" height="284" xmlns="http://www.w3.org/2000/svg">
                         <!-- 连线 -->
-                        <!-- 电网→结算点 -->
-                        <line x1="175" y1="56" x2="175" y2="84" class="flow-line-solid" stroke="#5ea3ff"/>
-                        <!-- 结算点→母线 -->
-                        <line x1="175" y1="108" x2="175" y2="176" class="flow-line-solid" stroke="#5ea3ff"/>
-                        <!-- 母线 -->
-                        <line x1="60" y1="176" x2="456" y2="176" stroke="#3d8bfd" stroke-width="3" stroke-linecap="round" fill="none" class="flow-node"/>
-                        <!-- 母线→储能 -->
-                        <line x1="100" y1="176" x2="100" y2="218" class="flow-line-solid" stroke="#34d399"/>
-                        <!-- 母线→光伏 -->
-                        <line x1="205" y1="176" x2="205" y2="218" class="flow-line-solid" stroke="#34d399" opacity=".35"/>
-                        <!-- 母线→刚性净负荷 -->
-                        <line x1="310" y1="176" x2="310" y2="218" class="flow-line-solid" stroke="#34d399"/>
-                        <!-- 母线→可调负荷 -->
-                        <line x1="416" y1="176" x2="416" y2="218" class="flow-line-solid" stroke="#34d399" opacity=".35"/>
-                        <!-- 电力市场→售电公司 -->
-                        <line x1="340" y1="56" x2="340" y2="84" class="flow-line-dash flow-forward" stroke="#a78bfa"/>
-                        <!-- 结算点→售电公司 (水平虚线，两端顶住框线) -->
-                        <line x1="199" y1="96" x2="302" y2="96" class="flow-line-dash flow-forward" stroke="#a78bfa"/>
+                        <line x1="175" y1="56" x2="175" y2="84" class="flow-line-solid" stroke="#7EA8FA"/>
+                        <line x1="175" y1="108" x2="175" y2="176" class="flow-line-solid" stroke="#7EA8FA"/>
+                        <line x1="60" y1="176" x2="456" y2="176" stroke="#7EA8FA" stroke-width="2" stroke-linecap="round" fill="none" class="flow-node" opacity=".5"/>
+                        <line x1="100" y1="176" x2="100" y2="218" class="flow-line-solid" stroke="#4E9F3D"/>
+                        <line x1="205" y1="176" x2="205" y2="218" class="flow-line-solid" stroke="#F2A104" opacity=".35"/>
+                        <line x1="310" y1="176" x2="310" y2="218" class="flow-line-solid" stroke="#D4ADFC"/>
+                        <line x1="416" y1="176" x2="416" y2="218" class="flow-line-solid" stroke="#D4ADFC" opacity=".35"/>
+                        <line x1="340" y1="56" x2="340" y2="84" class="flow-line-dash flow-forward" stroke="#7EA8FA"/>
+                        <line x1="199" y1="96" x2="302" y2="96" class="flow-line-dash flow-forward" stroke="#7EA8FA"/>
+                        <!-- 光点动画 -->
+                        <circle r="3" fill="#F2A104" opacity=".8" class="flow-pulse"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#pv-path"/></animateMotion></circle>
+                        <path id="pv-path" d="M205,218 L205,176" fill="none"/>
+                        <circle r="3" fill="#4E9F3D" opacity=".8" class="flow-pulse"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#ess-path"/></animateMotion></circle>
+                        <path id="ess-path" d="M100,218 L100,176" fill="none"/>
                         <!-- 节点 -->
-                        <!-- 电网 -->
-                        <rect x="137" y="20" width="76" height="36" rx="5" fill="#1a2332" stroke="#3d8bfd" stroke-width="1" class="flow-node"/>
-                        <text x="175" y="43" text-anchor="middle" fill="#5ea3ff" font-size="11" font-weight="600">电网</text>
-                        <!-- 电力市场 (虚线框) -->
-                        <rect x="302" y="20" width="76" height="36" rx="5" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="5 3" class="flow-node"/>
-                        <text x="340" y="43" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">电力市场</text>
-                        <!-- 售电公司 (虚线框，与结算点同 y 对齐) -->
-                        <rect x="302" y="84" width="76" height="36" rx="5" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="5 3" class="flow-node"/>
-                        <text x="340" y="107" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">售电公司</text>
-                        <!-- 电网结算点 (虚线框) -->
-                        <rect x="151" y="84" width="48" height="24" rx="3" fill="none" stroke="#5ea3ff" stroke-width="1" stroke-dasharray="4 2" class="flow-node"/>
-                        <text x="175" y="100" text-anchor="middle" fill="#5ea3ff" font-size="9">结算点</text>
+                        <rect x="137" y="20" width="76" height="36" rx="5" fill="#1a1a2e" stroke="#7EA8FA" stroke-width="1.5" class="flow-node"/>
+                        <text x="175" y="43" text-anchor="middle" fill="#7EA8FA" font-size="11" font-weight="600">电网</text>
+                        <rect x="302" y="20" width="76" height="36" rx="5" fill="none" stroke="#7EA8FA" stroke-width="1" stroke-dasharray="5 3" class="flow-node" opacity=".6"/>
+                        <text x="340" y="43" text-anchor="middle" fill="#7EA8FA" font-size="11" font-weight="600">电力市场</text>
+                        <rect x="302" y="84" width="76" height="36" rx="5" fill="none" stroke="#7EA8FA" stroke-width="1" stroke-dasharray="5 3" class="flow-node" opacity=".6"/>
+                        <text x="340" y="107" text-anchor="middle" fill="#7EA8FA" font-size="11" font-weight="600">售电公司</text>
+                        <rect x="151" y="84" width="48" height="24" rx="3" fill="none" stroke="#7EA8FA" stroke-width="1" stroke-dasharray="4 2" class="flow-node" opacity=".6"/>
+                        <text x="175" y="100" text-anchor="middle" fill="#7EA8FA" font-size="9">结算点</text>
                         <!-- 储能 -->
-                        <rect x="60" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" class="flow-node" id="flow-ess"/>
-                        <text x="100" y="241" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">储能</text>
+                        <rect x="60" y="218" width="80" height="36" rx="5" fill="rgba(78,159,61,0.10)" stroke="#4E9F3D" stroke-width="1.5" class="flow-node" id="flow-ess"/>
+                        <text x="100" y="241" text-anchor="middle" fill="#4E9F3D" font-size="11" font-weight="600">储能</text>
                         <!-- 光伏 -->
-                        <rect x="165" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" opacity=".35" class="flow-node" id="flow-pv"/>
-                        <text x="205" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-pv-text">光伏</text>
+                        <rect x="165" y="218" width="80" height="36" rx="5" fill="rgba(242,161,4,0.08)" stroke="#F2A104" stroke-width="1.5" opacity=".35" class="flow-node" id="flow-pv"/>
+                        <text x="205" y="241" text-anchor="middle" fill="rgba(242,161,4,0.4)" font-size="11" font-weight="600" id="flow-pv-text">光伏</text>
                         <!-- 刚性净负荷 -->
-                        <rect x="270" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" class="flow-node"/>
-                        <text x="310" y="241" text-anchor="middle" fill="#34d399" font-size="11" font-weight="600">刚性净负荷</text>
+                        <rect x="270" y="218" width="80" height="36" rx="5" fill="rgba(212,173,252,0.08)" stroke="#D4ADFC" stroke-width="1.5" class="flow-node"/>
+                        <text x="310" y="241" text-anchor="middle" fill="#D4ADFC" font-size="11" font-weight="600">刚性净负荷</text>
                         <!-- 可调负荷 -->
-                        <rect x="376" y="218" width="80" height="36" rx="5" fill="#152228" stroke="#10b981" stroke-width="1" opacity=".35" class="flow-node" id="flow-load-flex"/>
-                        <text x="416" y="241" text-anchor="middle" fill="#6b7280" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
+                        <rect x="376" y="218" width="80" height="36" rx="5" fill="rgba(212,173,252,0.08)" stroke="#D4ADFC" stroke-width="1.5" opacity=".35" class="flow-node" id="flow-load-flex"/>
+                        <text x="416" y="241" text-anchor="middle" fill="rgba(212,173,252,0.4)" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
                       </svg>
                     </div>
-                    <!-- 区域2.2: 各方经济性概览 -->
+                    <!-- 各方经济性概览 -->
                     <div class="econ-card" id="econ-card">
                       <div class="card-hd" style="margin-bottom:10px;padding-bottom:8px"><span class="card-title" style="font-size:var(--fs-14)">各方经济性概览</span></div>
                       <div class="econ-grid">
@@ -128,7 +126,7 @@
                       </div>
                     </div>
                   </div>
-                  <!-- 区域3: 运营状态标签 -->
+                  <!-- 运营状态标签 -->
                   <div class="op-status-strip">
                     <div class="op-status-row">
                       <div class="op-tag"><span class="op-tag-icon">🔄</span><span class="op-tag-lbl">储能日均充放次数</span><span class="op-tag-val" id="op-cycles-day">--</span></div>
@@ -145,41 +143,41 @@
               </div>
             </div>
           </div>
-          <!-- 多方收益：6. 左文右图高度对齐 -->
+          <!-- 多方收益 -->
           <div class="card">
             <div class="card-hd"><span class="card-title">多方收益分析</span><span class="card-sub" id="welfare-badge">总社会福利提升 --</span></div>
             <div class="card-body" style="flex-direction:column;gap:0">
               <div style="flex:1;display:flex;gap:12px;min-height:0">
-                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">终端用户</div>
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:var(--load);display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(212,173,252,0.08);border:1px solid rgba(212,173,252,0.15);border-radius:4px">终端用户</div>
                 <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:space-between">
                   <div class="kv-row"><span class="k"><span class="kv-icon">💡</span>总用网电费（向电网支付）</span><span class="v" id="w-bill-no">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">🔄</span>储能收益返还（向储能运营商支付）</span><span class="v" id="w-return">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">📊</span>实际用电成本</span><span class="v" id="w-total">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>需量电费节约</span><span class="v" id="w-demand-saving">--</span></div>
                 </div>
-                <div style="flex:2.5;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-user-price"></div>
+                <div style="flex:2.5;background:var(--bg-strip);border-radius:6px" id="chart-user-price"></div>
               </div>
-              <div style="height:1px;background:rgba(255,255,255,0.15);margin:6px 0;flex-shrink:0"></div>
+              <div style="height:1px;background:var(--border-light);margin:6px 0;flex-shrink:0"></div>
               <div style="flex:1;display:flex;gap:12px;min-height:0">
-                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">光储投资方</div>
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:var(--color-ess);display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(78,159,61,0.08);border:1px solid rgba(78,159,61,0.15);border-radius:4px">光储投资方</div>
                 <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:space-between">
                   <div class="kv-row"><span class="k"><span class="kv-icon">📈</span>储能分成收益</span><span class="v" id="w-inv-share">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">💰</span>需量分成收益</span><span class="v" id="w-inv-demand">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">☀️</span>光伏上网收益</span><span class="v" id="w-inv-pv-out">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">🔋</span>光伏消纳收益</span><span class="v" id="w-inv-pv-self">--</span></div>
                 </div>
-                <div style="flex:2.5;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-ess-power"></div>
+                <div style="flex:2.5;background:var(--bg-strip);border-radius:6px" id="chart-ess-power"></div>
               </div>
-              <div style="height:1px;background:rgba(255,255,255,0.15);margin:6px 0;flex-shrink:0"></div>
+              <div style="height:1px;background:var(--border-light);margin:6px 0;flex-shrink:0"></div>
               <div style="flex:1;display:flex;gap:12px;min-height:0">
-                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:#22d3ee;display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.18);border-radius:4px">售电公司</div>
+                <div style="writing-mode:vertical-rl;font-size:var(--fs-13);font-weight:700;color:var(--color-grid);display:flex;align-items:center;justify-content:center;letter-spacing:.15em;flex-shrink:0;padding:0 8px;background:rgba(126,168,250,0.08);border:1px solid rgba(126,168,250,0.15);border-radius:4px">售电公司</div>
                 <div class="kv-grid" style="grid-template-columns:1fr;flex:2;align-content:space-between">
                   <div class="kv-row"><span class="k"><span class="kv-icon">📅</span>中长期购电成本</span><span class="v" id="w-cp-long">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">📆</span>日前购电成本</span><span class="v" id="w-cp-day">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">⚡</span>实时购电成本</span><span class="v" id="w-cp-real">--</span></div>
                   <div class="kv-row"><span class="k"><span class="kv-icon">🔋</span>储能造成的成本变化</span><span class="v" id="w-cp-ess">--</span></div>
                 </div>
-                <div style="flex:2.5;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px" id="chart-price-curve"></div>
+                <div style="flex:2.5;background:var(--bg-strip);border-radius:6px" id="chart-price-curve"></div>
               </div>
             </div>
           </div>
@@ -232,40 +230,38 @@
                 </div>
               </div>
               <div id="inv-none-content" style="display:none;flex:1;align-items:center;justify-content:center">
-                <div style="font-size:16px;color:var(--text-3);font-weight:var(--fw-medium)">无能源设施</div>
+                <div style="font-size:16px;color:var(--text-2);font-weight:var(--fw-medium)">无能源设施</div>
               </div>
             </div>
           </div>
           <!-- 典型日能量分析 -->
-          <div class="card" style="border-color:rgba(94,163,255,0.2)">
+          <div class="card">
             <div class="card-hd"><span class="card-title">典型日能量分析</span></div>
             <div class="card-body" style="flex:1;flex-direction:row;display:flex;gap:12px;overflow:hidden">
-              <!-- 左侧 2/3 -->
               <div style="flex:2;display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0">
-                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-cost-composition"></div>
-                <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-height:0" id="chart-energy-composition"></div>
+                <div style="flex:1;background:var(--bg-strip);border-radius:6px;min-height:0" id="chart-cost-composition"></div>
+                <div style="flex:1;background:var(--bg-strip);border-radius:6px;min-height:0" id="chart-energy-composition"></div>
               </div>
-              <!-- 右侧 1/3: 分时电量汇总 -->
-              <div style="flex:1;background:var(--bg-strip);border:1px solid var(--border);border-radius:6px;min-width:0;min-height:0;padding:12px 16px;display:flex;flex-direction:column;gap:2px" id="tou-summary">
+              <div style="flex:1;background:var(--bg-strip);border-radius:6px;min-width:0;min-height:0;padding:12px 16px;display:flex;flex-direction:column;gap:2px" id="tou-summary">
                 <div style="font-size:var(--fs-14);font-weight:700;color:var(--text-1);margin-bottom:8px">各时段电能量统计</div>
                 <div class="tou-block" data-period="尖峰">
                   <div class="tou-row1"><span class="tou-label">尖峰</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#dc2626"></div></div></div>
                   <div class="tou-row2"><span class="tou-value">--</span></div>
                 </div>
                 <div class="tou-block" data-period="峰">
-                  <div class="tou-row1"><span class="tou-label">峰段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#f87171"></div></div></div>
+                  <div class="tou-row1"><span class="tou-label">峰段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#EB5757"></div></div></div>
                   <div class="tou-row2"><span class="tou-value">--</span></div>
                 </div>
                 <div class="tou-block" data-period="平">
-                  <div class="tou-row1"><span class="tou-label">平段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#fbbf24"></div></div></div>
+                  <div class="tou-row1"><span class="tou-label">平段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#F2A104"></div></div></div>
                   <div class="tou-row2"><span class="tou-value">--</span></div>
                 </div>
                 <div class="tou-block" data-period="谷">
-                  <div class="tou-row1"><span class="tou-label">谷段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#5ea3ff"></div></div></div>
+                  <div class="tou-row1"><span class="tou-label">谷段</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#7EA8FA"></div></div></div>
                   <div class="tou-row2"><span class="tou-value">--</span></div>
                 </div>
                 <div class="tou-block" data-period="深谷">
-                  <div class="tou-row1"><span class="tou-label">深谷</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#93c5fd"></div></div></div>
+                  <div class="tou-row1"><span class="tou-label">深谷</span><div class="tou-bar-wrap"><div class="tou-bar-fill" style="background:#4E9F3D"></div></div></div>
                   <div class="tou-row2"><span class="tou-value">--</span></div>
                 </div>
               </div>
@@ -273,12 +269,11 @@
           </div>
         </div>
       </div>
-      <!-- RIGHT PANEL：8. 参数控件左对齐占满 -->
+      <!-- RIGHT PANEL -->
       <div class="right-panel">
         <div class="param-card">
           <div class="param-hd">
             <span class="param-hd-title">参数调节区</span>
-            <button class="btn-calc" onclick="runCalculation()">计 算</button>
           </div>
           <div class="param-sec">
             <div class="param-sec-title">方案选择</div>
@@ -295,15 +290,20 @@
             <div class="param-row"><span class="param-label">电价模式</span><select class="param-select" id="sel-pm"></select></div>
             <div class="param-row"><span class="param-label">商业模式</span><select class="param-select" id="sel-bm"></select></div>
           </div>
+          <!-- 计算按钮移至底部 -->
+          <div style="margin-top:auto;padding-top:16px;flex-shrink:0">
+            <button class="btn-calc" id="btn-calc" onclick="runCalculation()">
+              <span class="spinner"></span>
+              <span class="btn-text">开 始 仿 真</span>
+            </button>
+          </div>
         </div>
         <!-- 方案槽位区 -->
         <div class="slot-bar" id="slot-bar">
           <div class="slot-group">
-            <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.analysis.toggleSlot(0)"><span class="slot-letter">A</span></button>
-            <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.analysis.toggleSlot(1)"><span class="slot-letter">B</span></button>
-            <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.analysis.toggleSlot(2)"><span class="slot-letter">C</span></button>
-            <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.analysis.toggleSlot(3)"><span class="slot-letter">D</span></button>
-            <button class="slot-btn" data-slot="4" id="slot-4" onclick="App.analysis.toggleSlot(4)"><span class="slot-letter">E</span></button>
+            <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.analysis.toggleSlot(0)"><span class="slot-dot"></span><span>方案 A</span></button>
+            <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.analysis.toggleSlot(1)"><span class="slot-dot"></span><span>方案 B</span></button>
+            <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.analysis.toggleSlot(2)"><span class="slot-dot"></span><span>方案 C</span></button>
             <button class="slot-add" id="slot-add" onclick="App.analysis.addSlot()" title="记录当前方案">+</button>
           </div>
           <button class="slot-compare" id="slot-compare" onclick="App.analysis.openCompareModal()" title="比较" disabled>比较</button>
@@ -327,7 +327,6 @@
   <div class="page-wrap" id="page-scenarios"><div class="p-scenarios">方案管理（待实现）</div></div>
   <div class="page-wrap" id="page-params">
     <div class="p-params-layout">
-      <!-- 左侧菜单 -->
       <div class="params-sidebar">
         <div class="params-sidebar-hd">缺省参数</div>
         <div class="params-menu" id="params-menu">
@@ -357,13 +356,10 @@
           </div>
         </div>
       </div>
-      <!-- 右侧内容区 -->
       <div class="params-content" id="params-content">
-        <!-- 默认提示 -->
         <div class="params-placeholder" id="params-default-hint">
-          <div style="color:var(--text-3);font-size:var(--fs-14)">← 请从左侧菜单选择参数类别</div>
+          <div style="color:var(--text-2);font-size:var(--fs-14)">← 请从左侧菜单选择参数类别</div>
         </div>
-        <!-- 各面板（默认隐藏，JS 切换） -->
         <div class="params-panel" id="panel-ess"></div>
         <div class="params-panel" id="panel-pv"></div>
         <div class="params-panel" id="panel-contract"></div>
@@ -388,7 +384,6 @@
 <script src="js/params.v4.js"></script>
 <script src="js/compare.v4.js"></script>
 <script>
-// 全局代理（HTML 内联 onclick 需要）
 window.runCalculation = () => App.analysis?.runCalculation?.();
 window.switchInvTab = (t) => App.analysis?.switchInvTab?.(t);
 window.toggleSection = (el) => App.params?.toggleSection?.(el);
@@ -410,7 +405,6 @@ window.onContractCurveTypeChange = () => App.params?.onContractCurveTypeChange?.
 window.onTariffAdminCurveChange = () => App.params?.onTariffAdminCurveChange?.();
 window.onTariffContractCurveChange = () => App.params?.onTariffContractCurveChange?.();
 
-// 启动
 init();
 </script>
 </body>

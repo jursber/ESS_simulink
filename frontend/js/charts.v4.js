@@ -1,6 +1,21 @@
 // ===== charts.js =====
 
-// --- 7. ECharts 图表 ---
+// 实体色彩常量
+const C = { src: '#F2A104', grid: '#7EA8FA', load: '#D4ADFC', ess: '#4E9F3D', soc: '#34d399', accent: '#7EA8FA' };
+
+// --- 千分位格式化 ---
+function fmtNum(v, decimals) {
+  if (v == null || isNaN(v)) return '--';
+  const d = decimals != null ? decimals : (Math.abs(v) >= 100 ? 0 : 1);
+  return Number(v).toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+// --- ECharts 通用配置 ---
+const chartTooltip = { trigger: 'axis', backgroundColor: '#1E1E1E', borderColor: '#333', textStyle: { color: 'rgba(250,250,250,0.87)', fontSize: 11 } };
+const chartGrid = { left: 46, right: 46, top: 30, bottom: 20, containLabel: true };
+const axisStyle = { axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 8, interval: 0 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } };
+
+// --- 调度曲线 ---
 let dispatchChart = null;
 
 function renderDispatchChart(ts) {
@@ -10,84 +25,48 @@ function renderDispatchChart(ts) {
   dispatchChart = echarts.init(el);
 
   dispatchChart.setOption({
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#1e2330',
-      borderColor: '#2e3446',
-      textStyle: { color: '#f0f2f5', fontSize: 12 },
-    },
+    tooltip: chartTooltip,
     legend: {
-      data: ['负荷', '储能', 'SOC'],
-      textStyle: { color: '#b0b8c8', fontSize: 11 },
+      data: ['负荷', '储能', 'SOC', '光伏'],
+      textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 11 },
       top: 0,
     },
-    grid: { left: 50, right: 50, top: 36, bottom: 24 },
+    grid: { left: 50, right: 50, top: 36, bottom: 24, containLabel: true },
     xAxis: {
       type: 'category',
       data: ts.hours.map(h => `${h}:00`),
-      axisLine: { lineStyle: { color: '#2e3446' } },
-      axisLabel: { color: '#7a8298', fontSize: 10, interval: 0 },
+      axisLine: { lineStyle: { color: '#333' } },
+      axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 10, interval: 0 },
     },
     yAxis: [
       {
-        type: 'value',
-        name: 'kW',
-        nameTextStyle: { color: '#7a8298' },
-        axisLine: { lineStyle: { color: '#2e3446' } },
-        axisLabel: { color: '#7a8298', fontSize: 10 },
+        type: 'value', name: 'kW',
+        nameTextStyle: { color: 'rgba(176,176,176,0.60)' },
+        axisLine: { lineStyle: { color: '#333' } },
+        axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 10 },
         splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
       },
       {
-        type: 'value',
-        name: 'SOC',
-        nameTextStyle: { color: '#7a8298' },
-        min: 0,
-        max: 1,
-        axisLine: { lineStyle: { color: '#2e3446' } },
-        axisLabel: { color: '#7a8298', fontSize: 10 },
+        type: 'value', name: 'SOC %',
+        nameTextStyle: { color: 'rgba(176,176,176,0.60)' },
+        min: 0, max: 100,
+        axisLine: { lineStyle: { color: '#333' } },
+        axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 10 },
         splitLine: { show: false },
       },
     ],
     series: [
-      {
-        name: '负荷',
-        type: 'line',
-        data: ts.load_real,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { color: '#b0b8c8', width: 0.5 },
-        areaStyle: { color: 'rgba(176,184,200,0.08)' },
-      },
-      {
-        name: '储能',
-        type: 'line',
-        data: ts.load_ess,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { color: '#5ea3ff', width: 0.5 },
-        areaStyle: { color: 'rgba(94,163,255,0.12)' },
-      },
-      {
-        name: 'SOC',
-        type: 'line',
-        yAxisIndex: 1,
-        data: ts.soc,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { color: '#34d399', width: 0.5, type: 'dashed' },
-      },
+      { name: '负荷', type: 'line', data: ts.load_real, smooth: true, symbol: 'none', lineStyle: { color: C.load, width: 0.5 }, areaStyle: { color: 'rgba(212,173,252,0.08)' } },
+      { name: '储能', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: C.ess, width: 0.5 }, areaStyle: { color: 'rgba(78,159,61,0.10)' } },
+      { name: 'SOC', type: 'line', yAxisIndex: 1, data: (ts.soc || []).map(v => v * 100), smooth: true, symbol: 'none', lineStyle: { color: C.soc, width: 0.5, type: 'dashed' } },
+      { name: '光伏', type: 'line', data: ts.pv_power || [], smooth: true, symbol: 'none', lineStyle: { color: C.src, width: 0.5 }, areaStyle: { color: 'rgba(242,161,4,0.08)' } },
     ],
   });
-
   window.addEventListener('resize', () => dispatchChart && dispatchChart.resize());
 }
 
 // --- 多方收益图表 ---
 let chartUserPrice = null, chartEssPower = null, chartPriceCurve = null;
-
-const chartTooltip = { trigger: 'axis', backgroundColor: '#1e2330', borderColor: '#2e3446', textStyle: { color: '#f0f2f5', fontSize: 11 } };
-const chartGrid = { left: 46, right: 46, top: 30, bottom: 20 };
-const axisStyle = { axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } };
 
 function renderWelfareCharts(ts) {
   const hours = ts.hours.map(h => `${h}`);
@@ -108,14 +87,14 @@ function renderWelfareCharts(ts) {
     chartUserPrice = echarts.init(elUserPrice);
     chartUserPrice.setOption({
       tooltip: chartTooltip,
-      grid: chartGrid,
+      grid: { ...chartGrid, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
       series: [{
         name: '用户侧电价', type: 'line', data: (ts.price_user && ts.price_user.length ? ts.price_user : mockPriceUser),
         smooth: true, symbol: 'none',
-        lineStyle: { color: '#f0c040', width: 0.5 },
-        areaStyle: { color: 'rgba(240,192,64,0.10)' },
+        lineStyle: { color: C.src, width: 0.5 },
+        areaStyle: { color: 'rgba(242,161,4,0.08)' },
       }],
     });
   }
@@ -127,17 +106,17 @@ function renderWelfareCharts(ts) {
     chartEssPower = echarts.init(elEssPower);
     chartEssPower.setOption({
       tooltip: chartTooltip,
-      legend: { data: ['储能功率', 'SOC', '光伏功率'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
-      grid: { left: 46, right: 46, top: 30, bottom: 20 },
+      legend: { data: ['储能功率', 'SOC', '光伏功率'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, top: 0 },
+      grid: { left: 46, right: 46, top: 30, bottom: 20, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
       yAxis: [
-        { type: 'value', name: 'kW', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
-        { type: 'value', name: 'SOC %', nameTextStyle: { color: '#7a8298', fontSize: 8 }, min: 0, max: 100, axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8 }, splitLine: { show: false } },
+        { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
+        { type: 'value', name: 'SOC %', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, min: 0, max: 100, axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, splitLine: { show: false } },
       ],
       series: [
-        { name: '储能功率', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: '#5ea3ff', width: 0.5 }, areaStyle: { color: 'rgba(94,163,255,0.10)' } },
-        { name: 'SOC', type: 'line', yAxisIndex: 1, data: (ts.soc || []).map(v => v * 100), smooth: true, symbol: 'none', lineStyle: { color: '#34d399', width: 0.5, type: 'dashed' } },
-        { name: '光伏功率', type: 'line', data: ts.pv_power || [], smooth: true, symbol: 'none', lineStyle: { color: '#fbbf24', width: 0.5 }, areaStyle: { color: 'rgba(251,191,36,0.10)' } },
+        { name: '储能功率', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: C.ess, width: 0.5 }, areaStyle: { color: 'rgba(78,159,61,0.10)' } },
+        { name: 'SOC', type: 'line', yAxisIndex: 1, data: (ts.soc || []).map(v => v * 100), smooth: true, symbol: 'none', lineStyle: { color: C.soc, width: 0.5, type: 'dashed' } },
+        { name: '光伏功率', type: 'line', data: ts.pv_power || [], smooth: true, symbol: 'none', lineStyle: { color: C.src, width: 0.5 }, areaStyle: { color: 'rgba(242,161,4,0.08)' } },
       ],
     });
   }
@@ -149,13 +128,13 @@ function renderWelfareCharts(ts) {
     chartPriceCurve = echarts.init(elPriceCurve);
     chartPriceCurve.setOption({
       tooltip: chartTooltip,
-      legend: { data: ['日前电价', '实时电价'], textStyle: { color: '#b0b8c8', fontSize: 8 }, top: 0 },
-      grid: chartGrid,
+      legend: { data: ['日前电价', '实时电价'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, top: 0 },
+      grid: { ...chartGrid, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
       series: [
-        { name: '日前电价', type: 'line', data: (ts.price_da && ts.price_da.length ? ts.price_da : mockPriceDa), smooth: true, symbol: 'none', lineStyle: { color: '#a78bfa', width: 0.5 } },
-        { name: '实时电价', type: 'line', data: (ts.price_rt && ts.price_rt.length ? ts.price_rt : mockPriceRt), smooth: true, symbol: 'none', lineStyle: { color: '#f87171', width: 0.5, type: 'dashed' } },
+        { name: '日前电价', type: 'line', data: (ts.price_da && ts.price_da.length ? ts.price_da : mockPriceDa), smooth: true, symbol: 'none', lineStyle: { color: C.grid, width: 0.5 } },
+        { name: '实时电价', type: 'line', data: (ts.price_rt && ts.price_rt.length ? ts.price_rt : mockPriceRt), smooth: true, symbol: 'none', lineStyle: { color: '#EB5757', width: 0.5, type: 'dashed' } },
       ],
     });
   }
@@ -170,15 +149,10 @@ function renderWelfareCharts(ts) {
 // --- 典型日能量分析图表 ---
 let chartCostComposition = null, chartEnergyComposition = null;
 
-const _touColors = {
-  '谷': '#5ea3ff', '平': '#fbbf24', '峰': '#f87171',
-  '尖峰': '#dc2626', '深谷': '#93c5fd',
-};
-
 function renderEnergyAnalysisCharts(ts) {
   const hours = ts.hours.map(h => `${h}:00`);
 
-  // 1. 全时段成本构成（终端用户视角）- 堆积柱状图
+  // 1. 全时段成本构成 - 堆积柱状图
   const elCost = document.getElementById('chart-cost-composition');
   if (elCost) {
     if (chartCostComposition) chartCostComposition.dispose();
@@ -187,41 +161,55 @@ function renderEnergyAnalysisCharts(ts) {
       tooltip: { ...chartTooltip, trigger: 'axis', formatter: function(params) {
         let s = params[0].axisValue + '<br/>';
         let total = 0;
-        params.forEach(p => { s += p.marker + p.seriesName + ': ' + p.value.toFixed(1) + ' 元<br/>'; total += p.value; });
-        s += '合计: ' + total.toFixed(1) + ' 元';
+        params.forEach(p => { s += p.marker + p.seriesName + ': ' + fmtNum(p.value) + ' 元<br/>'; total += p.value; });
+        s += '<b>合计: ' + fmtNum(total) + ' 元</b>';
         return s;
       }},
-      legend: { data: ['网购电', '储能返还'], textStyle: { color: '#b0b8c8', fontSize: 10 }, top: 0 },
-      grid: { left: 60, right: 20, top: 36, bottom: 24 },
+      legend: { data: ['网购电', '储能返还'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, top: 0 },
+      grid: { left: 60, right: 20, top: 36, bottom: 24, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元', nameTextStyle: { color: '#7a8298', fontSize: 10 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, ...axisStyle },
       series: [
-        { name: '网购电', type: 'bar', stack: 'cost', data: ts.cost_grid || [], itemStyle: { color: '#5ea3ff' } },
-        { name: '储能返还', type: 'bar', stack: 'cost', data: ts.cost_ess || [], itemStyle: { color: '#34d399' } },
+        { name: '网购电', type: 'bar', stack: 'cost', data: ts.cost_grid || [], itemStyle: { color: C.grid } },
+        { name: '储能返还', type: 'bar', stack: 'cost', data: ts.cost_ess || [], itemStyle: { color: C.ess } },
       ],
     });
   }
 
-  // 2. 全时段能量构成 - 堆积柱状图
+  // 2. 全时段能量构成 - 正负堆叠双向柱状图
   const elEnergy = document.getElementById('chart-energy-composition');
   if (elEnergy) {
     if (chartEnergyComposition) chartEnergyComposition.dispose();
     chartEnergyComposition = echarts.init(elEnergy);
+
+    // 供给侧为正（光伏、电网购电、储能放电），消耗侧为负（用户负荷、储能充电）
+    const pvPower = ts.pv_power || [];
+    const gridSupply = (ts.energy_grid || []).map(v => Math.abs(v));
+    const essDischarge = (ts.energy_ess || []).map(v => Math.max(0, v));
+    const essCharge = (ts.energy_ess || []).map(v => Math.min(0, v));
+    const loadDemand = (ts.energy_load || []).map(v => -Math.abs(v));
+
     chartEnergyComposition.setOption({
-      tooltip: { ...chartTooltip, trigger: 'axis' },
-      legend: { data: ['电网供电', '储能充放电', '用户负荷'], textStyle: { color: '#b0b8c8', fontSize: 10 }, top: 0 },
-      grid: { left: 60, right: 20, top: 36, bottom: 24 },
+      tooltip: { ...chartTooltip, trigger: 'axis', formatter: function(params) {
+        let s = params[0].axisValue + '<br/>';
+        params.forEach(p => { if (Math.abs(p.value) > 0.01) s += p.marker + p.seriesName + ': ' + fmtNum(Math.abs(p.value)) + ' kW<br/>'; });
+        return s;
+      }},
+      legend: { data: ['光伏发电', '电网供电', '储能放电', '储能充电', '用户负荷'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, top: 0 },
+      grid: { left: 60, right: 20, top: 36, bottom: 24, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#7a8298', fontSize: 10 }, ...axisStyle },
+      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, ...axisStyle },
       series: [
-        { name: '电网供电', type: 'bar', stack: 'energy', data: (ts.energy_grid || []).map(v => -v), itemStyle: { color: '#5ea3ff' } },
-        { name: '储能充放电', type: 'bar', stack: 'energy', data: ts.energy_ess || [], itemStyle: { color: '#34d399' } },
-        { name: '用户负荷', type: 'bar', stack: 'energy', data: ts.energy_load || [], itemStyle: { color: '#f87171' } },
+        { name: '光伏发电', type: 'bar', stack: 'supply', data: pvPower, itemStyle: { color: C.src }, barMaxWidth: 12 },
+        { name: '电网供电', type: 'bar', stack: 'supply', data: gridSupply, itemStyle: { color: C.grid }, barMaxWidth: 12 },
+        { name: '储能放电', type: 'bar', stack: 'supply', data: essDischarge, itemStyle: { color: C.ess }, barMaxWidth: 12 },
+        { name: '储能充电', type: 'bar', stack: 'demand', data: essCharge, itemStyle: { color: 'rgba(78,159,61,0.5)' }, barMaxWidth: 12 },
+        { name: '用户负荷', type: 'bar', stack: 'demand', data: loadDemand, itemStyle: { color: C.load }, barMaxWidth: 12 },
       ],
     });
   }
 
-  // 3. 分时电量汇总 - 纯 HTML/CSS 实现
+  // 3. 分时电量汇总
   const elTou = document.getElementById('tou-summary');
   if (elTou) {
     const tou = ts.tou_summary || {};
@@ -245,4 +233,4 @@ function renderEnergyAnalysisCharts(ts) {
 }
 
 // --- App 注册 ---
-App.charts = { renderDispatchChart, renderWelfareCharts, renderEnergyAnalysisCharts };
+App.charts = { renderDispatchChart, renderWelfareCharts, renderEnergyAnalysisCharts, fmtNum };

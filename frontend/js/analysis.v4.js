@@ -1,8 +1,8 @@
 // ===== analysis.js =====
 
 // --- 方案槽位 ---
-const SLOT_LETTERS = ['A', 'B', 'C', 'D', 'E'];
-let slots = [null, null, null, null, null]; // null = 空, object = 快照
+const SLOT_NAMES = ['方案 A', '方案 B', '方案 C'];
+let slots = [null, null, null]; // 3 个槽位
 
 function getActiveSlots() {
   return slots.map((s, i) => s !== null ? i : -1).filter(i => i >= 0);
@@ -34,7 +34,6 @@ function addSlot() {
   const tagCalc = document.getElementById('tag-calc');
   if (!tagCalc || !tagCalc.classList.contains('done')) return;
 
-  // 快照当前参数和结果
   const snap = {
     scenarioId: document.getElementById('sel-scenario').value,
     pricingMode: document.getElementById('sel-pm').value,
@@ -43,14 +42,13 @@ function addSlot() {
     contractProfile: document.getElementById('sel-contract').value,
     dayaheadProfile: document.getElementById('sel-dayahead').value,
     result: App.state.result ? JSON.parse(JSON.stringify(App.state.result)) : null,
-    label: SLOT_LETTERS[emptyIdx],
+    label: SLOT_NAMES[emptyIdx],
     timestamp: Date.now(),
   };
   slots[emptyIdx] = snap;
   refreshSlotUI();
   updateAddBtnState();
 
-  // 记录后标记为已修改，禁用 + 按钮
   tagCalc.textContent = '参数已修改';
   tagCalc.classList.remove('done');
 }
@@ -72,7 +70,6 @@ function closeCompareModal(e) {
   document.getElementById('modal-compare').style.display = 'none';
 }
 
-// 监听参数变化，禁用 + 按钮
 function onParamChange() {
   const tagCalc = document.getElementById('tag-calc');
   if (tagCalc) {
@@ -82,10 +79,38 @@ function onParamChange() {
   updateAddBtnState();
 }
 
-// 绑定参数区 select 变化
 document.querySelectorAll('.param-select').forEach(sel => {
   sel.addEventListener('change', onParamChange);
 });
+
+// --- 加载状态 ---
+function setLoading(on) {
+  const overlay = document.getElementById('loading-overlay');
+  const btn = document.getElementById('btn-calc');
+  if (overlay) overlay.classList.toggle('active', on);
+  if (btn) {
+    btn.disabled = on;
+    btn.classList.toggle('loading', on);
+    const txt = btn.querySelector('.btn-text');
+    if (txt) txt.textContent = on ? '计算中...' : '开 始 仿 真';
+  }
+}
+
+// --- Fade-in ---
+function fadeInResults() {
+  const cards = document.querySelectorAll('#analysis-center .card');
+  cards.forEach((c, i) => {
+    c.classList.remove('fade-in');
+    void c.offsetWidth; // reflow
+    c.style.animationDelay = (i * 0.08) + 's';
+    c.classList.add('fade-in');
+  });
+}
+
+// --- 千分位格式化 ---
+function fmt(v, d) {
+  return App.charts.fmtNum(v, d);
+}
 
 // --- 经济性评级 ---
 const RATING_COLORS = {
@@ -99,18 +124,16 @@ const RATING_COLORS = {
 
 function renderEconRatings(econRatings) {
   const config = {
-    '终端用户': { val: 'econ-val-user', badge: 'econ-badge-user', suffix: '元/kWh' },
+    '终端用户': { val: 'econ-val-user', badge: 'econ-badge-user', suffix: ' 元/kWh' },
     '光伏投资': { val: 'econ-val-pv', badge: 'econ-badge-pv', suffix: '%' },
     '储能投资': { val: 'econ-val-ess', badge: 'econ-badge-ess', suffix: '%' },
-    '售电公司': { val: 'econ-val-retail', badge: 'econ-badge-retail', suffix: '元/MWh' },
+    '售电公司': { val: 'econ-val-retail', badge: 'econ-badge-retail', suffix: ' 元/MWh' },
   };
   econRatings.forEach(r => {
     const c = config[r.subject];
     if (!c) return;
-    // 数值
     const valEl = document.getElementById(c.val);
     if (valEl) valEl.textContent = r.value != null ? `${r.value}${c.suffix}` : '--';
-    // 等级标签
     const badgeEl = document.getElementById(c.badge);
     if (badgeEl) {
       badgeEl.textContent = r.rating;
@@ -174,6 +197,8 @@ async function runCalculation() {
   const contractProfile = document.getElementById('sel-contract').value;
   const dayaheadProfile = document.getElementById('sel-dayahead').value;
 
+  setLoading(true);
+
   try {
     const result = await api('/calculate', {
       method: 'POST',
@@ -190,10 +215,13 @@ async function runCalculation() {
     tagCalc.textContent = '计算完成';
     tagCalc.classList.add('done');
     renderResult(result);
+    fadeInResults();
     updateAddBtnState();
   } catch (e) {
     console.error('Calculation failed:', e);
     alert('计算失败: ' + e.message);
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -201,55 +229,55 @@ async function runCalculation() {
 function renderResult(r) {
   const { time_series, overview, welfare, investment } = r;
 
-  // 概览 - 更新架构图上的容量标注
+  // 概览
   document.getElementById('lbl-ess').textContent = `${overview.ess_cap_mwh.toFixed(2)} MWh / ${(overview.ess_power_kw / 1000).toFixed(2)} MW`;
   document.getElementById('lbl-pv').textContent = overview.pv_cap_kw ? `${overview.pv_cap_kw.toFixed(0)} kWp` : '0 kWp';
   document.getElementById('lbl-flex').textContent = overview.flex_load_kw ? `${(overview.flex_load_kw / 1000).toFixed(2)} MW` : '0 MW';
   document.getElementById('lbl-prod').textContent = `${(overview.prod_load_mwh).toFixed(2)} MW`;
 
-  // 更新模式标签
   document.getElementById('tag-pm').textContent = document.getElementById('sel-pm').selectedOptions[0]?.text || '合同分时';
   document.getElementById('tag-bm').textContent = document.getElementById('sel-bm').selectedOptions[0]?.text || '储售一体';
 
   // 多方收益
-  document.getElementById('welfare-badge').textContent = `总社会福利提升 ${welfare.total_welfare_wan.toFixed(2)}万元`;
-  document.getElementById('w-bill-no').textContent = `${welfare.user_bill_no_ess_wan.toFixed(1)} 万`;
-  document.getElementById('w-return').textContent = `${welfare.user_return_wan.toFixed(1)} 万`;
-  document.getElementById('w-total').textContent = `${welfare.user_total_wan.toFixed(1)} 万`;
-  // 新增标签
+  document.getElementById('welfare-badge').textContent = `总社会福利提升 ${fmt(welfare.total_welfare_wan)} 万元`;
+  document.getElementById('w-bill-no').textContent = `${fmt(welfare.user_bill_no_ess_wan)} 万`;
+  document.getElementById('w-return').textContent = `${fmt(welfare.user_return_wan)} 万`;
+  document.getElementById('w-total').textContent = `${fmt(welfare.user_total_wan)} 万`;
+
   const pvi = r.pv_investment;
   if (pvi) {
     const wPvOut = document.getElementById('w-inv-pv-out');
     const wPvSelf = document.getElementById('w-inv-pv-self');
-    if (wPvOut) wPvOut.textContent = `${pvi.annual_feed_in_wan.toFixed(1)} 万`;
-    if (wPvSelf) wPvSelf.textContent = `${pvi.annual_self_wan.toFixed(1)} 万`;
+    if (wPvOut) wPvOut.textContent = `${fmt(pvi.annual_feed_in_wan)} 万`;
+    if (wPvSelf) wPvSelf.textContent = `${fmt(pvi.annual_self_wan)} 万`;
   }
 
   // 光储投资分析 - 储能
-  document.getElementById('ess-fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
+  document.getElementById('ess-fin-total').textContent = `${fmt(investment.initial_invest_wan)} 万元`;
   document.getElementById('ess-fin-irr').textContent = investment.irr_pct != null ? `${investment.irr_pct.toFixed(2)}%` : 'N/A';
   document.getElementById('ess-fin-roi').textContent = investment.roi_years != null ? `${investment.roi_years.toFixed(2)} 年` : 'N/A';
-  document.getElementById('ess-fin-cf').textContent = `${Math.round(investment.cum_cf_wan)} 万元`;
-  document.getElementById('ess-op-daily-arb').textContent = `${investment.daily_arbitrage_yuan.toFixed(0)} 元`;
-  document.getElementById('ess-op-annual-arb').textContent = `${investment.annual_arbitrage_wan.toFixed(1)} 万元`;
-  document.getElementById('ess-op-charge').textContent = `${investment.total_charge_kwh.toFixed(0)} kWh`;
-  document.getElementById('ess-op-annual-charge').textContent = `${investment.annual_charge_mwh.toFixed(1)} MWh`;
-  document.getElementById('ess-op-discharge').textContent = `${investment.total_discharge_kwh.toFixed(0)} kWh`;
-  document.getElementById('ess-op-annual-discharge').textContent = `${investment.annual_discharge_mwh.toFixed(1)} MWh`;
+  document.getElementById('ess-fin-cf').textContent = `${fmt(investment.cum_cf_wan)} 万元`;
+  document.getElementById('ess-op-daily-arb').textContent = `${fmt(investment.daily_arbitrage_yuan)} 元`;
+  document.getElementById('ess-op-annual-arb').textContent = `${fmt(investment.annual_arbitrage_wan)} 万元`;
+  document.getElementById('ess-op-charge').textContent = `${fmt(investment.total_charge_kwh)} kWh`;
+  document.getElementById('ess-op-annual-charge').textContent = `${fmt(investment.annual_charge_mwh)} MWh`;
+  document.getElementById('ess-op-discharge').textContent = `${fmt(investment.total_discharge_kwh)} kWh`;
+  document.getElementById('ess-op-annual-discharge').textContent = `${fmt(investment.annual_discharge_mwh)} MWh`;
   document.getElementById('ess-op-cycles').textContent = `${investment.equivalent_cycles.toFixed(2)} 次`;
-  document.getElementById('ess-op-annual-cycles').textContent = `${investment.annual_cycles.toFixed(0)} 次`;
+  document.getElementById('ess-op-annual-cycles').textContent = `${fmt(investment.annual_cycles)} 次`;
+
   // 光储投资分析 - 光伏
   if (pvi) {
-    document.getElementById('pv-fin-total').textContent = `${pvi.initial_invest_wan.toFixed(1)} 万元`;
+    document.getElementById('pv-fin-total').textContent = `${fmt(pvi.initial_invest_wan)} 万元`;
     document.getElementById('pv-fin-irr').textContent = pvi.irr_pct != null ? `${pvi.irr_pct.toFixed(2)}%` : 'N/A';
     document.getElementById('pv-fin-roi').textContent = pvi.payback_years != null ? `${pvi.payback_years.toFixed(1)} 年` : 'N/A';
-    document.getElementById('pv-fin-cf').textContent = `${pvi.cum_cf_wan.toFixed(1)} 万元`;
-    document.getElementById('pv-op-daily-out').textContent = `${pvi.daily_feed_in_yuan.toFixed(0)} 元`;
-    document.getElementById('pv-op-annual-out').textContent = `${pvi.annual_feed_in_wan.toFixed(1)} 万元`;
-    document.getElementById('pv-op-daily-self').textContent = `${pvi.daily_self_yuan.toFixed(0)} 元`;
-    document.getElementById('pv-op-annual-self').textContent = `${pvi.annual_self_wan.toFixed(1)} 万元`;
-    document.getElementById('pv-op-gen').textContent = `${pvi.daily_gen_kwh.toFixed(0)} kWh`;
-    document.getElementById('pv-op-annual-gen').textContent = `${pvi.annual_gen_mwh.toFixed(1)} MWh`;
+    document.getElementById('pv-fin-cf').textContent = `${fmt(pvi.cum_cf_wan)} 万元`;
+    document.getElementById('pv-op-daily-out').textContent = `${fmt(pvi.daily_feed_in_yuan)} 元`;
+    document.getElementById('pv-op-annual-out').textContent = `${fmt(pvi.annual_feed_in_wan)} 万元`;
+    document.getElementById('pv-op-daily-self').textContent = `${fmt(pvi.daily_self_yuan)} 元`;
+    document.getElementById('pv-op-annual-self').textContent = `${fmt(pvi.annual_self_wan)} 万元`;
+    document.getElementById('pv-op-gen').textContent = `${fmt(pvi.daily_gen_kwh)} kWh`;
+    document.getElementById('pv-op-annual-gen').textContent = `${fmt(pvi.annual_gen_mwh)} MWh`;
     document.getElementById('pv-op-self-rate').textContent = `${(pvi.self_rate * 100).toFixed(1)}%`;
     document.getElementById('pv-op-annual-self-rate').textContent = `${(pvi.self_rate * 100).toFixed(1)}%`;
   } else {
@@ -257,7 +285,6 @@ function renderResult(r) {
       document.getElementById(id).textContent = '--';
     });
   }
-  // tab 状态
   updateInvTabs(overview.ess_cap_mwh || 0, overview.pv_cap_kw || 0);
 
   // 运营状态标签
@@ -268,14 +295,11 @@ function renderResult(r) {
   document.getElementById('op-pv-util-hours').textContent = (pvi && overview.pv_cap_kw) ? `${(pvi.daily_gen_kwh / overview.pv_cap_kw).toFixed(1)} h` : '--';
   document.getElementById('op-load-cv').textContent = r.load_cv != null ? r.load_cv.toFixed(4) : '--';
 
-  // 经济性评级
   renderEconRatings(r.econ_ratings || []);
 
-  // ECharts 调度曲线
+  // ECharts
   renderDispatchChart(time_series);
-  // 多方收益图表
   renderWelfareCharts(time_series);
-  // 典型日能量分析图表
   renderEnergyAnalysisCharts(time_series);
   // 能量流动图
   updateFlowDiagram(overview);
@@ -296,4 +320,3 @@ App.analysis = {
   switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings,
   addSlot, toggleSlot, openCompareModal, closeCompareModal,
 };
-
