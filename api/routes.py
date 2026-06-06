@@ -15,6 +15,7 @@ from api.schemas import (
     OptionItem,
     OptionsResponse,
     OverviewData,
+    PVInvestmentData,
     ScenarioBrief,
     TariffRow,
     TimeSeries,
@@ -153,6 +154,29 @@ def _build_response(
     # 峰谷平汇总
     tou_summary = _compute_tou_summary(config, _load_real)
 
+    # 光伏投资数据
+    pv_invest = None
+    pv_cap = getattr(result, 'pv_cap_kw', 0.0)
+    if pv_cap > 0:
+        pv_irr_val = result.pv_irr if result.pv_irr != float("inf") else None
+        pv_payback = result.pv_payback_years if result.pv_payback_years != float("inf") else None
+        pv_annual_revenue = (result.pv_self_daily + result.pv_feed_in_daily) * 365
+        pv_om_annual = pv_cap * 3.5 * 1000 * 0.015  # cap × unit_cost × 1000 × r_om
+        pv_cum_cf = (pv_annual_revenue - pv_om_annual) * 25 / 10000
+        pv_invest = PVInvestmentData(
+            initial_invest_wan=pv_cap * 3.5 / 10,  # kWp × 元/Wp / 10000 = 万元
+            irr_pct=pv_irr_val * 100 if pv_irr_val is not None else None,
+            payback_years=pv_payback,
+            cum_cf_wan=pv_cum_cf,
+            daily_gen_kwh=result.pv_total_gen_daily,
+            annual_gen_mwh=result.pv_total_gen_daily * 365 / 1000,
+            daily_self_yuan=result.pv_self_daily,
+            annual_self_wan=result.pv_self_daily * 365 / 10000,
+            daily_feed_in_yuan=result.pv_feed_in_daily,
+            annual_feed_in_wan=result.pv_feed_in_daily * 365 / 10000,
+            self_rate=result.pv_self_rate,
+        )
+
     return CalculateResponse(
         time_series=TimeSeries(
             hours=list(range(24)),
@@ -170,6 +194,7 @@ def _build_response(
             energy_load=_load_real,
             net_load=_load_grid,
             tou_summary=tou_summary,
+            pv_power=list(getattr(result, 'pv_generation', [])),
         ),
         overview=OverviewData(
             pricing_mode=config.pricing_mode,
@@ -182,6 +207,7 @@ def _build_response(
             initial_invest_wan=initial_invest_wan,
             eta_pct=ess.eta_roundtrip * 100,
             design_life=ess.design_life,
+            pv_cap_kw=pv_cap,
         ),
         welfare=WelfareData(
             user_bill_no_ess_wan=user_bill_no,
@@ -216,6 +242,7 @@ def _build_response(
             annual_cycles=result.equivalent_cycles * 365,
             retail_profit_wan=result.retail_profit / 10000 if result.retail_profit else 0,
         ),
+        pv_investment=pv_invest,
     )
 
 
@@ -473,12 +500,14 @@ def _compute_econ_ratings(resp: CalculateResponse, result) -> list[EconRating]:
         rating=_rate_user(user_wan_per_mwh),
     ))
 
-    # 光伏投资 IRR（暂无数据）
+    # 光伏投资 IRR
+    pv_irr = getattr(result, 'pv_irr', 0.0)
+    pv_irr_pct = pv_irr * 100 if pv_irr and pv_irr != float("inf") else None
     ratings.append(EconRating(
         subject="光伏投资",
         metric_label="IRR%",
-        value=None,
-        rating="--",
+        value=round(pv_irr_pct, 2) if pv_irr_pct is not None else None,
+        rating=_rate_irr(pv_irr_pct),
     ))
 
     # 储能投资 IRR

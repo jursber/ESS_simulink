@@ -55,6 +55,23 @@ class ESSParams:
 
 
 @dataclass
+class PVParams:
+    """光伏系统参数。"""
+    cap_rated: float = 1.0           # kWp
+    feed_in_tariff: float = 0.4      # 元/kWh, 余电上网电价
+    self_use_discount: float = 0.80  # 自用折扣系数
+    unit_cost: float = 3.5           # 元/Wp
+    r_om: float = 0.015              # 年运维支出比例
+    design_life: int = 25            # 年
+    r_degrade_first: float = 0.02    # 首年衰减率
+    r_degrade: float = 0.005         # 后续年衰减率
+
+    @property
+    def initial_investment(self) -> float:
+        return self.cap_rated * self.unit_cost * 1000  # kWp × 元/Wp × 1000 = 元
+
+
+@dataclass
 class FinancialParams:
     """财务参数。"""
     r_discount: float = 0.06          # 折现率
@@ -113,6 +130,19 @@ class DispatchResult:
     payback_years: float = 0.0
     equivalent_cycles: float = 0.0
     daily_arbitrage: float = 0.0
+
+    # 光伏
+    pv_generation: list[float] = field(default_factory=lambda: [0.0] * 24)   # kWh, 每小时发电量
+    pv_self_consumed: list[float] = field(default_factory=lambda: [0.0] * 24) # kWh, 自发自用
+    pv_fed_in: list[float] = field(default_factory=lambda: [0.0] * 24)       # kWh, 余电上网
+    pv_cap_kw: float = 0.0
+    pv_total_gen_daily: float = 0.0    # kWh, 典型日总发电
+    pv_self_daily: float = 0.0         # 元, 典型日自用收益
+    pv_feed_in_daily: float = 0.0      # 元, 典型日上网收益
+    pv_self_rate: float = 0.0          # 自用率
+    pv_irr: float = 0.0
+    pv_npv: float = 0.0
+    pv_payback_years: float = 0.0
 
     # 电价曲线（用于前端图表）
     P_user_curve: list[float] = field(default_factory=lambda: [0.0] * 24)

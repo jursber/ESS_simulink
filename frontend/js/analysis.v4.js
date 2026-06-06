@@ -216,11 +216,14 @@ function renderResult(r) {
   document.getElementById('w-bill-no').textContent = `${welfare.user_bill_no_ess_wan.toFixed(1)} 万`;
   document.getElementById('w-return').textContent = `${welfare.user_return_wan.toFixed(1)} 万`;
   document.getElementById('w-total').textContent = `${welfare.user_total_wan.toFixed(1)} 万`;
-  // 新增标签（API暂无对应字段时显示 --）
-  ['w-demand-saving','w-inv-share','w-inv-demand','w-inv-pv-out','w-inv-pv-self','w-cp-long','w-cp-day','w-cp-real','w-cp-ess'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.textContent === '--') el.textContent = '--';
-  });
+  // 新增标签
+  const pvi = r.pv_investment;
+  if (pvi) {
+    const wPvOut = document.getElementById('w-inv-pv-out');
+    const wPvSelf = document.getElementById('w-inv-pv-self');
+    if (wPvOut) wPvOut.textContent = `${pvi.annual_feed_in_wan.toFixed(1)} 万`;
+    if (wPvSelf) wPvSelf.textContent = `${pvi.annual_self_wan.toFixed(1)} 万`;
+  }
 
   // 光储投资分析 - 储能
   document.getElementById('ess-fin-total').textContent = `${investment.initial_invest_wan.toFixed(1)} 万元`;
@@ -235,19 +238,25 @@ function renderResult(r) {
   document.getElementById('ess-op-annual-discharge').textContent = `${investment.annual_discharge_mwh.toFixed(1)} MWh`;
   document.getElementById('ess-op-cycles').textContent = `${investment.equivalent_cycles.toFixed(2)} 次`;
   document.getElementById('ess-op-annual-cycles').textContent = `${investment.annual_cycles.toFixed(0)} 次`;
-  // 光储投资分析 - 光伏（暂用占位值）
-  document.getElementById('pv-fin-total').textContent = '--';
-  document.getElementById('pv-fin-irr').textContent = '--';
-  document.getElementById('pv-fin-roi').textContent = '--';
-  document.getElementById('pv-fin-cf').textContent = '--';
-  document.getElementById('pv-op-daily-out').textContent = '--';
-  document.getElementById('pv-op-annual-out').textContent = '--';
-  document.getElementById('pv-op-daily-self').textContent = '--';
-  document.getElementById('pv-op-annual-self').textContent = '--';
-  document.getElementById('pv-op-gen').textContent = '--';
-  document.getElementById('pv-op-annual-gen').textContent = '--';
-  document.getElementById('pv-op-self-rate').textContent = '--';
-  document.getElementById('pv-op-annual-self-rate').textContent = '--';
+  // 光储投资分析 - 光伏
+  if (pvi) {
+    document.getElementById('pv-fin-total').textContent = `${pvi.initial_invest_wan.toFixed(1)} 万元`;
+    document.getElementById('pv-fin-irr').textContent = pvi.irr_pct != null ? `${pvi.irr_pct.toFixed(2)}%` : 'N/A';
+    document.getElementById('pv-fin-roi').textContent = pvi.payback_years != null ? `${pvi.payback_years.toFixed(1)} 年` : 'N/A';
+    document.getElementById('pv-fin-cf').textContent = `${pvi.cum_cf_wan.toFixed(1)} 万元`;
+    document.getElementById('pv-op-daily-out').textContent = `${pvi.daily_feed_in_yuan.toFixed(0)} 元`;
+    document.getElementById('pv-op-annual-out').textContent = `${pvi.annual_feed_in_wan.toFixed(1)} 万元`;
+    document.getElementById('pv-op-daily-self').textContent = `${pvi.daily_self_yuan.toFixed(0)} 元`;
+    document.getElementById('pv-op-annual-self').textContent = `${pvi.annual_self_wan.toFixed(1)} 万元`;
+    document.getElementById('pv-op-gen').textContent = `${pvi.daily_gen_kwh.toFixed(0)} kWh`;
+    document.getElementById('pv-op-annual-gen').textContent = `${pvi.annual_gen_mwh.toFixed(1)} MWh`;
+    document.getElementById('pv-op-self-rate').textContent = `${(pvi.self_rate * 100).toFixed(1)}%`;
+    document.getElementById('pv-op-annual-self-rate').textContent = `${(pvi.self_rate * 100).toFixed(1)}%`;
+  } else {
+    ['pv-fin-total','pv-fin-irr','pv-fin-roi','pv-fin-cf','pv-op-daily-out','pv-op-annual-out','pv-op-daily-self','pv-op-annual-self','pv-op-gen','pv-op-annual-gen','pv-op-self-rate','pv-op-annual-self-rate'].forEach(id => {
+      document.getElementById(id).textContent = '--';
+    });
+  }
   // tab 状态
   updateInvTabs(overview.ess_cap_mwh || 0, overview.pv_cap_kw || 0);
 
@@ -255,8 +264,8 @@ function renderResult(r) {
   document.getElementById('op-cycles-day').textContent = investment.equivalent_cycles ? `${investment.equivalent_cycles.toFixed(2)} 次/日` : '--';
   document.getElementById('op-dod-max').textContent = '--';
   document.getElementById('op-dod-min').textContent = '--';
-  document.getElementById('op-pv-self-rate').textContent = overview.pv_cap_kw ? '--' : '--';
-  document.getElementById('op-pv-util-hours').textContent = overview.pv_cap_kw ? '--' : '--';
+  document.getElementById('op-pv-self-rate').textContent = pvi ? `${(pvi.self_rate * 100).toFixed(1)}%` : '--';
+  document.getElementById('op-pv-util-hours').textContent = (pvi && overview.pv_cap_kw) ? `${(pvi.daily_gen_kwh / overview.pv_cap_kw).toFixed(1)} h` : '--';
   document.getElementById('op-load-cv').textContent = r.load_cv != null ? r.load_cv.toFixed(4) : '--';
 
   // 经济性评级

@@ -7,7 +7,7 @@ from src.data.loader import DataLoader
 from src.data.config import ConfigLoader
 from src.core.pricing import compute_user_price
 from src.core.dispatch import run_dispatch
-from src.models.dispatch import BusinessModel, PricingMode, FinancialParams, DispatchResult
+from src.models.dispatch import BusinessModel, PricingMode, FinancialParams, PVParams, DispatchResult
 from src.models.wholesale import WholesaleSettlementConfig
 
 
@@ -84,6 +84,23 @@ def calculate(
     bm_code = config.business_model
     bm_prefix = "B1" if bm_code == "B1" else ("B2" if bm_code.startswith("B2") else ("B3" if bm_code.startswith("B3") else "B2"))
 
+    # 光伏参数
+    pv_dict = ConfigLoader.load_pv_defaults(region)
+    pv_params = PVParams(
+        cap_rated=float(pv_dict.get("cap_rated", 0)),
+        feed_in_tariff=float(pv_dict.get("feed_in_tariff", 0.4)),
+        self_use_discount=float(pv_dict.get("self_use_discount", 0.8)),
+        unit_cost=float(pv_dict.get("unit_cost", 3.5)),
+        r_om=float(pv_dict.get("r_om", 0.015)),
+        design_life=int(pv_dict.get("design_life", 25)),
+        r_degrade_first=float(pv_dict.get("r_degrade_first", 0.02)),
+        r_degrade=float(pv_dict.get("r_degrade", 0.005)),
+    )
+    pv_curve = ConfigLoader.load_pv_curve(
+        str(pv_dict.get("region", region)),
+        str(pv_dict.get("curve_type", "annual_avg")),
+    )
+
     return run_dispatch(
         hourly,
         BusinessModel(bm_code),
@@ -94,4 +111,6 @@ def calculate(
             r_user=r_user_map.get(bm_prefix, 0.30),
         ),
         wholesale_cfg=wholesale_cfg,
+        pv_params=pv_params if pv_params.cap_rated > 0 else None,
+        pv_curve=pv_curve,
     )

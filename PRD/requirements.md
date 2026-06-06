@@ -154,6 +154,18 @@
 
 ---
 
+## 第 11 轮（光伏计算全链路贯通，2026-06-06）
+
+- **R109**：新增 `PVParams` 数据模型——`src/models/dispatch.py` 新增 `PVParams` dataclass，字段与 `pv_defaults.csv` 一致（cap_rated、feed_in_tariff、self_use_discount、unit_cost、r_om、design_life、r_degrade_first、r_degrade），含 `initial_investment` 属性
+- **R110**：`DispatchResult` 新增光伏字段——`pv_generation`、`pv_self_consumed`、`pv_fed_in`（24 小时列表）、`pv_cap_kw`、`pv_total_gen_daily`、`pv_self_daily`、`pv_feed_in_daily`、`pv_self_rate`、`pv_irr`、`pv_npv`、`pv_payback_years`
+- **R111**：光伏调度计算逻辑——`dispatch.py` 的 `run_dispatch()` 新增 `pv_params` 和 `pv_curve` 可选参数；计算每小时 PV 发电量 = cap_rated × curve[h]；PV 自发自用 = min(pv_gen, max(0, load_real - load_ESS))；修正 load_grid = load_real - load_ESS - pv_self；PV 投资指标含首年衰减差异
+- **R112**：`calculator.py` 集成光伏——加载 `pv_defaults.csv` 和 `pv_curves.csv`，构建 `PVParams` 传入 `run_dispatch`
+- **R113**：API 响应扩展——`TimeSeries` 新增 `pv_power` 字段；新增 `PVInvestmentData` schema（initial_invest_wan、irr_pct、payback_years、cum_cf_wan、daily_gen_kwh、annual_gen_mwh、daily_self_yuan、annual_self_wan、daily_feed_in_yuan、annual_feed_in_wan、self_rate）；`CalculateResponse` 新增 `pv_investment` 可选字段；`OverviewData.pv_cap_kw` 从计算结果填充
+- **R114**：光伏经济性评级——`_compute_econ_ratings()` 中光伏 IRR 从占位 `None` 替换为实际计算值
+- **R115**：前端光伏投资数据渲染——`analysis.v4.js` 的 `renderResult()` 中 12 个 `'--'` 占位替换为 `r.pv_investment` 实际数据；运营状态标签（光伏自用率、利用小时数）同步更新；多方收益区光伏上网/消纳收益填充
+
+---
+
 ## Backlog 与文档索引
 
 - **已入 PRD 的条目**：以 [PRD_v1.0.3.md](PRD_v1.0.3.md) 为准，并在本文件对应 Rxxx 处标注「已入PRD」。

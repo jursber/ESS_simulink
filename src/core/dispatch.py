@@ -9,7 +9,7 @@ from typing import List, Tuple, Optional
 
 from src.core.registry import register_algorithm
 from src.models.dispatch import (
-    ESSParams, FinancialParams, HourlyData, DispatchResult,
+    ESSParams, PVParams, FinancialParams, HourlyData, DispatchResult,
     BusinessModel, PricingMode,
 )
 from src.models.wholesale import WholesaleSettlementConfig
@@ -187,6 +187,8 @@ def run_dispatch(
     fin: FinancialParams,
     soc_initial: float = 0.10,
     wholesale_cfg: Optional[WholesaleSettlementConfig] = None,
+    pv_params: Optional[PVParams] = None,
+    pv_curve: Optional[List[float]] = None,
 ) -> DispatchResult:
     """执行完整调度计算。
 
@@ -195,6 +197,8 @@ def run_dispatch(
 
     Args:
         wholesale_cfg: 售电批发购电结算规则（第五章）；缺省为广东型三部制默认参数。
+        pv_params: 光伏系统参数；None 表示无光伏。
+        pv_curve: 光伏 24 小时归一化出力曲线 (0~1)；与 pv_params 配合使用。
     """
     n = len(hourly)
     assert n == 24, f"需要 24 小时数据，实际 {n} 小时"
@@ -216,8 +220,24 @@ def run_dispatch(
         P_eff, params, soc_initial=soc_initial,
     )
 
-    # 3. 计算 load_grid
-    load_grid = [load_real[h] - load_ESS[h] for h in range(24)]
+    # 3. 光伏发电计算
+    has_pv = pv_params is not None and pv_curve is not None and pv_params.cap_rated > 0
+    pv_generation = [0.0] * 24
+    pv_self_consumed = [0.0] * 24
+    pv_fed_in = [0.0] * 24
+
+    if has_pv:
+        for h in range(24):
+            pv_gen = pv_params.cap_rated * pv_curve[h]
+            pv_generation[h] = pv_gen
+            # PV 自发自用：覆盖 ESS 调度后剩余的净负荷
+            net_load_after_ess = load_real[h] - load_ESS[h]
+            pv_self = min(pv_gen, max(0, net_load_after_ess))
+            pv_self_consumed[h] = pv_self
+            pv_fed_in[h] = pv_gen - pv_self
+
+    # 4. 计算 load_grid（扣除储能和光伏自用）
+    load_grid = [load_real[h] - load_ESS[h] - pv_self_consumed[h] for h in range(24)]
 
     result = DispatchResult()
     result.load_ESS = load_ESS
@@ -286,6 +306,31 @@ def run_dispatch(
     result.P_da_curve = P_da
     result.P_rt_curve = P_rt
 
+    # 10. 光伏结果
+    if has_pv:
+        result.pv_generation = pv_generation
+        result.pv_self_consumed = pv_self_consumed
+        result.pv_fed_in = pv_fed_in
+        result.pv_cap_kw = pv_params.cap_rated
+        result.pv_total_gen_daily = sum(pv_generation)
+        result.pv_self_daily = sum(pv_self_consumed[h] * P_user[h] for h in range(24))
+        result.pv_feed_in_daily = sum(pv_fed_in[h] * pv_params.feed_in_tariff for h in range(24))
+        total_gen = result.pv_total_gen_daily
+        result.pv_self_rate = sum(pv_self_consumed) / total_gen if total_gen > 0 else 0
+
+        # PV 投资指标（25 年期，含衰减）
+        pv_om_annual = pv_params.initial_investment * pv_params.r_om
+        pv_annual_revenue = (result.pv_self_daily + result.pv_feed_in_daily) * 365
+        pv_annual_cf = pv_annual_revenue - pv_om_annual
+
+        if pv_annual_cf > 0:
+            result.pv_payback_years = pv_params.initial_investment / pv_annual_cf
+        else:
+            result.pv_payback_years = float("inf")
+
+        result.pv_npv = _pv_npv(pv_params, pv_annual_cf, fin)
+        result.pv_irr = _pv_irr(pv_params, pv_annual_cf)
+
     return result
 
 
@@ -328,6 +373,41 @@ def _compute_irr(investment: float, annual_cf: float, params: ESSParams,
         for yr in range(1, params.design_life + 1):
             cap_eff = params.cap_rated * (1 - params.r_degrade) ** yr
             ratio = cap_eff / params.cap_rated
+            npv += annual_cf * ratio / (1 + mid) ** yr
+        if abs(npv) < tol:
+            return mid
+        if npv > 0:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def _pv_capacity_ratio(pv: PVParams, year: int) -> float:
+    """光伏第 year 年的容量保持率（首年衰减率不同）。"""
+    if year == 1:
+        return 1 - pv.r_degrade_first
+    return (1 - pv.r_degrade_first) * (1 - pv.r_degrade) ** (year - 1)
+
+
+def _pv_npv(pv: PVParams, annual_cf: float, fin: FinancialParams) -> float:
+    """光伏 25 年 NPV。"""
+    npv = -pv.initial_investment
+    for yr in range(1, pv.design_life + 1):
+        ratio = _pv_capacity_ratio(pv, yr)
+        npv += annual_cf * ratio / (1 + fin.r_discount) ** yr
+    return npv
+
+
+def _pv_irr(pv: PVParams, annual_cf: float,
+            max_iter: int = 200, tol: float = 1e-6) -> float:
+    """二分法求解光伏 IRR。"""
+    lo, hi = -0.5, 2.0
+    for _ in range(max_iter):
+        mid = (lo + hi) / 2
+        npv = -pv.initial_investment
+        for yr in range(1, pv.design_life + 1):
+            ratio = _pv_capacity_ratio(pv, yr)
             npv += annual_cf * ratio / (1 + mid) ** yr
         if abs(npv) < tol:
             return mid

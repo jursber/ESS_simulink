@@ -49,6 +49,7 @@ class TimeSeries(BaseModel):
     energy_load: list[float] = []
     net_load: list[float] = []
     tou_summary: dict = {}
+    pv_power: list[float] = []
 
 
 class OverviewData(BaseModel):
@@ -108,11 +109,26 @@ class EconRating(BaseModel):
     rating: str = "--"
 
 
+class PVInvestmentData(BaseModel):
+    initial_invest_wan: float
+    irr_pct: Optional[float] = None
+    payback_years: Optional[float] = None
+    cum_cf_wan: float
+    daily_gen_kwh: float
+    annual_gen_mwh: float
+    daily_self_yuan: float
+    annual_self_wan: float
+    daily_feed_in_yuan: float
+    annual_feed_in_wan: float
+    self_rate: float
+
+
 class CalculateResponse(BaseModel):
     time_series: TimeSeries
     overview: OverviewData
     welfare: WelfareData
     investment: InvestmentData
+    pv_investment: Optional[PVInvestmentData] = None
     econ_ratings: list[EconRating] = []
     load_cv: Optional[float] = None
 
