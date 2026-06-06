@@ -310,9 +310,9 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 ::-webkit-scrollbar-thumb;background:var(--border);border-radius:2px}
 
 /* 分时电量汇总 */
-.tou-block{display:flex;flex-direction:column;gap:2px}
-.tou-row1{display:flex;align-items:center;gap:8px}
-.tou-row2{padding-left:40px}
+.tou-block{display:flex;flex-direction:column;gap:0}
+.tou-row1{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.tou-row2{padding-left:40px;margin-top:6px}
 .tou-label{width:32px;font-size:var(--fs-13);font-weight:600;color:var(--text-2);text-align:right;flex-shrink:0}
 .tou-bar-wrap{flex:1;height:16px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden}
 .tou-bar-fill{height:100%;border-radius:3px;transition:width .4s ease}

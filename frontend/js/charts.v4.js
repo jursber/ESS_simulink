@@ -13,7 +13,7 @@ function fmtNum(v, decimals) {
 // --- ECharts 通用配置 ---
 const chartTooltip = { trigger: 'axis', backgroundColor: '#1E1E1E', borderColor: '#333', textStyle: { color: 'rgba(250,250,250,0.87)', fontSize: 11 } };
 const chartGrid = { left: 46, right: 46, top: 30, bottom: 20, containLabel: true };
-const axisStyle = { axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 8, interval: 0 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } };
+const axisStyle = { axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 9, interval: 0 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } };
 
 // --- 调度曲线 ---
 let dispatchChart = null;
@@ -87,9 +87,9 @@ function renderWelfareCharts(ts) {
     chartUserPrice = echarts.init(elUserPrice);
     chartUserPrice.setOption({
       tooltip: chartTooltip,
-      grid: { ...chartGrid, containLabel: true },
+      grid: { left: 8, right: 8, top: 10, bottom: 18, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, ...axisStyle },
       series: [{
         name: '用户侧电价', type: 'line', data: (ts.price_user && ts.price_user.length ? ts.price_user : mockPriceUser),
         smooth: true, symbol: 'none',
@@ -106,12 +106,12 @@ function renderWelfareCharts(ts) {
     chartEssPower = echarts.init(elEssPower);
     chartEssPower.setOption({
       tooltip: chartTooltip,
-      legend: { data: ['储能功率', 'SOC', '光伏功率'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, top: 0 },
-      grid: { left: 46, right: 46, top: 30, bottom: 20, containLabel: true },
+      legend: { data: ['储能功率', 'SOC', '光伏功率'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, top: 0 },
+      grid: { left: 8, right: 8, top: 10, bottom: 18, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
       yAxis: [
-        { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
-        { type: 'value', name: 'SOC %', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, min: 0, max: 100, axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, splitLine: { show: false } },
+        { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, ...axisStyle },
+        { type: 'value', name: 'SOC %', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, min: 0, max: 100, axisLine: { lineStyle: { color: '#333' } }, axisLabel: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, splitLine: { show: false } },
       ],
       series: [
         { name: '储能功率', type: 'line', data: ts.load_ess, smooth: true, symbol: 'none', lineStyle: { color: C.ess, width: 0.5 }, areaStyle: { color: 'rgba(78,159,61,0.10)' } },
@@ -128,10 +128,10 @@ function renderWelfareCharts(ts) {
     chartPriceCurve = echarts.init(elPriceCurve);
     chartPriceCurve.setOption({
       tooltip: chartTooltip,
-      legend: { data: ['日前电价', '实时电价'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, top: 0 },
-      grid: { ...chartGrid, containLabel: true },
+      legend: { data: ['日前电价', '实时电价'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, top: 0 },
+      grid: { left: 8, right: 8, top: 10, bottom: 18, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 8 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 9 }, ...axisStyle },
       series: [
         { name: '日前电价', type: 'line', data: (ts.price_da && ts.price_da.length ? ts.price_da : mockPriceDa), smooth: true, symbol: 'none', lineStyle: { color: C.grid, width: 0.5 } },
         { name: '实时电价', type: 'line', data: (ts.price_rt && ts.price_rt.length ? ts.price_rt : mockPriceRt), smooth: true, symbol: 'none', lineStyle: { color: '#EB5757', width: 0.5, type: 'dashed' } },
@@ -166,9 +166,9 @@ function renderEnergyAnalysisCharts(ts) {
         return s;
       }},
       legend: { data: ['网购电', '储能返还'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, top: 0 },
-      grid: { left: 60, right: 20, top: 36, bottom: 24, containLabel: true },
+      grid: { left: 8, right: 20, top: 36, bottom: 24, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: '元', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, ...axisStyle },
+      yAxis: { type: 'value', name: '元', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 11 }, ...axisStyle },
       series: [
         { name: '网购电', type: 'bar', stack: 'cost', data: ts.cost_grid || [], itemStyle: { color: C.grid } },
         { name: '储能返还', type: 'bar', stack: 'cost', data: ts.cost_ess || [], itemStyle: { color: C.ess } },
@@ -196,9 +196,9 @@ function renderEnergyAnalysisCharts(ts) {
         return s;
       }},
       legend: { data: ['光伏发电', '电网供电', '储能放电', '储能充电', '用户负荷'], textStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, top: 0 },
-      grid: { left: 60, right: 20, top: 36, bottom: 24, containLabel: true },
+      grid: { left: 8, right: 20, top: 36, bottom: 24, containLabel: true },
       xAxis: { type: 'category', data: hours, ...axisStyle },
-      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 10 }, ...axisStyle },
+      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: 'rgba(176,176,176,0.60)', fontSize: 11 }, ...axisStyle },
       series: [
         { name: '光伏发电', type: 'bar', stack: 'supply', data: pvPower, itemStyle: { color: C.src }, barMaxWidth: 12 },
         { name: '电网供电', type: 'bar', stack: 'supply', data: gridSupply, itemStyle: { color: C.grid }, barMaxWidth: 12 },
