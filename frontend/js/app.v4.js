@@ -19,6 +19,10 @@ async function init() {
     state.scenarios = scenarios;
     state.options = options;
     populateSelects();
+    // 初始化拓扑图和商业模式
+    if (App.analysis.updateTopology) App.analysis.updateTopology();
+    // 初始化电价曲线下拉
+    if (App.analysis.onRetailPricingChange) App.analysis.onRetailPricingChange();
     if (scenarios.length > 0) selectScenario(scenarios[0].id);
   } catch (e) {
     console.error('Init failed:', e);
@@ -26,13 +30,10 @@ async function init() {
 }
 
 function populateSelects() {
-  const { pricing_modes, business_models, settlement_modes, contract_profiles, dayahead_profiles } = state.options;
-  fillSelect('sel-pm', pricing_modes);
-  fillSelect('sel-bm', business_models);
-  fillSelect('sel-settlement', settlement_modes);
-  fillSelect('sel-contract', contract_profiles);
-  fillSelect('sel-dayahead', dayahead_profiles);
-  fillScenarioSelect('sel-scenario');
+  const { settlement_modes, contract_profiles, dayahead_profiles } = state.options;
+  // 更新运行参数下拉
+  fillSelect('sel-spot-profile', dayahead_profiles || []);
+  fillSelect('sel-contract-profile', contract_profiles || []);
 }
 
 function fillSelect(id, items) {
@@ -47,7 +48,6 @@ function fillScenarioSelect(id) {
 
 async function selectScenario(id) {
   state.currentScenario = id;
-  document.getElementById('sel-scenario').value = id;
   await runCalculation();
 }
 
@@ -79,7 +79,8 @@ document.querySelectorAll('.top-nav-item[data-page]').forEach(item => {
     document.querySelectorAll('.top-nav-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
     document.querySelectorAll('.page-wrap').forEach(p => p.classList.remove('active'));
-    document.getElementById(`page-${page}`).classList.add('active');
+    const pageEl = document.getElementById(`page-${page}`);
+    if (pageEl) pageEl.classList.add('active');
     // 加载按钮状态
     const btnLoad = document.querySelector('.topbar-actions .btn');
     if (btnLoad) btnLoad.disabled = (page === 'params');

@@ -1,6 +1,6 @@
 """数据加载器。
 
-从处理后的 CSV 加载小时级数据，执行单位换算（元/MWh → 元/kWh），
+从 data/ 目录加载小时级数据，执行单位换算（元/MWh → 元/kWh），
 组装为 HourlyData 对象供计算引擎使用。
 """
 from pathlib import Path
@@ -10,9 +10,41 @@ import pandas as pd
 
 from src.models.dispatch import HourlyData
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-LOAD_DIR = ROOT / "data" / "processed" / "load"
-PRICE_DIR = ROOT / "data" / "processed" / "spot_price"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+SPOT_PRICE_DIR = DATA_DIR / "spot_price"
+LOAD_DIR = DATA_DIR / "load"
+
+
+def _ym(date_str: str) -> str:
+    """从日期字符串提取 YYYYMM，用于按月读取文件。"""
+    return date_str[:4] + date_str[5:7]
+
+
+def _find_monthly_file(directory: Path, date: str) -> Path:
+    """在目录中查找匹配月份的 CSV 文件，找不到则用最近的。"""
+    ym = _ym(date)
+    path = directory / f"{ym}.csv"
+    if path.exists():
+        return path
+    # fallback: 优先找 daily_default.csv，再找第一个含 date 列的文件
+    default = directory / "daily_default.csv"
+    if default.exists():
+        return default
+    for f in sorted(directory.glob("*.csv")):
+        try:
+            cols = pd.read_csv(f, nrows=0, comment='#').columns.tolist()
+            if "date" in cols:
+                return f
+        except Exception:
+            pass
+    raise FileNotFoundError(f"未找到数据文件: {directory}")
+
+
+def aggregate_minute_to_hour(minute_data: list[float]) -> list[float]:
+    """将 1440 个分钟值聚合为 24 个小时均值。每 60 个点取平均。"""
+    if len(minute_data) != 1440:
+        raise ValueError(f"期望 1440 个分钟值，实际 {len(minute_data)}")
+    return [sum(minute_data[h*60:(h+1)*60]) / 60.0 for h in range(24)]
 
 
 class DataLoader:
@@ -21,12 +53,29 @@ class DataLoader:
     @staticmethod
     def get_available_dates(region: str) -> list[str]:
         """返回该地区有完整数据的日期列表。"""
-        load_path = LOAD_DIR / f"load_{region}.csv"
-        price_path = PRICE_DIR / f"price_{region}.csv"
-        if not load_path.exists() or not price_path.exists():
+        load_dir = LOAD_DIR
+        price_dir = SPOT_PRICE_DIR
+        if not load_dir.exists() or not price_dir.exists():
             return []
-        load_dates = set(pd.read_csv(load_path, dtype={"date": str})["date"].unique())
-        price_dates = set(pd.read_csv(price_path, dtype={"date": str})["date"].unique())
+
+        # 收集所有月份文件中的日期
+        load_dates: set[str] = set()
+        price_dates: set[str] = set()
+
+        for f in load_dir.glob("*.csv"):
+            try:
+                df = pd.read_csv(f, dtype={"date": str}, usecols=["date"], comment='#')
+                load_dates.update(df["date"].unique())
+            except Exception:
+                pass
+
+        for f in price_dir.glob("*.csv"):
+            try:
+                df = pd.read_csv(f, dtype={"date": str}, usecols=["date"], comment='#')
+                price_dates.update(df["date"].unique())
+            except Exception:
+                pass
+
         return sorted(load_dates & price_dates)
 
     @staticmethod
@@ -36,11 +85,8 @@ class DataLoader:
         Returns:
             (P_da, P_rt): 各 24 元素的电价列表 (元/kWh)
         """
-        price_path = PRICE_DIR / f"price_{region}.csv"
-        if not price_path.exists():
-            raise ValueError(f"未找到电价数据: {price_path}")
-
-        df = pd.read_csv(price_path, dtype={"date": str, "hour": int})
+        price_path = _find_monthly_file(SPOT_PRICE_DIR, date)
+        df = pd.read_csv(price_path, dtype={"date": str, "hour": int}, comment='#')
         day = df[df["date"] == date].sort_values("hour")
         if len(day) != 24:
             raise ValueError(f"日期 {date} 在 {price_path} 中未找到 24 小时数据（实际 {len(day)} 行）")
@@ -91,11 +137,8 @@ class DataLoader:
         if q_dayahead_cleared is not None and len(q_dayahead_cleared) != 24:
             raise ValueError("q_dayahead_cleared 必须为 24 元素或 None")
 
-        load_path = LOAD_DIR / f"load_{region}.csv"
-        if not load_path.exists():
-            raise ValueError(f"未找到负荷数据: {load_path}")
-
-        df = pd.read_csv(load_path, dtype={"date": str, "hour": int})
+        load_path = _find_monthly_file(LOAD_DIR, date)
+        df = pd.read_csv(load_path, dtype={"date": str, "hour": int}, comment='#')
         day = df[df["date"] == date].sort_values("hour")
         if len(day) != 24:
             raise ValueError(f"日期 {date} 在 {load_path} 中未找到 24 小时数据（实际 {len(day)} 行）")
@@ -122,8 +165,11 @@ class DataLoader:
     @staticmethod
     def get_monthly_pda(region: str) -> list[float]:
         """返回全月日前电价扁平列表 (元/kWh)。用于 M4 现货联动电价计算。"""
-        price_path = PRICE_DIR / f"price_{region}.csv"
-        if not price_path.exists():
-            raise ValueError(f"未找到电价数据: {price_path}")
-        df = pd.read_csv(price_path, dtype={"date": str, "hour": int})
-        return (df["day_ahead"] / 1000.0).tolist()
+        # 读取 spot_price 目录下所有月份文件
+        all_pda: list[float] = []
+        for f in sorted(SPOT_PRICE_DIR.glob("*.csv")):
+            df = pd.read_csv(f, dtype={"date": str, "hour": int}, comment='#')
+            all_pda.extend((df["day_ahead"] / 1000.0).tolist())
+        if not all_pda:
+            raise ValueError(f"未找到电价数据: {SPOT_PRICE_DIR}")
+        return all_pda

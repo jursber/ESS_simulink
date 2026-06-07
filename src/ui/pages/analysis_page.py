@@ -80,10 +80,15 @@ def try_header_save() -> None:
 
 
 def _day_production_load_mwh(region: str, date: str) -> float:
-    path = ROOT / "data" / "processed" / "load" / f"load_{region}.csv"
+    load_dir = ROOT / "data" / "load"
+    ym = date[:4] + date[5:7]
+    path = load_dir / f"{ym}.csv"
     if not path.exists():
-        return 0.0
-    df = pd.read_csv(path, dtype={"date": str})
+        files = sorted(load_dir.glob("*.csv"))
+        if not files:
+            return 0.0
+        path = files[0]
+    df = pd.read_csv(path, dtype={"date": str}, comment='#')
     day = df[df["date"] == str(date)]
     if day.empty:
         return 0.0

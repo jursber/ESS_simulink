@@ -1,0 +1,11 @@
+﻿param,value,unit,editable
+cap_rated,1.0,kWp,true
+feed_in_tariff,0.4,元/kWh,true
+self_use_discount,0.80,-,true
+unit_cost,3.5,元/Wp,true
+r_om,0.015,-,true
+design_life,25,年,true
+r_degrade_first,0.02,-,true
+r_degrade,0.005,-,true
+region,henan,-,true
+curve_type,annual_avg,-,true

@@ -34,10 +34,11 @@ async function renderPanelContent(panelId) {
 
   switch(panelId) {
     case 'ess':
-      panel.innerHTML = formPanelHTML('储能基本参数', [
+      const _rteTip = 'RTE为一次完整循环的综合效率，已经考虑到公辅系统的耗电';
+      panel.innerHTML = formPanelHTML('储能缺省参数', [
         {label:'额定容量 (MWh)', id:'gp-cap-rated', step:0.1, value:(d.ess.cap_rated/1000).toFixed(2)},
         {label:'额定功率 (MW)', id:'gp-power-rated', step:0.1, value:d.ess.power_rated||0.5},
-        {label:'往返效率 RTE (%)', id:'gp-eta', step:1, value:((d.ess.eta_roundtrip||0.87)*100).toFixed(0)},
+        {label:`往返效率 RTE (%) <span class="param-tip" data-tip="${_rteTip}">?</span>`, id:'gp-eta', step:1, value:((d.ess.eta_roundtrip||0.87)*100).toFixed(0)},
         {label:'单程充电效率 η (%)', id:'gp-eta-charge', step:1, value:((d.ess.eta_charge||0.92)*100).toFixed(0)},
         {label:'SOC 下限 (%)', id:'gp-soc-min', step:1, value:((d.ess.soc_min||0.1)*100).toFixed(0)},
         {label:'SOC 上限 (%)', id:'gp-soc-max', step:1, value:((d.ess.soc_max||0.9)*100).toFixed(0)},
@@ -58,27 +59,43 @@ async function renderPanelContent(panelId) {
       try {
         const pv = await api('/params/pv');
         const p = pv.params;
-        const regions = Object.keys(pv.curves);
-        const regionLabels = {jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
-        const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
-        const curRegion = p.region || 'jiangsu';
+        const regions = pv.curves;  // 现在是 {region: [curve_types]} 格式
+        const regionNames = Object.keys(regions);
+        const regionLabels = {henan:'河南',jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
+        const curveLabels = {annual_avg:'全年日均',cloudy:'阴天',sunny:'晴天'};
+        const curRegion = p.region || (regionNames[0] || 'henan');
         const curCurve = p.curve_type || 'annual_avg';
-        const regionOpts = regions.map(r=>`<option value="${r}" ${r===curRegion?'selected':''}>${regionLabels[r]||r}</option>`).join('');
-        const curveOpts = (pv.curves[curRegion]||[]).map(c=>`<option value="${c}" ${c===curCurve?'selected':''}>${curveLabels[c]||c}</option>`).join('');
-        panel.innerHTML = formPanelHTML('光伏基本参数', [
+        const regionOpts = regionNames.map(r=>`<option value="${r}" ${r===curRegion?'selected':''}>${regionLabels[r]||r}</option>`).join('');
+        const curveList = regions[curRegion] || [];
+        const curveOpts = curveList.map(c=>`<option value="${c}" ${c===curCurve?'selected':''}>${curveLabels[c]||c}</option>`).join('');
+
+        const _tipSelfUse = '用户实际用电费用为约定的电价×本地消纳电费折扣，约定的电价通常为用户实际在电网/售电公司购电的电价';
+        const _modeOpts = '<option value="admin">行政分时</option><option value="contract">合同分时</option><option value="flat">固定电价</option><option value="spot_da">日前现货联动</option><option value="spot_rt">实时现货联动</option><option value="lt_contract">中长期联动</option>';
+
+        panel.innerHTML = formPanelHTML('光伏缺省参数', [
           {label:'额定装机容量 (kWp)', id:'pv-cap-rated', step:0.1, value:p.cap_rated||1.0},
           {label:'光伏上网电价 (元/kWh)', id:'pv-feed-in-tariff', step:0.01, value:p.feed_in_tariff||0.4},
-          {label:'光伏消纳折扣 (%)', id:'pv-self-use-discount', step:1, value:((p.self_use_discount||0.80)*100).toFixed(0)},
-        ]) + formPanelHTML('光伏经济参数', [
-          {label:'单位造价 (元/Wp)', id:'pv-unit-cost', step:0.1, value:p.unit_cost||3.5},
-          {label:'年运维费用比例 (%)', id:'pv-r-om', step:0.1, value:((p.r_om||0.015)*100).toFixed(1)},
-          {label:'设计寿命 (年)', id:'pv-design-life', step:1, value:p.design_life||25},
-          {label:'首年衰减率 (%)', id:'pv-r-degrade-first', step:0.1, value:((p.r_degrade_first||0.02)*100).toFixed(1)},
-          {label:'年衰减率 (%)', id:'pv-r-degrade', step:0.1, value:((p.r_degrade||0.005)*100).toFixed(1)},
-        ]) + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">出力特性</div><div class="params-grid cols-2" style="margin-bottom:12px"><div class="params-field"><label>地区</label><select id="pv-region" onchange="onPvCurveChange()">${regionOpts}</select></div><div class="params-field"><label>曲线类型</label><select id="pv-curve-type" onchange="onPvCurveChange()">${curveOpts}</select></div></div><div id="pv-curve-chart" style="height:260px"></div></div>`;
+        ]) + `<div class="params-section"><div class="params-section-hd">光伏经济参数</div>
+          <div class="params-grid cols-3">
+            <div class="params-field"><label>本地消纳电费折扣（%）<span class="param-tip" data-tip="${_tipSelfUse}">?</span></label><input type="number" id="pv-self-use-discount" step="1" value="${((p.self_use_discount||0.80)*100).toFixed(0)}"></div>
+            <div class="params-field"><label>电费模式</label><select id="pv-tariff-mode" onchange="onPvTariffModeChange()">${_modeOpts}</select></div>
+            <div class="params-field"><label>电价曲线</label><select id="pv-tariff-curve"></select></div>
+          </div>
+          <div class="params-grid cols-3" style="margin-top:8px">
+            <div class="params-field"><label>单位造价 (元/Wp)</label><input type="number" id="pv-unit-cost" step="0.1" value="${p.unit_cost||3.5}"></div>
+            <div class="params-field"><label>年运维费用比例 (%)</label><input type="number" id="pv-r-om" step="0.1" value="${((p.r_om||0.015)*100).toFixed(1)}"></div>
+            <div class="params-field"><label>设计寿命 (年)</label><input type="number" id="pv-design-life" step="1" value="${p.design_life||25}"></div>
+          </div>
+          <div class="params-grid cols-2" style="margin-top:8px">
+            <div class="params-field"><label>首年衰减率 (%)</label><input type="number" id="pv-r-degrade-first" step="0.1" value="${((p.r_degrade_first||0.02)*100).toFixed(1)}"></div>
+            <div class="params-field"><label>年衰减率 (%)</label><input type="number" id="pv-r-degrade" step="0.1" value="${((p.r_degrade||0.005)*100).toFixed(1)}"></div>
+          </div>
+        </div>` + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">出力特性</div><div style="display:flex;align-items:center;gap:16px;margin-bottom:12px"><div class="params-field" style="flex:1"><label>地区</label><select id="pv-region" onchange="onPvCurveChange()">${regionOpts}</select></div><div class="params-field" style="flex:1"><label>曲线类型</label><select id="pv-curve-type" onchange="onPvCurveChange()">${curveOpts}</select></div><div style="flex:1;display:flex;align-items:flex-end;gap:6px;padding-bottom:2px"><span style="font-size:var(--fs-11);color:var(--text-3)">等效利用小时数</span><span id="pv-util-hours" style="font-size:var(--fs-13);color:var(--accent);font-weight:var(--fw-semi)">--</span><span style="font-size:var(--fs-11);color:var(--text-3)">h</span></div></div><div id="pv-curve-chart" style="height:260px"></div></div>
+        <div style="font-size:var(--fs-11);color:var(--text-3);margin-top:8px;padding:0 20px">本模型暂未考虑光伏环境权益收益</div>`;
         renderPvCurveChart(pv.curve_data, curRegion, curCurve);
+        onPvTariffModeChange();
       } catch(e) {
-        panel.innerHTML = placeholderHTML('光伏参数 — 加载失败');
+        panel.innerHTML = placeholderHTML('光伏缺省参数 — 加载失败');
       }
       break;
     case 'contract':
@@ -170,16 +187,35 @@ async function renderPanelContent(panelId) {
       renderSpotPriceChart();
       break;
     case 'load-curve':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力负荷</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-          <span style="font-size:var(--fs-12);color:var(--text-3)">负荷曲线</span>
-          <select id="load-curve-select" onchange="onLoadCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
-            <option value="typical" selected>典型日负荷</option>
-          </select>
+      const _randTip = '选择随机度后，每次仿真都会生成带随机干扰的曲线，目的是增加仿真结果的多样性，建议默认选择不随机。\n\n加性高斯白噪声：给每个数据点增加独立微小随机波动，不改变曲线整体形状，噪声强度推荐 2%~6%\n一阶自相关噪声：生成平滑连续的时序随机波动，相邻点变化自然无跳变，噪声强度推荐 1%~5%、自相关系数 0.7~0.95\n乘性相对噪声：根据曲线数值大小自动调整波动幅度，数值大则波动大，相对扰动系数推荐 0.01~0.05\n低频形状微调：在保留整体趋势与拐点的前提下小幅柔和改变曲线轮廓，频率推荐 2~5、幅度推荐 2%~5%';
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">用户净生产负荷</div>
+        <div id="load-mini-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:0"></div>
+        <div style="border-top:1px solid var(--border);margin:20px 0;padding-top:16px">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
+            <span style="font-size:var(--fs-12);color:var(--text-3);white-space:nowrap">曲线</span>
+            <select id="load-curve-select" onchange="onLoadCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12);min-width:200px"></select>
+            <span style="width:16px;flex-shrink:0"></span>
+            <label style="display:flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--text-2);cursor:pointer;white-space:nowrap"><input type="radio" name="load-scale" value="avg" checked onchange="onLoadScaleModeChange()"> 平均负荷</label>
+            <input type="number" id="load-avg-input" step="0.1" value="3.0" oninput="onLoadScaleChange()" style="width:80px;background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
+            <span style="font-size:var(--fs-11);color:var(--text-3)">MW</span>
+            <label style="display:flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--text-2);cursor:pointer;white-space:nowrap"><input type="radio" name="load-scale" value="max" onchange="onLoadScaleModeChange()"> 最大负荷</label>
+            <input type="number" id="load-max-input" step="0.1" value="" disabled oninput="onLoadScaleChange()" style="width:80px;background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-3);font-size:var(--fs-12)">
+            <span style="font-size:var(--fs-11);color:var(--text-3)">MW</span>
+            <span style="width:16px;flex-shrink:0"></span>
+            <span style="font-size:var(--fs-12);color:var(--text-3);white-space:nowrap">最大需量</span>
+            <span id="load-demand-val" style="font-size:var(--fs-12);color:var(--accent);font-weight:var(--fw-semi)">--</span>
+            <span style="font-size:var(--fs-11);color:var(--text-3)">MW</span>
+            <span style="font-size:var(--fs-12);color:var(--text-3);white-space:nowrap">需量出现时段</span>
+            <span id="load-demand-period" style="font-size:var(--fs-12);color:var(--text-2)">--</span>
+            <span style="width:16px;flex-shrink:0"></span>
+            <span style="font-size:var(--fs-12);color:var(--text-3);white-space:nowrap">随机度</span>
+            <select id="load-randomness" onchange="onLoadRandomnessChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)"><option value="none" selected>不随机</option><option value="awgn">加性高斯白噪声</option><option value="corr">一阶自相关噪声</option><option value="mult">乘性相对噪声</option><option value="lowfreq">低频形状微调</option></select>
+            <span class="param-tip" data-tip="${_randTip.replace(/"/g,'&quot;')}">?</span>
+          </div>
         </div>
-        <div id="load-curve-chart" style="height:300px"></div>
+        <div id="load-curve-chart" style="height:280px"></div>
       </div>`;
-      renderLoadCurveChart();
+      loadLoadProfiles();
       break;
     case 'pv-curve':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">光伏发电功率曲线</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
@@ -328,24 +364,313 @@ function renderSpotPriceChart() {
   window.addEventListener('resize',()=>chart.resize());
 }
 
-// 负荷曲线图表
-function renderLoadCurveChart() {
+// ===== 负荷曲线 =====
+let loadProfilesData = [];
+let loadDetailChart = null;
+let loadMiniCharts = [];
+
+function loadLoadProfiles() {
+  App.api('/params/load-profiles').then(d => {
+    loadProfilesData = d.profiles || [];
+    renderLoadMiniGrid();
+    const sel = document.getElementById('load-curve-select');
+    if (sel) {
+      sel.innerHTML = loadProfilesData.map((p,i) => `<option value="${i}">${i+1}.${p.label}</option>`).join('');
+    }
+    // 默认选择第 1 个（全天候生产,白天偏高），平均负荷 = 3 MW
+    const defaultIdx = 0;
+    if (sel) sel.value = defaultIdx;
+    if (loadProfilesData.length > 0) {
+      renderLoadDetail(defaultIdx);
+    }
+  }).catch(e => console.error('load profiles failed:', e));
+}
+
+function renderLoadMiniGrid() {
+  const grid = document.getElementById('load-mini-grid');
+  if (!grid) return;
+  loadMiniCharts.forEach(c => c.dispose());
+  loadMiniCharts = [];
+
+  // 16 个内置曲线 + 1 个"用户自定义"占位
+  let html = loadProfilesData.map((p,i) => `
+    <div style="text-align:center;cursor:pointer" onclick="selectLoadProfile(${i})">
+      <div id="load-mini-${i}" style="height:60px"></div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i+1}.${p.label}</div>
+    </div>
+  `).join('');
+  // 第 17 个：用户自定义占位
+  html += `<div style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <div style="height:60px;width:100%;background:var(--bg-strip);border:1px dashed var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:var(--fs-11);color:var(--text-3)">用户自定义</div>
+    <div style="font-size:10px;color:var(--text-3);margin-top:2px">17.用户自定义</div>
+  </div>`;
+  grid.innerHTML = html;
+
+  loadProfilesData.forEach((p,i) => {
+    const el = document.getElementById(`load-mini-${i}`);
+    if (!el) return;
+    const c = echarts.init(el);
+    c.setOption({
+      grid:{left:2,right:2,top:2,bottom:2},
+      xAxis:{type:'category',data:p.hour_data.map((_,h)=>h),show:false},
+      yAxis:{type:'value',show:false},
+      series:[{type:'line',data:p.hour_data,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:1},areaStyle:{color:'rgba(94,163,255,0.15)'}}],
+    });
+    loadMiniCharts.push(c);
+  });
+}
+
+function selectLoadProfile(idx) {
+  const sel = document.getElementById('load-curve-select');
+  if (sel) sel.value = idx;
+  renderLoadDetail(idx);
+}
+
+function renderLoadDetail(idx) {
+  const p = loadProfilesData[idx];
+  if (!p) return;
+
+  // 填充默认值：平均负荷 = 3 MW，最大负荷自动算
+  const avgInput = document.getElementById('load-avg-input');
+  const maxInput = document.getElementById('load-max-input');
+  const defaultAvg = 3.0;
+  if (avgInput) avgInput.value = defaultAvg.toFixed(1);
+  // 按平均负荷缩放后计算最大负荷
+  const ratio = defaultAvg / p.avg_load_mw;
+  const scaledMax = p.max_load_mw * ratio;
+  if (maxInput) maxInput.value = scaledMax.toFixed(4);
+
+  // 更新最大需量（span 元素用 textContent）
+  const scaledDemand = p.max_demand_mw * ratio;
+  const demandVal = document.getElementById('load-demand-val');
+  const demandPeriod = document.getElementById('load-demand-period');
+  if (demandVal) demandVal.textContent = scaledDemand.toFixed(4);
+  if (demandPeriod) demandPeriod.textContent = p.max_demand_period;
+
+  // 渲染缩放后的曲线
+  const scaledHourData = p.hour_data.map(v => v * ratio);
+  renderLoadDetailChart(scaledHourData, idx);
+}
+
+function renderLoadDetailChart(hourData, idx) {
   const el = document.getElementById('load-curve-chart');
   if (!el) return;
-  const chart = echarts.init(el);
-  const mockLoad = [120,110,105,100,105,130,200,350,420,450,460,440,420,400,380,360,380,420,480,500,460,380,280,180];
-  chart.setOption({
+  if (loadDetailChart) loadDetailChart.dispose();
+  loadDetailChart = echarts.init(el);
+
+  const p = loadProfilesData[idx];
+  loadDetailChart.setOption({
     tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
-    grid:{left:46,right:46,top:20,bottom:20},
-    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
-    yAxis:{type:'value',name:'kW',nameTextStyle:{color:'#7a8298',fontSize:8},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
-    series:[{name:'负荷',type:'line',data:mockLoad,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:0.5},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
+    grid:{left:56,right:46,top:20,bottom:24},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}:00`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:9,interval:0}},
+    yAxis:{type:'value',name:'MW',nameTextStyle:{color:'#7a8298',fontSize:9},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:9},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{name:p?p.label:'负荷',type:'line',data:hourData,smooth:true,symbol:'none',lineStyle:{color:'#5ea3ff',width:1},areaStyle:{color:'rgba(94,163,255,0.10)'}}],
   });
-  window.addEventListener('resize',()=>chart.resize());
+  window.addEventListener('resize',()=>loadDetailChart&&loadDetailChart.resize());
 }
 
 function onLoadCurveChange() {
-  renderLoadCurveChart();
+  const sel = document.getElementById('load-curve-select');
+  if (!sel) return;
+  renderLoadDetail(parseInt(sel.value)||0);
+}
+
+function onLoadScaleModeChange() {
+  const mode = document.querySelector('input[name="load-scale"]:checked')?.value;
+  const avgInput = document.getElementById('load-avg-input');
+  const maxInput = document.getElementById('load-max-input');
+  if (mode === 'avg') {
+    avgInput.disabled = false;
+    maxInput.disabled = true;
+    maxInput.value = '';
+  } else {
+    avgInput.disabled = true;
+    avgInput.value = '';
+    maxInput.disabled = false;
+  }
+  onLoadScaleChange();
+}
+
+function onLoadScaleChange() {
+  const sel = document.getElementById('load-curve-select');
+  if (!sel) return;
+  const idx = parseInt(sel.value)||0;
+  const p = loadProfilesData[idx];
+  if (!p) return;
+
+  const mode = document.querySelector('input[name="load-scale"]:checked')?.value;
+  let body = { profile_name: p.name };
+  if (mode === 'avg') {
+    const v = parseFloat(document.getElementById('load-avg-input').value);
+    if (!isNaN(v) && v > 0) body.avg_load = v;
+    else return;
+  } else {
+    const v = parseFloat(document.getElementById('load-max-input').value);
+    if (!isNaN(v) && v > 0) body.max_load = v;
+    else return;
+  }
+
+  App.api('/params/load-profile/preview', { method:'POST', body:JSON.stringify(body) }).then(d => {
+    // 实时更新另一侧数值
+    if (mode === 'avg') {
+      document.getElementById('load-max-input').value = d.max_load_mw.toFixed(4);
+    } else {
+      document.getElementById('load-avg-input').value = d.avg_load_mw.toFixed(4);
+    }
+    // 应用随机度
+    const randomized = _generateRandomizedCurve(d.hour_data);
+    // 重新计算需量
+    const sel2 = document.getElementById('load-curve-select');
+    const idx2 = parseInt(sel2?.value)||0;
+    const p2 = loadProfilesData[idx2];
+    if (p2) {
+      const ratio2 = (mode === 'avg')
+        ? (parseFloat(document.getElementById('load-avg-input').value) / p2.avg_load_mw)
+        : (parseFloat(document.getElementById('load-max-input').value) / p2.max_load_mw);
+      const scaledMinute = p2.minute_data.map(v => v * ratio2);
+      const randomizedMinute = _applyRandomnessToMinute(scaledMinute);
+      const {maxDemand, period} = _calcMaxDemandFromMinute(randomizedMinute);
+      document.getElementById('load-demand-val').textContent = maxDemand.toFixed(4);
+      document.getElementById('load-demand-period').textContent = period;
+    }
+    renderLoadDetailChart(randomized, idx2);
+  }).catch(e => console.error('preview failed:', e));
+}
+
+// ===== 随机度算法 =====
+function _seededRandom(seed) {
+  let s = seed;
+  return function() { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
+
+function _gaussianNoise(rng) {
+  let u1 = rng(), u2 = rng();
+  while (u1 === 0) u1 = rng();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+function _applyAwgn(hourData, intensity, rng) {
+  const avgVal = hourData.reduce((a,b) => a+b, 0) / hourData.length;
+  const sigma = avgVal * intensity;
+  return hourData.map(v => Math.max(0, v + _gaussianNoise(rng) * sigma));
+}
+
+function _applyCorrelatedNoise(hourData, intensity, rho, rng) {
+  const avgVal = hourData.reduce((a,b) => a+b, 0) / hourData.length;
+  const sigma = avgVal * intensity;
+  let prev = _gaussianNoise(rng) * sigma;
+  return hourData.map(v => {
+    const noise = rho * prev + Math.sqrt(1 - rho * rho) * _gaussianNoise(rng) * sigma;
+    prev = noise;
+    return Math.max(0, v + noise);
+  });
+}
+
+function _applyMultiplicativeNoise(hourData, coeff, rng) {
+  return hourData.map(v => Math.max(0, v * (1 + _gaussianNoise(rng) * coeff)));
+}
+
+function _applyLowFreqModulation(hourData, freq, amplitude, rng) {
+  const avgVal = hourData.reduce((a,b) => a+b, 0) / hourData.length;
+  const amp = avgVal * amplitude;
+  const phase = rng() * 2 * Math.PI;
+  return hourData.map((v, i) => Math.max(0, v + amp * Math.sin(2 * Math.PI * freq * i / 24 + phase)));
+}
+
+function _generateRandomizedCurve(baseHourData) {
+  const mode = document.getElementById('load-randomness')?.value || 'none';
+  if (mode === 'none') return baseHourData;
+  const seed = Date.now() % 2147483647;
+  const rng = _seededRandom(seed);
+  switch (mode) {
+    case 'awgn': return _applyAwgn(baseHourData, 0.04, rng);
+    case 'corr': return _applyCorrelatedNoise(baseHourData, 0.03, 0.85, rng);
+    case 'mult': return _applyMultiplicativeNoise(baseHourData, 0.03, rng);
+    case 'lowfreq': return _applyLowFreqModulation(baseHourData, 3, 0.03, rng);
+    default: return baseHourData;
+  }
+}
+
+function _getBaseScaledHourData() {
+  const sel = document.getElementById('load-curve-select');
+  if (!sel) return null;
+  const idx = parseInt(sel.value) || 0;
+  const p = loadProfilesData[idx];
+  if (!p) return null;
+  const mode = document.querySelector('input[name="load-scale"]:checked')?.value;
+  let ratio = 1;
+  if (mode === 'avg') {
+    const v = parseFloat(document.getElementById('load-avg-input').value);
+    if (!isNaN(v) && v > 0) ratio = v / p.avg_load_mw;
+  } else {
+    const v = parseFloat(document.getElementById('load-max-input').value);
+    if (!isNaN(v) && v > 0) ratio = v / p.max_load_mw;
+  }
+  return p.hour_data.map(v => v * ratio);
+}
+
+function _applyRandomnessToMinute(minuteData) {
+  const mode = document.getElementById('load-randomness')?.value || 'none';
+  if (mode === 'none') return minuteData;
+  const seed = Date.now() % 2147483647;
+  const rng = _seededRandom(seed);
+  switch (mode) {
+    case 'awgn': return _applyAwgn(minuteData, 0.04, rng);
+    case 'corr': return _applyCorrelatedNoise(minuteData, 0.03, 0.85, rng);
+    case 'mult': return _applyMultiplicativeNoise(minuteData, 0.03, rng);
+    case 'lowfreq': return _applyLowFreqModulation(minuteData, 3, 0.03, rng);
+    default: return minuteData;
+  }
+}
+
+function _calcMaxDemandFromMinute(minuteData) {
+  const padded = [minuteData[0]].concat(minuteData);
+  const rolling = [];
+  for (let i = 14; i < padded.length; i++) {
+    const window = padded.slice(i - 14, i + 1);
+    rolling.push(window.reduce((a,b) => a+b, 0) / 15);
+  }
+  const maxVal = Math.max(...rolling);
+  const maxIdx = rolling.indexOf(maxVal);
+  const startH = Math.floor(maxIdx / 60);
+  const startM = maxIdx % 60;
+  const endM = maxIdx + 15;
+  const endH = Math.floor(endM / 60);
+  const endMM = endM % 60;
+  return {
+    maxDemand: maxVal,
+    period: `${String(startH).padStart(2,'0')}:${String(startM).padStart(2,'0')}-${String(Math.min(endH,23)).padStart(2,'0')}:${String(endMM).padStart(2,'0')}`
+  };
+}
+
+function _refreshLoadView(hourData) {
+  const demandVal = document.getElementById('load-demand-val');
+  const demandPeriod = document.getElementById('load-demand-period');
+  if (demandVal) demandVal.textContent = '--';
+  if (demandPeriod) demandPeriod.textContent = '--';
+  renderLoadDetailChart(hourData, parseInt(document.getElementById('load-curve-select')?.value) || 0);
+}
+
+function onLoadRandomnessChange() {
+  const baseData = _getBaseScaledHourData();
+  if (!baseData) return;
+  const randomized = _generateRandomizedCurve(baseData);
+  // 计算随机化后的需量
+  const sel = document.getElementById('load-curve-select');
+  const idx = parseInt(sel?.value)||0;
+  const p = loadProfilesData[idx];
+  if (p) {
+    const mode = document.querySelector('input[name="load-scale"]:checked')?.value;
+    const ratio = mode === 'avg'
+      ? (parseFloat(document.getElementById('load-avg-input').value) / p.avg_load_mw)
+      : (parseFloat(document.getElementById('load-max-input').value) / p.max_load_mw);
+    const scaledMinute = p.minute_data.map(v => v * ratio);
+    const randomizedMinute = _applyRandomnessToMinute(scaledMinute);
+    const {maxDemand, period} = _calcMaxDemandFromMinute(randomizedMinute);
+    document.getElementById('load-demand-val').textContent = maxDemand.toFixed(4);
+    document.getElementById('load-demand-period').textContent = period;
+  }
+  renderLoadDetailChart(randomized, idx);
 }
 
 // 分时电价 tab 切换
@@ -364,17 +689,19 @@ function renderTariffTouTab(tabName) {
   if (tabName === 'admin') {
     const container = document.getElementById('tariff-tou-content-admin');
     if (!container) return;
-    container.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-      <span style="font-size:var(--fs-12);color:var(--text-3)">电价曲线</span>
-      <select id="tariff-admin-curve" onchange="onTariffAdminCurveChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)">
-        <option value="typical" selected>典型峰谷平</option>
-        <option value="midday_valley">午间深谷</option>
-        <option value="summer_peak">夏季尖峰</option>
-      </select>
+    container.innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:var(--fs-12);color:var(--text-3)">时间段</span>
+      <select id="tariff-admin-month" onchange="onTariffAdminTouChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)"></select>
+      <span style="font-size:var(--fs-12);color:var(--text-3)">省份</span>
+      <select id="tariff-admin-province" onchange="onTariffAdminTouChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)"></select>
+      <span style="font-size:var(--fs-12);color:var(--text-3)">用电性质</span>
+      <select id="tariff-admin-biz-type" onchange="onTariffAdminTouChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)"></select>
+      <span style="font-size:var(--fs-12);color:var(--text-3)">电压等级</span>
+      <select id="tariff-admin-voltage" onchange="onTariffAdminTouChange()" style="background:#1a1f2d;border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text-1);font-size:var(--fs-12)"></select>
     </div>
     <div id="tariff-admin-chart" style="height:280px;margin-bottom:16px"></div>
     <div id="tariff-admin-table"></div>`;
-    onTariffAdminCurveChange();
+    initTariffAdminTou();
   } else if (tabName === 'contract') {
     const container = document.getElementById('tariff-tou-content-contract');
     if (!container) return;
@@ -396,7 +723,140 @@ function renderTariffTouTab(tabName) {
   }
 }
 
-// 光伏出力曲线图表
+// ===== 行政分时电价（全国） =====
+let tariffAdminData = null;
+let tariffAdminChart = null;
+
+const PROVINCE_NAMES = {
+  Anhui:'安徽',Beijing:'北京',Chongqing:'重庆',Fujian:'福建',Gansu:'甘肃',
+  Guangdong:'广东',Guangxi:'广西',Guizhou:'贵州',Hainan:'海南',Hebei:'河北',
+  Heilongjiang:'黑龙江',Henan:'河南',Hubei:'湖北',Hunan:'湖南',
+  InnerMongolia:'内蒙古',Jiangsu:'江苏',Jiangxi:'江西',Jilin:'吉林',
+  Liaoning:'辽宁',Ningxia:'宁夏',Qinghai:'青海',Shaanxi:'陕西',
+  Shandong:'山东',Shanxi:'山西',Shanghai:'上海',Sichuan:'四川',
+  Taiwan:'台湾',Tianjin:'天津',Tibet:'西藏',Xinjiang:'新疆',Yunnan:'云南',
+};
+
+const BIZ_TYPE_NAMES = {
+  commercial:'工商业用电',general_commercial:'一般工商业用电',heavy_industry:'大工业用电',
+};
+
+async function initTariffAdminTou() {
+  try {
+    const provinces = await App.api('/tariff/administrative/provinces');
+    const provSel = document.getElementById('tariff-admin-province');
+    if (provSel) {
+      provSel.innerHTML = provinces.map(p => `<option value="${p}" ${p==='Beijing'?'selected':''}>${PROVINCE_NAMES[p]||p}</option>`).join('');
+    }
+    await onTariffAdminTouChange();
+  } catch(e) { console.error('init tariff admin tou failed:', e); }
+}
+
+async function onTariffAdminTouChange() {
+  const province = document.getElementById('tariff-admin-province')?.value;
+  if (!province) return;
+
+  // 加载月份列表
+  try {
+    const months = await App.api(`/tariff/administrative/months/${province}`);
+    const monthSel = document.getElementById('tariff-admin-month');
+    const prevMonth = monthSel?.value;
+    if (monthSel) {
+      monthSel.innerHTML = months.map(m => `<option value="${m}" ${m===(prevMonth||'202606')?'selected':''}>${m}</option>`).join('');
+    }
+    const month = monthSel?.value || months[0];
+
+    // 加载用电类别
+    const bizTypes = await App.api(`/tariff/administrative/business-types/${province}/${month}`);
+    const bizSel = document.getElementById('tariff-admin-biz-type');
+    const prevBiz = bizSel?.value;
+    if (bizSel) {
+      bizSel.innerHTML = bizTypes.map(b => `<option value="${b}" ${b===(prevBiz||bizTypes[0])?'selected':''}>${BIZ_TYPE_NAMES[b]||b}</option>`).join('');
+    }
+    const bizType = bizSel?.value || bizTypes[0];
+
+    // 加载电价数据
+    const result = await App.api(`/tariff/administrative/data/${province}/${month}/${bizType}`);
+    tariffAdminData = result;
+
+    // 更新电压等级下拉（过滤掉全空的列）
+    const validVoltageLevels = result.voltage_levels.filter(v => {
+      return result.data.some(r => r[v] != null);
+    });
+    const voltSel = document.getElementById('tariff-admin-voltage');
+    const prevVolt = voltSel?.value;
+    if (voltSel) {
+      voltSel.innerHTML = validVoltageLevels.map(v => `<option value="${v}" ${v===(prevVolt||validVoltageLevels[0])?'selected':''}>${v}</option>`).join('');
+    }
+    const voltage = voltSel?.value || validVoltageLevels[0];
+
+    renderTariffAdminChart(result.data, voltage);
+    renderTariffAdminTable(result.data, voltage);
+  } catch(e) { console.error('tariff admin tou change failed:', e); }
+}
+
+function renderTariffAdminChart(data, voltageCol) {
+  const el = document.getElementById('tariff-admin-chart');
+  if (!el) return;
+  if (tariffAdminChart) tariffAdminChart.dispose();
+  tariffAdminChart = echarts.init(el);
+
+  const prices = data.map(r => r[voltageCol] != null ? r[voltageCol] : 0);
+  const periods = data.map(r => r['时段'] || '');
+  const colors = prices.map((_, i) => {
+    const p = periods[i];
+    if (p === '峰' || p === '尖峰') return '#EB5757';
+    if (p === '谷' || p === '深谷') return '#7EA8FA';
+    return '#F2A104';
+  });
+
+  tariffAdminChart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    grid:{left:56,right:46,top:20,bottom:24},
+    xAxis:{type:'category',data:data.map(r=>`${r.hour}:00`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:9,interval:0}},
+    yAxis:{type:'value',name:'元/kWh',nameTextStyle:{color:'#7a8298',fontSize:9},axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:9},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{type:'bar',data:prices.map((v,i)=>({value:v,itemStyle:{color:colors[i]}})),barWidth:'60%'}],
+  });
+  window.addEventListener('resize',()=>tariffAdminChart&&tariffAdminChart.resize());
+}
+
+function renderTariffAdminTable(data, voltageCol) {
+  const el = document.getElementById('tariff-admin-table');
+  if (!el) return;
+
+  // 按时段聚合
+  const segments = [];
+  let curPeriod = null, curStart = 0, curPrices = [];
+  data.forEach((r, i) => {
+    const period = r['时段'] || '';
+    const price = r[voltageCol];
+    if (period !== curPeriod) {
+      if (curPeriod !== null) {
+        const avg = curPrices.length > 0 ? curPrices.reduce((a,b) => a+b, 0) / curPrices.length : 0;
+        segments.push({ period: curPeriod, start: curStart, end: i, avgPrice: avg });
+      }
+      curPeriod = period;
+      curStart = i;
+      curPrices = price != null ? [price] : [];
+    } else {
+      if (price != null) curPrices.push(price);
+    }
+  });
+  // 最后一段
+  if (curPeriod !== null) {
+    const avg = curPrices.length > 0 ? curPrices.reduce((a,b) => a+b, 0) / curPrices.length : 0;
+    segments.push({ period: curPeriod, start: curStart, end: 24, avgPrice: avg });
+  }
+
+  const periodColors = { '峰': '#EB5757', '尖峰': '#EB5757', '谷': '#7EA8FA', '深谷': '#7EA8FA', '平': '#F2A104' };
+  let html = '<table class="data-table"><tr><th>时段</th><th>时间范围</th><th>平均电价 (元/kWh)</th></tr>';
+  segments.forEach(s => {
+    const color = periodColors[s.period] || 'var(--text-1)';
+    html += `<tr><td style="color:${color};font-weight:var(--fw-semi)">${s.period}</td><td>${s.start}:00 ~ ${s.end}:00</td><td>${s.avgPrice.toFixed(4)}</td></tr>`;
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
 let pvCurveChart = null;
 function renderPvCurveChart(data, region, curveType) {
   const el = document.getElementById('pv-curve-chart');
@@ -413,20 +873,44 @@ function renderPvCurveChart(data, region, curveType) {
     series:[{name:(regionLabels[region]||region)+' '+(curveLabels[curveType]||curveType),type:'line',data:data,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
   });
   window.addEventListener('resize',()=>pvCurveChart&&pvCurveChart.resize());
+
+  // 等效利用小时数 = 日归一化出力之和 × 365
+  const dailySum = data.reduce((a,b) => a+b, 0);
+  const utilHours = (dailySum * 365).toFixed(0);
+  const utilEl = document.getElementById('pv-util-hours');
+  if (utilEl) utilEl.textContent = utilHours;
 }
 
 async function onPvCurveChange() {
   const region = document.getElementById('pv-region').value;
   const curveType = document.getElementById('pv-curve-type').value;
-  // 更新二级下拉选项
-  const curves = await api('/params/pv');
-  const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
+  const curveLabels = {annual_avg:'全年日均',cloudy:'阴天',sunny:'晴天'};
   const sel = document.getElementById('pv-curve-type');
-  const opts = (curves.curves[region]||[]).map(c=>`<option value="${c}" ${c===curveType?'selected':''}>${curveLabels[c]||c}</option>`).join('');
-  sel.innerHTML = opts;
-  // 加载曲线数据
-  const res = await api(`/params/pv-curve/${region}/${sel.value}`);
-  renderPvCurveChart(res.data, region, sel.value);
+  try {
+    const pv = await api('/params/pv');
+    const opts = (pv.curves[region]||[]).map(c=>`<option value="${c}" ${c===curveType?'selected':''}>${curveLabels[c]||c}</option>`).join('');
+    sel.innerHTML = opts;
+    const res = await api(`/params/pv-curve/${region}/${sel.value}`);
+    renderPvCurveChart(res.data, region, sel.value);
+  } catch(e) { console.error('PV curve load failed:', e); }
+}
+
+// 光伏消纳折扣 — 电费模式联动
+const PV_TARIFF_CURVES = {
+  admin: [{v:'admin_henan',l:'河南行政分时'}],
+  contract: [{v:'standard',l:'标准合同分时'}],
+  flat: [{v:'flat_0.5',l:'固定 0.5 元/kWh'},{v:'flat_0.6',l:'固定 0.6 元/kWh'}],
+  spot_da: [{v:'henan_mar',l:'河南3月日前现货'}],
+  spot_rt: [{v:'henan_mar',l:'河南3月实时现货'}],
+  lt_contract: [{v:'henan_202603',l:'河南2026年3月中长期'}],
+};
+
+function onPvTariffModeChange() {
+  const mode = document.getElementById('pv-tariff-mode')?.value;
+  const curveSel = document.getElementById('pv-tariff-curve');
+  if (!mode || !curveSel) return;
+  const curves = PV_TARIFF_CURVES[mode] || [];
+  curveSel.innerHTML = curves.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
 }
 
 // 中长期合约曲线
@@ -710,7 +1194,12 @@ async function loadGlobalParams() {
     console.log('[params] globalParamsData set, keys:', Object.keys(data));
   } catch (e) {
     console.error('[params] Failed to load global params:', e);
-    alert('加载全局参数失败: ' + e.message);
+    // 提供更友好的错误信息
+    let errorMsg = e.message;
+    if (e.message === 'Failed to fetch') {
+      errorMsg = '无法连接到服务器，请确认后端服务已启动 (python run.py)';
+    }
+    alert('加载全局参数失败: ' + errorMsg);
   }
 }
 
@@ -721,9 +1210,12 @@ App.params = {
   renderPvCurveChart, appendEssNotes, markParamsDirty, bindDirtyTracking,
   onContractModeChange, onContractCurveChange, renderContractChart,
   onTariffAdminCurveChange, onTariffContractCurveChange,
+  onTariffAdminTouChange, initTariffAdminTou,
   onContractCurveTypeChange, renderTariffBarChart,
   renderSpotPriceCharts, onSpotPriceSetChange,
-  switchTariffTouTab, renderTariffTouTab, onLoadCurveChange,
+  switchTariffTouTab, renderTariffTouTab,
+  onLoadCurveChange, onLoadScaleModeChange, onLoadScaleChange, onLoadRandomnessChange,
+  onPvTariffModeChange,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

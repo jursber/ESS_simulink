@@ -1,4 +1,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
 html{
   transform:scale(0.9);
   transform-origin:top left;
@@ -321,3 +324,67 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 /* 千分位数值 */
 .num-lg{font-size:20px;font-weight:700;color:var(--text-1);letter-spacing:-.02em}
 .num-unit{font-size:var(--fs-12);color:var(--text-2);font-weight:var(--fw-normal);margin-left:2px}
+
+/* ===== 系统构成控件 ===== */
+.topo-controls{display:flex;flex-direction:column;gap:8px}
+
+/* 复选框样式 */
+.checkbox-item{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:var(--fs-12);color:var(--text-2);padding:4px 0}
+.checkbox-item input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.checkbox-item span{user-select:none}
+
+/* Toggle 开关样式 */
+.toggle-item{display:flex;align-items:center;gap:8px;font-size:var(--fs-12);color:var(--text-2);padding:4px 0}
+.toggle-switch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:10px;transition:background .2s}
+.toggle-slider::before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:transform .2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(16px)}
+
+/* ===== 商业模式分组 ===== */
+.biz-groups-2x2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.biz-group{background:var(--bg-strip);border:1px solid var(--border-light);border-radius:6px;padding:6px 8px}
+.biz-group-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.biz-group-hd span{font-size:var(--fs-11);font-weight:var(--fw-semi);color:var(--text-1)}
+.biz-group-hd-btns{display:flex;gap:4px;align-items:center}
+.biz-group-add{width:20px;height:20px;border-radius:4px;border:1px dashed var(--border);background:transparent;color:var(--text-2);font-size:12px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.biz-group-add:hover{border-color:var(--accent);color:var(--accent);border-style:solid}
+.biz-group-close{width:20px;height:20px;border-radius:4px;border:none;background:transparent;color:var(--text-3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1}
+.biz-group-close:hover{color:var(--danger);background:rgba(235,87,87,0.12)}
+.biz-group-close:disabled,.biz-group-close.disabled{opacity:.2;cursor:not-allowed;pointer-events:none}
+.biz-group-close:disabled:hover,.biz-group-close.disabled:hover{color:var(--text-3);background:transparent}
+.biz-group-placeholder-add{background:transparent;border:1px dashed var(--border);border-radius:6px;color:var(--text-2);font-size:20px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:52px;transition:all .15s}
+.biz-group-placeholder-add:hover{border-color:var(--accent);color:var(--accent);border-style:solid}
+.biz-group-body{display:flex;flex-wrap:wrap;gap:4px;min-height:20px}
+.biz-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--primary-dim);border:1px solid var(--tag-border);border-radius:4px;font-size:var(--fs-11);color:var(--accent);font-weight:var(--fw-medium)}
+.biz-tag .biz-tag-close{cursor:pointer;font-size:12px;line-height:1;opacity:.6;transition:opacity .15s}
+.biz-tag .biz-tag-close:hover{opacity:1}
+
+/* 主体选择下拉 */
+.biz-dropdown{position:fixed;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:4px 0;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.3);min-width:100px}
+.biz-dropdown-item{padding:5px 12px;font-size:var(--fs-11);color:var(--text-2);cursor:pointer;transition:all .12s}
+.biz-dropdown-item:hover{background:var(--primary-dim);color:var(--text-1)}
+.biz-dropdown-item.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+
+/* 提示图标 */
+.param-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--border);color:var(--text-3);font-size:10px;cursor:help;margin-left:4px;position:relative}
+.param-tip:hover{background:var(--accent);color:#fff}
+.param-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1e2330;color:rgba(250,250,250,0.87);border:1px solid #333;border-radius:6px;padding:10px 14px;font-size:11px;line-height:1.7;white-space:pre-wrap;min-width:260px;max-width:420px;text-align:left;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:1000}
+.param-tip:hover::after{opacity:1}
+
+/* 链接按钮 */
+.link-btn{font-size:var(--fs-11);color:var(--accent);cursor:pointer;white-space:nowrap;text-decoration:none;transition:color .15s}
+.link-btn:hover{color:var(--primary-hover);text-decoration:underline}
+
+/* ===== 设备参数标签 ===== */
+.device-tabs{display:flex;gap:0}
+.device-tab{flex:1;text-align:center;padding:8px 0;font-size:var(--fs-12);color:var(--text-2);cursor:pointer;border:1px solid var(--border);background:transparent;transition:all .15s;font-weight:var(--fw-medium)}
+.device-tab:first-child{border-radius:4px 0 0 4px}
+.device-tab:last-child{border-radius:0 4px 4px 0;border-left:none}
+.device-tab:hover{color:var(--text-1);border-color:var(--accent)}
+.device-tab.active{background:var(--primary-dim);color:var(--accent);border-color:var(--accent)}
+
+/* 拓扑图模块变灰 */
+.topo-dim{opacity:.25;transition:opacity .3s}
+.topo-active{opacity:1;transition:opacity .3s}

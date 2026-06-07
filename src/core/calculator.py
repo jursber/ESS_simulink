@@ -60,7 +60,6 @@ def calculate(
 
     tariffs = {
         "admin": ConfigLoader.load_tariff(region, "admin"),
-        "jiangsu": ConfigLoader.load_tariff(region, "jiangsu"),
         "contract": ConfigLoader.load_tariff(region, "contract"),
         "flat_price": 0.55,
     }

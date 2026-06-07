@@ -31,6 +31,7 @@ from src.models.wholesale import UI_OPTION_LISTS, WholesaleSettlementConfig
 
 router = APIRouter()
 ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / "data"
 
 # 计算结果缓存（内存级，重启清空）
 _result_cache: dict[str, CalculateResponse] = {}
@@ -50,11 +51,31 @@ BM_LABELS = {
 }
 
 
+def _find_monthly_file(directory: Path, date: str) -> Path:
+    """在目录中查找匹配月份的 CSV 文件，找不到则用最近的。"""
+    ym = date[:4] + date[5:7]
+    path = directory / f"{ym}.csv"
+    if path.exists():
+        return path
+    default = directory / "daily_default.csv"
+    if default.exists():
+        return default
+    for f in sorted(directory.glob("*.csv")):
+        try:
+            cols = pd.read_csv(f, nrows=0, comment='#').columns.tolist()
+            if "date" in cols:
+                return f
+        except Exception:
+            pass
+    raise FileNotFoundError(f"未找到数据文件: {directory}")
+
+
 def _day_production_load_mwh(region: str, date: str) -> float:
-    path = ROOT / "data" / "processed" / "load" / f"load_{region}.csv"
-    if not path.exists():
+    try:
+        path = _find_monthly_file(DATA_DIR / "load", date)
+    except FileNotFoundError:
         return 0.0
-    df = pd.read_csv(path, dtype={"date": str}, encoding="utf-8-sig")
+    df = pd.read_csv(path, dtype={"date": str}, comment='#')
     day = df[df["date"] == str(date)]
     if day.empty:
         return 0.0
@@ -62,10 +83,11 @@ def _day_production_load_mwh(region: str, date: str) -> float:
 
 
 def _load_real_series(region: str, date: str) -> list[float]:
-    path = ROOT / "data" / "processed" / "load" / f"load_{region}.csv"
-    if not path.exists():
+    try:
+        path = _find_monthly_file(DATA_DIR / "load", date)
+    except FileNotFoundError:
         return [0.0] * 24
-    df = pd.read_csv(path, dtype={"date": str, "hour": int}, encoding="utf-8-sig")
+    df = pd.read_csv(path, dtype={"date": str, "hour": int}, comment='#')
     day = df[df["date"] == date].sort_values("hour")
     if len(day) != 24:
         return [0.0] * 24
@@ -371,7 +393,6 @@ def get_global_params():
     wcfg = ConfigLoader.load_wholesale_settlement()
     tariff_admin = ConfigLoader.load_tariff("henan", "admin")
     tariff_contract = ConfigLoader.load_tariff("henan", "contract")
-    tariff_jiangsu = ConfigLoader.load_tariff("henan", "jiangsu")
     return GlobalParamsResponse(
         ess={
             "cap_rated": ess.cap_rated,
@@ -393,7 +414,7 @@ def get_global_params():
         wholesale=wcfg.to_flat_dict(),
         tariff_admin=_tariff_to_rows(tariff_admin),
         tariff_contract=_tariff_to_rows(tariff_contract),
-        tariff_jiangsu=tariff_jiangsu,
+        tariff_jiangsu={},
         flat_price=0.5,
     )
 
@@ -545,12 +566,131 @@ def get_dayahead_position():
     return df.to_dict(orient="records")
 
 
+# ---------- 负荷曲线 ----------
+
+_LABELS = {
+    "steady_24h": "全天平稳生产",
+    "daytime_single_shift": "白天生产,一班制",
+    "daytime_single_shift_v2": "白天生产,一班制(变体)",
+    "night_winter": "夜间生产-冬季",
+    "night_summer": "夜间生产-夏季",
+    "night_single_shift": "夜间生产,一班制",
+    "night_uneven": "夜间非均匀生产",
+    "night_rising": "夜间增长型生产",
+    "all_day_production": "全天候生产",
+    "all_day_two_shifts": "全天候生产,两班制",
+    "all_day_daytime_high": "全天候生产,白天偏高",
+    "continuous_24h": "全天24小时生产",
+    "first_half_night": "前半夜生产",
+    "second_half_night": "后半夜生产",
+    "noon_evening_peak": "午间晚间高峰生产",
+    "daytime_multi_peak": "白天生产,多峰制",
+}
+
+
+def _calc_max_demand(minute_data: list[float]) -> tuple[float, str]:
+    """15 分钟滑动平均最大值，返回 (值, 时间段)。前 14 分钟与第 15 分钟保持一致。"""
+    padded = [minute_data[0]] * 14 + list(minute_data)
+    rolling = []
+    for i in range(14, len(padded)):
+        window = padded[i - 14:i + 1]
+        rolling.append(sum(window) / 15.0)
+    max_val = max(rolling)
+    max_idx = rolling.index(max_val)
+    start_h, start_m = divmod(max_idx, 60)
+    end_m = max_idx + 15
+    end_h, end_m = divmod(end_m, 60)
+    if end_h >= 24:
+        end_h = 23
+        end_m = 59
+    return max_val, f"{start_h:02d}:{start_m:02d}-{end_h:02d}:{end_m:02d}"
+
+
+def _scale_curve(minute_data: list[float], avg_load: float = None, max_load: float = None) -> list[float]:
+    """按平均负荷或最大负荷缩放曲线形状。"""
+    if avg_load is not None:
+        cur_avg = sum(minute_data) / len(minute_data)
+        if cur_avg > 0:
+            ratio = avg_load / cur_avg
+            return [v * ratio for v in minute_data]
+    elif max_load is not None:
+        cur_max = max(minute_data)
+        if cur_max > 0:
+            ratio = max_load / cur_max
+            return [v * ratio for v in minute_data]
+    return minute_data
+
+
+@router.get("/params/load-profiles")
+def get_load_profiles():
+    """返回 16 个负荷曲线的摘要数据。"""
+    from src.data.loader import aggregate_minute_to_hour
+    load_dir = DATA_DIR / "load"
+    profiles = []
+    for f in sorted(load_dir.glob("*.csv")):
+        if f.parent.name == "custom":
+            continue
+        df = pd.read_csv(f, comment='#')
+        if "load_MW" not in df.columns:
+            continue
+        minute_data = df["load_MW"].tolist()
+        if len(minute_data) != 1440:
+            continue
+        hour_data = aggregate_minute_to_hour(minute_data)
+        max_demand, period = _calc_max_demand(minute_data)
+        profiles.append({
+            "name": f.stem,
+            "label": _LABELS.get(f.stem, f.stem),
+            "minute_data": [round(v, 6) for v in minute_data],
+            "hour_data": [round(v, 6) for v in hour_data],
+            "avg_load_mw": round(sum(minute_data) / len(minute_data), 6),
+            "max_load_mw": round(max(minute_data), 6),
+            "max_demand_mw": round(max_demand, 6),
+            "max_demand_period": period,
+        })
+    return {"profiles": profiles}
+
+
+@router.post("/params/load-profile/preview")
+def preview_load_profile(req: dict):
+    """返回缩放后的负荷曲线数据。"""
+    from src.data.loader import aggregate_minute_to_hour
+    profile_name = req.get("profile_name", "steady_24h")
+    avg_load = req.get("avg_load")
+    max_load = req.get("max_load")
+
+    path = DATA_DIR / "load" / f"{profile_name}.csv"
+    if not path.exists():
+        raise HTTPException(404, f"曲线 {profile_name} 不存在")
+
+    df = pd.read_csv(path, comment='#')
+    minute_data = df["load_MW"].tolist()
+
+    scaled = _scale_curve(minute_data, avg_load=avg_load, max_load=max_load)
+    hour_data = aggregate_minute_to_hour(scaled)
+    max_demand, period = _calc_max_demand(scaled)
+
+    return {
+        "hour_data": [round(v, 6) for v in hour_data],
+        "avg_load_mw": round(sum(scaled) / len(scaled), 6),
+        "max_load_mw": round(max(scaled), 6),
+        "max_demand_mw": round(max_demand, 6),
+        "max_demand_period": period,
+    }
+
+
 @router.get("/params/pv")
 def get_pv_params():
     params = ConfigLoader.load_pv_defaults("henan")
-    curves = ConfigLoader.list_pv_curves()
+    # 返回 {region: [curve_types]} 格式
+    pv_dir = DATA_DIR / "pv_curves"
+    curves = {}
+    if pv_dir.exists():
+        for region_dir in sorted(pv_dir.iterdir()):
+            if region_dir.is_dir() and region_dir.name != "custom":
+                curves[region_dir.name] = [f.stem for f in sorted(region_dir.glob("*.csv"))]
     curve_data = ConfigLoader.load_pv_curve(
-        params.get("region", "jiangsu"),
+        params.get("region", "henan"),
         params.get("curve_type", "annual_avg"),
     )
     return {"params": params, "curves": curves, "curve_data": curve_data}
@@ -565,12 +705,12 @@ def update_pv_params(req: dict):
 @router.get("/params/spot-prices")
 def get_spot_prices():
     """返回现货电价数据（日前/实时/价差）。"""
-    import pandas as pd
-    from pathlib import Path
-    price_path = ROOT / "data" / "processed" / "spot_price" / "price_henan.csv"
-    if not price_path.exists():
+    spot_dir = DATA_DIR / "spot_price"
+    files = sorted(spot_dir.glob("*.csv"))
+    if not files:
         return {"day_ahead": [0.0]*24, "real_time": [0.0]*24}
-    df = pd.read_csv(price_path, dtype={"date": str}, encoding="utf-8-sig")
+    # 读取最新月份文件
+    df = pd.read_csv(files[-1], dtype={"date": str}, comment='#')
     latest_date = df["date"].max()
     day = df[df["date"] == latest_date].sort_values("hour")
     if len(day) != 24:
@@ -643,14 +783,107 @@ def _get_tou_hour_prices(tariff_curve: str = "typical") -> list[float]:
     return prices
 
 
+# ---------- 行政分时电价（全国） ----------
+
+@router.get("/tariff/administrative/provinces")
+def list_tariff_provinces():
+    """返回可用的省份列表。"""
+    tou_dir = DATA_DIR / "tariff" / "administrative_tariff"
+    if not tou_dir.exists():
+        return []
+    return sorted([d.name for d in tou_dir.iterdir() if d.is_dir()])
+
+
+@router.get("/tariff/administrative/months/{province}")
+def list_tariff_months(province: str):
+    """返回指定省份可用的月份列表。"""
+    prov_dir = DATA_DIR / "tariff" / "administrative_tariff" / province
+    if not prov_dir.exists():
+        raise HTTPException(404, f"省份 {province} 不存在")
+    months = set()
+    for f in prov_dir.glob("*.csv"):
+        name = f.stem  # e.g. "202606_commercial"
+        ym = name.split("_")[0]
+        if ym.isdigit() and len(ym) == 6:
+            months.add(ym)
+    return sorted(months, reverse=True)
+
+
+@router.get("/tariff/administrative/business-types/{province}/{month}")
+def list_tariff_business_types(province: str, month: str):
+    """返回指定省份/月份可用的用电类别列表。"""
+    prov_dir = DATA_DIR / "tariff" / "administrative_tariff" / province
+    if not prov_dir.exists():
+        raise HTTPException(404, f"省份 {province} 不存在")
+    types = []
+    for f in sorted(prov_dir.glob(f"{month}_*.csv")):
+        name = f.stem  # e.g. "202606_commercial"
+        bt = name.split("_", 1)[1] if "_" in name else name
+        types.append(bt)
+    return types
+
+
+@router.get("/tariff/administrative/data/{province}/{month}/{business_type}")
+def get_tariff_data(province: str, month: str, business_type: str):
+    """返回指定条件的分时电价数据。"""
+    prov_dir = DATA_DIR / "tariff" / "administrative_tariff" / province
+    if not prov_dir.exists():
+        raise HTTPException(404, f"省份 {province} 不存在")
+
+    # 查找匹配的文件
+    target = f"{month}_{business_type}"
+    matched = None
+    for f in prov_dir.glob(f"{target}*.csv"):
+        matched = f
+        break
+    if not matched:
+        # 模糊匹配
+        for f in prov_dir.glob(f"{month}_*.csv"):
+            if business_type in f.stem:
+                matched = f
+                break
+    if not matched:
+        raise HTTPException(404, f"未找到 {province}/{month}/{business_type} 的电价数据")
+
+    df = pd.read_csv(matched, comment='#', encoding='utf-8-sig')
+    # 解析电压等级列（排除 hour 和 时段 列）
+    voltage_cols = [c for c in df.columns if c not in ('hour', '时段')]
+    # 处理 NaN 值（转换为 null，避免 JSON 序列化错误）
+    import math
+    records = []
+    for _, row in df.iterrows():
+        record = {}
+        for col in df.columns:
+            val = row[col]
+            if pd.isna(val):
+                record[col] = None
+            elif isinstance(val, float) and (math.isinf(val) or math.isnan(val)):
+                record[col] = None
+            else:
+                record[col] = val
+        records.append(record)
+    return {
+        "province": province,
+        "month": month,
+        "business_type": business_type,
+        "file": matched.name,
+        "voltage_levels": voltage_cols,
+        "data": records,
+    }
+
+
 def _get_system_load() -> list[float]:
     """加载统调负荷曲线（MW）。"""
-    path = ROOT / "data" / "config" / "system_load_henan.csv"
-    if not path.exists():
+    sload_dir = DATA_DIR / "system_load"
+    files = sorted(sload_dir.glob("*.csv"))
+    if not files:
         return [3000.0] * 24
-    df = pd.read_csv(path, dtype={"date": str, "hour": int})
-    latest_date = df["date"].max()
-    day = df[df["date"] == latest_date].sort_values("hour")
+    df = pd.read_csv(files[0], dtype={"date": str, "hour": int}, comment='#')
+    if "date" in df.columns:
+        latest_date = df["date"].max()
+        day = df[df["date"] == latest_date].sort_values("hour")
+    else:
+        day = df.sort_values("hour")
     if len(day) != 24:
         return [3000.0] * 24
     return [float(v) for v in day["system_load_mw"].tolist()]

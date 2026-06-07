@@ -61,7 +61,10 @@ def compute_user_price(
         return [lookup_tou(tariffs['admin'], h) for h in range(24)]
 
     elif mode == PricingMode.M2_JIANGSU:
-        cfg = tariffs['jiangsu']
+        cfg = tariffs.get('jiangsu')
+        if not cfg:
+            # 江苏模式已废弃，fallback 到行政分时
+            return [lookup_tou(tariffs['admin'], h) for h in range(24)]
         p_base = float(cfg['p_base'])
         admin = tariffs['admin']
         return [p_base * _jiangsu_coefficient(admin, h, cfg) for h in range(24)]
