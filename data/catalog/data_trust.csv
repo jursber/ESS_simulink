@@ -1,0 +1,8 @@
+data_type,file_path,region,date_start,date_end,trust_level,is_mock,notes
+spot_price,data/spot_price/henan/202603.csv,henan,2026-03-15,2026-03-15,mock,true,示范日前/实时统一出清价
+dispatch_load,data/dispatch_load/henan/202603.csv,henan,2026-03-15,2026-03-15,mock,true,统调负荷示范数据
+contract_position,data/trading_strategy/contract_position/mock_henan/202603.csv,global,2026-03-15,2026-03-15,mock,true,交易策略profile: mock_henan
+dayahead_position,data/trading_strategy/dayahead_position/mock_henan/202603.csv,global,2026-03-15,2026-03-15,mock,true,交易策略profile: mock_henan
+pv_curve,data/pv_curves/henan/annual_avg.csv,henan,typical,typical,mock,true,河南年均光伏出力曲线
+load_profile,data/load/daily_default.csv,global,typical,typical,mock,true,用户典型负荷profile
+administrative_tariff,data/tariff/administrative_tariff/Henan/202603_commercial.csv,henan,2026-03-01,2026-03-31,web_collected,false,河南202603工商业分时电价

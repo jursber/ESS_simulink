@@ -1,0 +1,5 @@
+param,value,unit,editable,notes
+demand_charge_yuan_per_kw_month,0,元/kW·月,true,最大需量单价
+capacity_charge_yuan_per_kva_month,0,元/kVA·月,true,容量电费单价
+billing_mode,demand,-,true,demand 或 capacity
+demand_window_minutes,15,min,true,最大需量滑窗周期

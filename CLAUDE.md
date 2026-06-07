@@ -13,8 +13,8 @@
 - 前端：纯 HTML/CSS/JS + ECharts 5.5.0（CDN），暗色主题仪表盘
 - 数据处理：pandas, numpy
 - 优化求解：scipy
-- 可视化：plotly（Streamlit）、ECharts（前端 SPA）
-- UI 交互：streamlit（旧版，逐步迁移到前端 SPA）
+- 可视化：ECharts（前端 SPA）
+- UI 交互：纯 HTML/CSS/JS 前端 SPA（FastAPI 静态托管）
 - 测试：pytest
 
 ## 项目结构
@@ -47,7 +47,6 @@ ESS_simulink/
 │   │   ├── config.py       # ConfigLoader（CSV 读写）
 │   │   ├── loader.py       # DataLoader（processed 数据）
 │   │   └── scenario.py     # ScenarioManager（方案 CRUD）
-│   ├── ui/                 # Streamlit 界面（旧版，逐步废弃）
 │   └── utils/              # 工具函数
 ├── tests/                  # 单元测试
 ├── scripts/                # 数据处理脚本

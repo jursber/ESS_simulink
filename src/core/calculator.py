@@ -54,7 +54,6 @@ def calculate(
     Q_contract = [float(ct[ct["hour"] == h]["q_contract_kwh"].iloc[0]) for h in range(24)]
     P_contract = [float(ct[ct["hour"] == h]["p_contract_yuan_per_kwh"].iloc[0]) for h in range(24)]
     P_ref = [float(ct[ct["hour"] == h]["p_ref_yuan_per_kwh"].iloc[0]) for h in range(24)]
-    c_lt_block = [float(ct[ct["hour"] == h]["c_lt_block_yuan"].iloc[0]) for h in range(24)]
     Q_dayahead = [float(da[da["hour"] == h]["q_dayahead_kwh"].iloc[0]) for h in range(24)]
     q_cleared = [float(da[da["hour"] == h]["q_dayahead_cleared_kwh"].iloc[0]) for h in range(24)]
 
@@ -71,7 +70,6 @@ def calculate(
         Q_contract, P_contract, Q_dayahead,
         P_ref=P_ref,
         q_dayahead_cleared=q_cleared,
-        c_lt_block_yuan=c_lt_block,
     )
     for i, h in enumerate(hourly):
         h.P_user = P_user[i]

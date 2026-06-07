@@ -62,8 +62,8 @@ REGISTRY.register("load_henan", "hour", "小时（0~23）", Unit.DIMENSIONLESS)
 REGISTRY.register("load_henan", "source", "数据来源地区", Unit.DIMENSIONLESS)
 
 # ---- 现货电价数据 ----
-REGISTRY.register("price_henan", "day_ahead", "日前电价", Unit.YUAN_PER_MWH)
-REGISTRY.register("price_henan", "real_time", "实时电价", Unit.YUAN_PER_MWH)
-REGISTRY.register("price_henan", "date", "日期", Unit.DIMENSIONLESS)
-REGISTRY.register("price_henan", "hour", "小时（0~23）", Unit.DIMENSIONLESS)
-REGISTRY.register("price_henan", "source", "数据来源地区", Unit.DIMENSIONLESS)
+REGISTRY.register("spot_price_henan", "day_ahead", "日前统一出清价", Unit.YUAN_PER_MWH)
+REGISTRY.register("spot_price_henan", "real_time", "实时统一出清价", Unit.YUAN_PER_MWH)
+REGISTRY.register("spot_price_henan", "date", "日期", Unit.DIMENSIONLESS)
+REGISTRY.register("spot_price_henan", "hour", "小时（0~23）", Unit.DIMENSIONLESS)
+REGISTRY.register("spot_price_henan", "source", "数据可信度/来源类型", Unit.DIMENSIONLESS)

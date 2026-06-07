@@ -3,7 +3,7 @@
 单位与全项目一致：电量 kWh，电价 元/kWh，电费 元。
 
 - GUANGDONG_STYLE:
-    Σ_t [ Q_LT·P_LT + C_lt_block,t + (Q_DA−Q_LT)·P_DA + (Q_act−Q_DA)·P_RT ] + C̄
+    Σ_t [ Q_LT·P_LT + (Q_DA−Q_LT)·P_DA + (Q_act−Q_DA)·P_RT ] + C̄
 - GUANGXI_STYLE:
     Σ_t [ Q_LT·(P_LT + P_DA − P_ref) + (Q_DA−Q_LT)·P_DA + (Q_act−Q_DA)·P_RT ] + C_smooth + C̄
 - SHANXI_STYLE:
@@ -32,7 +32,6 @@ class WholesalePurchaseBreakdown:
     C_mlt: float
     C_da: float
     C_rt: float
-    C_lt_block: float
     C_month_smooth: float
     C_monthly_constant: float
     C_shanxi_addon: float
@@ -59,7 +58,6 @@ def compute_wholesale_purchase_cost(
     if mode == SettlementMode.SHANDONG_TBD:
         mode = SettlementMode.GUANGDONG_STYLE
 
-    C_lt_block = 0.0
     C_mlt_energy = 0.0
     C_da = 0.0
     C_rt = 0.0
@@ -72,24 +70,20 @@ def compute_wholesale_purchase_cost(
         q_da = _q_da(h, cfg.da_quantity_definition)
         p_da = float(P_da[t])
         p_rt = float(P_rt[t])
-        block = float(h.c_lt_block_yuan)
 
         if mode == SettlementMode.GUANGDONG_STYLE:
             C_mlt_energy += q_lt * p_lt
-            C_lt_block += block
             C_da += (q_da - q_lt) * p_da
             C_rt += (q_act - q_da) * p_rt
 
         elif mode == SettlementMode.GUANGXI_STYLE:
             C_mlt_energy += q_lt * (p_lt + p_da - p_ref)
-            C_lt_block += block
             C_da += (q_da - q_lt) * p_da
             C_rt += (q_act - q_da) * p_rt
 
         elif mode == SettlementMode.SHANXI_STYLE:
             # 购电侧暂用广东型三部制 + 可配置附加项；完整山西差价合约另建模
             C_mlt_energy += q_lt * p_lt
-            C_lt_block += block
             C_da += (q_da - q_lt) * p_da
             C_rt += (q_act - q_da) * p_rt
 
@@ -107,7 +101,7 @@ def compute_wholesale_purchase_cost(
         else 0.0
     )
 
-    C_mlt = C_mlt_energy + C_lt_block
+    C_mlt = C_mlt_energy
     C_bar = cfg.purchase_monthly_constant_yuan
     total = C_mlt + C_da + C_rt + C_month_smooth + C_bar + C_shanxi_addon
 
@@ -115,7 +109,6 @@ def compute_wholesale_purchase_cost(
         C_mlt=C_mlt,
         C_da=C_da,
         C_rt=C_rt,
-        C_lt_block=C_lt_block,
         C_month_smooth=C_month_smooth,
         C_monthly_constant=C_bar,
         C_shanxi_addon=C_shanxi_addon,

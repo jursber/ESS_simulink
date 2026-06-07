@@ -81,22 +81,22 @@ class TestFinancialDefaultsSavedAndLoaded:
         assert "r_discount" in fin
         assert "r_user_b1" in fin
         assert "r_user_b2" in fin
-        assert "r_user_b3" in fin
 
     def test_load_financial_values_are_numeric(self):
         fin = ConfigLoader.load_financial_defaults("henan")
-        for k in ["r_discount", "r_user_b1", "r_user_b2", "r_user_b3"]:
+        for k in ["r_discount", "r_user_b1", "r_user_b2"]:
             float(fin[k])
 
     def test_save_and_reload_roundtrip(self):
-        original = ConfigLoader.load_financial_defaults("henan")
-        if os.path.exists(self.orig_path):
-            os.rename(self.orig_path, self.backup_path)
-        try:
-            new_data = {"r_discount": 0.10, "r_user_b1": 0.25, "r_user_b2": 0.55, "r_user_b3": 0.45}
-            ConfigLoader.save_financial_defaults(new_data)
-            reloaded = ConfigLoader.load_financial_defaults("henan")
+        import tempfile
+        import pandas as pd
+        from pathlib import Path
+
+        new_data = {"r_discount": 0.10, "r_user_b1": 0.25, "r_user_b2": 0.55}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "financial_defaults.csv"
+            ConfigLoader.save_financial_defaults(new_data, path)
+            df = pd.read_csv(path)
+            reloaded = {r["param"]: r["value"] for _, r in df.iterrows()}
             assert float(reloaded["r_discount"]) == 0.10
             assert float(reloaded["r_user_b1"]) == 0.25
-        finally:
-            ConfigLoader.save_financial_defaults(original)

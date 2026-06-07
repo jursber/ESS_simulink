@@ -39,13 +39,6 @@ class DaQuantityDefinition(str, Enum):
     CLEARED = "cleared"
 
 
-class PriceNode(str, Enum):
-    """现货结算电价节点类型（物理节点价暂未单独建模时与 unified 同值）。"""
-
-    UNIFIED = "unified"
-    PHYSICAL_NODE = "physical_node"
-
-
 @dataclass(frozen=True)
 class WholesaleSettlementConfig:
     """第五章表 5.1 数据对象 + 表 5.4 仿真配置项。
@@ -57,7 +50,6 @@ class WholesaleSettlementConfig:
     settlement_mode: SettlementMode = SettlementMode.GUANGDONG_STYLE
     time_granularity: TimeGranularity = TimeGranularity.H1
     da_quantity_definition: DaQuantityDefinition = DaQuantityDefinition.DECLARATION
-    price_node: PriceNode = PriceNode.UNIFIED
     contract_curve_profile: str = "mock_henan"
     dayahead_curve_profile: str = "mock_henan"
     purchase_monthly_constant_yuan: float = 0.0
@@ -74,7 +66,6 @@ class WholesaleSettlementConfig:
             da_quantity_definition=DaQuantityDefinition(
                 str(d.get("da_quantity_definition", "declaration"))
             ),
-            price_node=PriceNode(str(d.get("price_node", "unified"))),
             contract_curve_profile=str(d.get("contract_curve_profile", "mock_henan")),
             dayahead_curve_profile=str(d.get("dayahead_curve_profile", "mock_henan")),
             purchase_monthly_constant_yuan=float(d.get("purchase_monthly_constant_yuan", 0.0)),
@@ -88,7 +79,6 @@ class WholesaleSettlementConfig:
             "settlement_mode": self.settlement_mode.value,
             "time_granularity": self.time_granularity.value,
             "da_quantity_definition": self.da_quantity_definition.value,
-            "price_node": self.price_node.value,
             "contract_curve_profile": self.contract_curve_profile,
             "dayahead_curve_profile": self.dayahead_curve_profile,
             "purchase_monthly_constant_yuan": self.purchase_monthly_constant_yuan,
@@ -103,7 +93,6 @@ UI_OPTION_LISTS: dict[str, list[tuple[str, str]]] = {
     "settlement_mode": [("GUANGDONG_STYLE", "广东型三部制")],
     "time_granularity": [("1h", "1 小时（24 点）")],
     "da_quantity_definition": [("declaration", "日前申报量")],
-    "price_node": [("unified", "统一结算点电价")],
-    "contract_curve_profile": [("mock_henan", "河南示范：合约电量/电价/P_ref/阻塞")],
+    "contract_curve_profile": [("mock_henan", "交易策略：合约电量/电价/P_ref")],
     "dayahead_curve_profile": [("mock_henan", "河南示范：日前申报/出清电量")],
 }

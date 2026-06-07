@@ -424,7 +424,7 @@ def update_global_params(req: GlobalParamsUpdate):
     from src.models.dispatch import ESSParams
     from src.models.wholesale import (
         MarketRegionCode, SettlementMode, TimeGranularity,
-        DaQuantityDefinition, PriceNode,
+        DaQuantityDefinition,
     )
     # 保存 ESS
     ess = ESSParams(
@@ -453,7 +453,6 @@ def update_global_params(req: GlobalParamsUpdate):
         settlement_mode=SettlementMode(wflat.get("settlement_mode", "GUANGDONG_STYLE")),
         time_granularity=TimeGranularity(wflat.get("time_granularity", "1h")),
         da_quantity_definition=DaQuantityDefinition(wflat.get("da_quantity_definition", "declaration")),
-        price_node=PriceNode(wflat.get("price_node", "unified")),
         contract_curve_profile=wflat.get("contract_curve_profile", "mock_henan"),
         dayahead_curve_profile=wflat.get("dayahead_curve_profile", "mock_henan"),
         purchase_monthly_constant_yuan=float(wflat.get("purchase_monthly_constant_yuan", 0)),
@@ -872,21 +871,12 @@ def get_tariff_data(province: str, month: str, business_type: str):
     }
 
 
-def _get_system_load() -> list[float]:
+def _get_dispatch_load(region: str = "henan") -> list[float]:
     """加载统调负荷曲线（MW）。"""
-    sload_dir = DATA_DIR / "system_load"
-    files = sorted(sload_dir.glob("*.csv"))
-    if not files:
+    try:
+        return ConfigLoader.load_dispatch_load(region)
+    except FileNotFoundError:
         return [3000.0] * 24
-    df = pd.read_csv(files[0], dtype={"date": str, "hour": int}, comment='#')
-    if "date" in df.columns:
-        latest_date = df["date"].max()
-        day = df[df["date"] == latest_date].sort_values("hour")
-    else:
-        day = df.sort_values("hour")
-    if len(day) != 24:
-        return [3000.0] * 24
-    return [float(v) for v in day["system_load_mw"].tolist()]
 
 
 def decompose_contract(
@@ -905,7 +895,7 @@ def decompose_contract(
         24 元素列表，每小时合约电量（MWh）
     """
     if curve_type == "load":
-        load = _get_system_load()
+        load = _get_dispatch_load()
         total_load = sum(load)
         if total_load == 0:
             return [total_mwh / 24] * 24

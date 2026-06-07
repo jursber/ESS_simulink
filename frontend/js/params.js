@@ -129,14 +129,14 @@ async function renderPanelContent(panelId) {
     case 'dayahead':
       try {
         const da = await api('/params/dayahead-position');
-        panel.innerHTML = tablePanelHTML('日前节点电价',
+        panel.innerHTML = tablePanelHTML('日前报量曲线',
           ['时段','申报电量 (kWh)','出清电量 (kWh)'],
           da.map(r=>[r.hour+':00', r.q_dayahead_kwh, r.q_dayahead_cleared_kwh])
         );
-      } catch(e) { panel.innerHTML = placeholderHTML('日前节点电价 — 加载失败'); }
+      } catch(e) { panel.innerHTML = placeholderHTML('日前报量曲线 — 加载失败'); }
       break;
     case 'realtime':
-      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">实时节点电价</div><div id="rt-price-chart" style="height:300px"></div></div>';
+      panel.innerHTML = '<div class="params-section"><div class="params-section-hd">实时电价</div><div id="rt-price-chart" style="height:300px"></div></div>';
       renderRealtimeChart();
       break;
     case 'pricing-mode':
@@ -182,7 +182,7 @@ async function renderPanelContent(panelId) {
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">固定价格</div><div class="params-grid cols-3"><div class="params-field"><label>一口价 (元/kWh)</label><input type="number" id="gp-flat-price" step="0.01" value="${d.flat_price||0.5}"></div></div></div>`;
       break;
     case 'tariff-spot':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>price_henan.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>data/spot_price/henan/*.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
       renderSpotPriceChart();
       break;
     case 'load-curve':

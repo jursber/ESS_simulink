@@ -1,7 +1,7 @@
 # PRD ↔ 代码 ↔ 测试 追溯矩阵
 
 > 对应 PRD：[PRD_v1.0.3.md](PRD_v1.0.3.md) 章节号。随实现演进更新本表。  
-> 最后更新：2026-05-25（视觉返工 v1.1.1）
+> 最后更新：2026-06-07（删除旧 Streamlit 前端，确认 FastAPI + SPA 为唯一运行入口）
 
 | PRD 章节 | 主题 | 主要实现 | 测试（pytest） |
 |----------|------|----------|----------------|
@@ -12,9 +12,9 @@
 | §5 | 公式体系（用户账单、售电购电、投资指标等） | [src/core/dispatch.py](../src/core/dispatch.py)；[src/core/wholesale_settlement.py](../src/core/wholesale_settlement.py)；[src/core/calculator.py](../src/core/calculator.py) | [tests/test_purchase_cost.py](../tests/test_purchase_cost.py)、[tests/test_wholesale_settlement.py](../tests/test_wholesale_settlement.py)、[tests/test_calculator.py](../tests/test_calculator.py) |
 | §6 | 数据清单、CSV、`date` 筛选 24 点 | [src/data/config.py](../src/data/config.py)；[src/data/loader.py](../src/data/loader.py) | [tests/test_config.py](../tests/test_config.py)、[tests/test_loader.py](../tests/test_loader.py) |
 | §7 | 算法需求（离散搜索等） | [src/core/dispatch.py](../src/core/dispatch.py) | [tests/test_dispatch_all.py](../tests/test_dispatch_all.py) |
-| §8 | 架构原则 | 分层：`ui` → `calculator` / `data` → `core` | [tests/test_integration.py](../tests/test_integration.py)（端到端倾向） |
-| §9 | Web 交互（视觉 v1.1.1） | 规范：[ui_spec_v1.md](ui_spec_v1.md)、[ui_mock_v1.svg](ui_mock_v1.svg)；[app.py](../app.py)；[src/ui/pages/analysis_page.py](../src/ui/pages/analysis_page.py)（2×2 栅格）；[style.py](../src/ui/components/style.py)、[blocks.py](../src/ui/components/blocks.py)、[topology.py](../src/ui/components/topology.py)、[dispatch_chart.py](../src/ui/components/dispatch_chart.py) 等 | [tests/test_integration.py](../tests/test_integration.py)；分辨率一屏人工验收 |
-| §10 | 附录 | 参数默认值等多来自 `data/config/*.csv` | [tests/test_config.py](../tests/test_config.py) |
+| §8 | 架构原则 | 分层：`frontend` / `api` → `calculator` / `data` → `core` | [tests/test_integration.py](../tests/test_integration.py)（端到端倾向） |
+| §9 | Web 交互（当前 SPA） | [frontend/index.html](../frontend/index.html)、[frontend/css/](../frontend/css/)、[frontend/js/](../frontend/js/)；[api/main.py](../api/main.py) 挂载静态前端；[run.py](../run.py) 启动 FastAPI | [tests/test_integration.py](../tests/test_integration.py)；浏览器访问 `http://127.0.0.1:8000/` 人工验收 |
+| §10 | 附录 | 参数默认值等多来自 `data/params/*.csv`，分省时序数据来自 `data/tariff/`、`data/spot_price/`、`data/dispatch_load/` 等目录 | [tests/test_config.py](../tests/test_config.py) |
 | — | 方案 JSON 读写 | [src/data/scenario.py](../src/data/scenario.py) `ScenarioConfig`、`ScenarioManager` | [tests/test_scenario.py](../tests/test_scenario.py) |
 | — | 批发结算配置模型 | [src/models/wholesale.py](../src/models/wholesale.py) | [tests/test_wholesale_settlement.py](../tests/test_wholesale_settlement.py) |
 

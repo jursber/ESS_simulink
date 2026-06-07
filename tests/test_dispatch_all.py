@@ -8,6 +8,8 @@ from src.models.dispatch import (
     BusinessModel, PricingMode,
 )
 from src.core.dispatch import run_dispatch
+from src.data.config import ConfigLoader
+from src.data.loader import DataLoader
 
 
 def get_tou_price(h: int) -> float:
@@ -21,29 +23,25 @@ def get_tou_price(h: int) -> float:
 
 
 def build_hourly() -> list[HourlyData]:
-    load_df = pd.read_csv('data/processed/load/load_henan.csv')
+    load_df = pd.read_csv('data/load/daily_default.csv')
     load_df['date'] = load_df['date'].astype(str)
     day_data = load_df[load_df['date'] == '2026-03-15'].sort_values('hour')
 
-    price_df = pd.read_csv('data/processed/spot_price/price_henan.csv')
-    price_df['date'] = price_df['date'].astype(str)
-    day_price = price_df[price_df['date'] == '2026-03-15'].sort_values('hour')
-
-    contract_df = pd.read_csv('data/config/contract_position_henan.csv')
-    dayahead_df = pd.read_csv('data/config/dayahead_position_henan.csv')
+    p_da, p_rt = DataLoader.load_spot_prices('henan', '2026-03-15')
+    contract_df = ConfigLoader.load_contract_position('henan', '2026-03-15', profile='mock_henan')
+    dayahead_df = ConfigLoader.load_dayahead_position('henan', '2026-03-15', profile='mock_henan')
 
     hourly = []
     for _, row in day_data.iterrows():
         h = int(row['hour'])
-        pr = day_price[day_price['hour'] == h]
         ct = contract_df[contract_df['hour'] == h]
         da = dayahead_df[dayahead_df['hour'] == h]
         hourly.append(HourlyData(
             hour=h,
             load_real=float(row['Load_real']),
             P_user=get_tou_price(h),
-            P_da=float(pr['day_ahead'].iloc[0]) / 1000.0,  # 元/MWh → 元/kWh
-            P_rt=float(pr['real_time'].iloc[0]) / 1000.0,
+            P_da=p_da[h],
+            P_rt=p_rt[h],
             Q_contract=float(ct['q_contract_kwh'].iloc[0]),
             P_contract=float(ct['p_contract_yuan_per_kwh'].iloc[0]),
             Q_dayahead=float(da['q_dayahead_kwh'].iloc[0]),
@@ -102,7 +100,7 @@ def main():
     fin = FinancialParams()
     hourly = build_hourly()
 
-    print(f"储能: Cap={params.cap_rated}kWh, C_rate={params.c_rate}, "
+    print(f"储能: Cap={params.cap_rated}kWh, P_rated={params.power_rated}MW, "
           f"eta_rt={params.eta_roundtrip}, eta_s={params.eta_single:.4f}")
     print(f"SOC: [{params.soc_min}, {params.soc_max}], P_max={params.max_power:.0f}kW")
     print(f"财务: r_user={fin.r_user}, r_discount={fin.r_discount}")

@@ -25,7 +25,7 @@ def sample_config():
         region="henan",
         pricing_mode="M1",
         business_model="B1",
-        ess_params={"cap_rated": 5000, "c_rate": 0.5, "eta_roundtrip": 0.85,
+        ess_params={"cap_rated": 5000, "power_rated": 0.5, "eta_roundtrip": 0.85,
                      "soc_min": 0.10, "soc_max": 0.90, "unit_cost": 0.9,
                      "r_om": 0.01, "design_life": 10, "r_degrade": 0.025},
         financial_params={"r_discount": 0.06, "r_user": 0.30},
@@ -103,7 +103,7 @@ class TestCopyParams:
     def test_copy_overrides_target(self, manager, sample_config):
         src = ScenarioConfig(
             name="源方案", region="henan",
-            private_overrides={"ess_params.cap_rated": 8000, "ess_params.c_rate": 1.0},
+            private_overrides={"ess_params.cap_rated": 8000, "ess_params.power_rated": 1.0},
         )
         tgt = ScenarioConfig(
             name="目标方案", region="henan",
@@ -115,7 +115,7 @@ class TestCopyParams:
         reloaded = manager.load(tgt.id)
         assert reloaded.private_overrides["ess_params.cap_rated"] == 8000
         # 未复制的参数应保持不变
-        assert "ess_params.c_rate" not in reloaded.private_overrides
+        assert "ess_params.power_rated" not in reloaded.private_overrides
 
     def test_copy_all_params(self, manager, sample_config):
         src = ScenarioConfig(

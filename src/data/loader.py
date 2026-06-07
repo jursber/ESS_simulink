@@ -40,6 +40,14 @@ def _find_monthly_file(directory: Path, date: str) -> Path:
     raise FileNotFoundError(f"未找到数据文件: {directory}")
 
 
+def _region_dir(base: Path, region: str) -> Path:
+    """返回地区数据目录；地区化数据不得静默复用其他地区。"""
+    path = base / region
+    if not path.exists():
+        raise FileNotFoundError(f"未找到地区 {region} 的数据目录: {path}")
+    return path
+
+
 def aggregate_minute_to_hour(minute_data: list[float]) -> list[float]:
     """将 1440 个分钟值聚合为 24 个小时均值。每 60 个点取平均。"""
     if len(minute_data) != 1440:
@@ -52,9 +60,12 @@ class DataLoader:
 
     @staticmethod
     def get_available_dates(region: str) -> list[str]:
-        """返回该地区有完整数据的日期列表。"""
+        """返回该地区有完整现货价格、且用户负荷 profile 可用的日期列表。"""
         load_dir = LOAD_DIR
-        price_dir = SPOT_PRICE_DIR
+        try:
+            price_dir = _region_dir(SPOT_PRICE_DIR, region)
+        except FileNotFoundError:
+            return []
         if not load_dir.exists() or not price_dir.exists():
             return []
 
@@ -85,7 +96,7 @@ class DataLoader:
         Returns:
             (P_da, P_rt): 各 24 元素的电价列表 (元/kWh)
         """
-        price_path = _find_monthly_file(SPOT_PRICE_DIR, date)
+        price_path = _find_monthly_file(_region_dir(SPOT_PRICE_DIR, region), date)
         df = pd.read_csv(price_path, dtype={"date": str, "hour": int}, comment='#')
         day = df[df["date"] == date].sort_values("hour")
         if len(day) != 24:
@@ -106,7 +117,6 @@ class DataLoader:
         Q_dayahead: list[float],
         P_ref: Optional[list[float]] = None,
         q_dayahead_cleared: Optional[list[float]] = None,
-        c_lt_block_yuan: Optional[list[float]] = None,
     ) -> list[HourlyData]:
         """加载指定日期的处理后的负荷数据，组装为 HourlyData 列表。
 
@@ -120,7 +130,6 @@ class DataLoader:
             Q_dayahead: 日前申报电量 (kWh), 24 元素
             P_ref: 中长期结算参考点电价 (元/kWh)，缺省为 24 个 0
             q_dayahead_cleared: 日前出清电量；缺省为 None（表示与 Q_dayahead 相同）
-            c_lt_block_yuan: 各时段中长期阻塞等附加电费 (元)；缺省为 0
         """
         for name, arr in [("P_da", P_da), ("P_rt", P_rt), ("Q_contract", Q_contract),
                           ("P_contract", P_contract), ("Q_dayahead", Q_dayahead)]:
@@ -130,10 +139,6 @@ class DataLoader:
             P_ref = [0.0] * 24
         elif len(P_ref) != 24:
             raise ValueError("P_ref 必须为 24 元素或 None")
-        if c_lt_block_yuan is None:
-            c_lt_block_yuan = [0.0] * 24
-        elif len(c_lt_block_yuan) != 24:
-            raise ValueError("c_lt_block_yuan 必须为 24 元素或 None")
         if q_dayahead_cleared is not None and len(q_dayahead_cleared) != 24:
             raise ValueError("q_dayahead_cleared 必须为 24 元素或 None")
 
@@ -158,16 +163,15 @@ class DataLoader:
                 Q_dayahead=Q_dayahead[h],
                 P_ref=float(P_ref[h]),
                 q_dayahead_cleared=q_clr,
-                c_lt_block_yuan=float(c_lt_block_yuan[h]),
             ))
         return hourly
 
     @staticmethod
     def get_monthly_pda(region: str) -> list[float]:
         """返回全月日前电价扁平列表 (元/kWh)。用于 M4 现货联动电价计算。"""
-        # 读取 spot_price 目录下所有月份文件
+        # 读取指定地区 spot_price 目录下所有月份文件
         all_pda: list[float] = []
-        for f in sorted(SPOT_PRICE_DIR.glob("*.csv")):
+        for f in sorted(_region_dir(SPOT_PRICE_DIR, region).glob("*.csv")):
             df = pd.read_csv(f, dtype={"date": str, "hour": int}, comment='#')
             all_pda.extend((df["day_ahead"] / 1000.0).tolist())
         if not all_pda:

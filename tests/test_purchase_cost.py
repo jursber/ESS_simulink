@@ -43,10 +43,7 @@ def test_b2a_purchase_matches_prd_manual_sum():
     Qc = [float(ct[ct["hour"] == h]["q_contract_kwh"].iloc[0]) for h in range(24)]
     Pc = [float(ct[ct["hour"] == h]["p_contract_yuan_per_kwh"].iloc[0]) for h in range(24)]
     Qda = [float(da[da["hour"] == h]["q_dayahead_kwh"].iloc[0]) for h in range(24)]
-    C_mlt = sum(
-        Qc[h] * Pc[h] + float(ct[ct["hour"] == h]["c_lt_block_yuan"].iloc[0])
-        for h in range(24)
-    )
+    C_mlt = sum(Qc[h] * Pc[h] for h in range(24))
     C_da = sum((Qda[h] - Qc[h]) * P_da[h] for h in range(24))
     C_rt = sum((result.load_grid[h] - Qda[h]) * P_rt[h] for h in range(24))
     assert result.C_mlt == pytest.approx(C_mlt, rel=0, abs=1e-6)

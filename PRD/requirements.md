@@ -14,7 +14,7 @@
 - **R006**：核心目的：帮助用户理解所有外部条件如何传导到储能收益
 - **R007**：支持用户通过下拉选择不同地区（如 henan、未来可能的 guangdong）的数据做分析
 - **R008**：项目未来包含复杂的 Python 优化算法程序
-- **R009**：虚拟环境用 Python 3.14，核心依赖 pandas/numpy/scipy/cvxpy/matplotlib/streamlit
+- **R009**：虚拟环境用 Python 3.11+，核心依赖 pandas/numpy/scipy/cvxpy/FastAPI/uvicorn；前端采用纯 HTML/CSS/JS + ECharts，由 FastAPI 静态托管
 
 ## 第 1 轮（数据处理，2026-05-16）
 
@@ -163,6 +163,26 @@
 - **R113**：API 响应扩展——`TimeSeries` 新增 `pv_power` 字段；新增 `PVInvestmentData` schema（initial_invest_wan、irr_pct、payback_years、cum_cf_wan、daily_gen_kwh、annual_gen_mwh、daily_self_yuan、annual_self_wan、daily_feed_in_yuan、annual_feed_in_wan、self_rate）；`CalculateResponse` 新增 `pv_investment` 可选字段；`OverviewData.pv_cap_kw` 从计算结果填充
 - **R114**：光伏经济性评级——`_compute_econ_ratings()` 中光伏 IRR 从占位 `None` 替换为实际计算值
 - **R115**：前端光伏投资数据渲染——`analysis.v4.js` 的 `renderResult()` 中 12 个 `'--'` 占位替换为 `r.pv_investment` 实际数据；运营状态标签（光伏自用率、利用小时数）同步更新；多方收益区光伏上网/消纳收益填充
+
+---
+
+## 第 12 轮（底层数据重构与可信度登记，2026-06-07）
+
+- **R116**：明确数据维度口径：用户典型负荷和中长期/日前持仓按 profile/交易策略管理，不按 region 管理；行政分时电价、现货价格、光伏出力、统调负荷、需量/容量单价按 region 管理。
+- **R117**：新增持久化数据策略文档与 TODO：`docs/DATA_STRATEGY_NOTES.md`、`docs/DATA_REFACTOR_TODO.md`，用于多电脑开发时同步当前数据口径和后续待办。
+- **R118**：新增轻量可信度登记文件 `data/catalog/data_trust.csv`，只记录可信等级（mock/web_collected/official_api/manual_verified 等）、是否 mock、适用范围和内部备注，不记录敏感来源细节。
+- **R119**：重构数据目录：现货价格迁移至 `data/spot_price/{region}/`，统调负荷迁移至 `data/dispatch_load/{region}/`，中长期/日前持仓迁移至 `data/trading_strategy/{contract_position|dayahead_position}/{profile}/`。
+- **R120**：术语统一：后台和前端用户可见文案统一称“统调负荷”，不再使用“系统负荷”指代中长期分解曲线数据。
+- **R121**：清理不采纳业务口径：从当前计算模型、批发结算配置和 UI 选项中移除阻塞成本字段与节点电价抽象；读取层兼容旧阻塞列但丢弃，不参与计算。
+- **R122**：新增需量/容量单价后端数据文件 `data/demand_capacity/{region}/standard.csv` 和 `ConfigLoader.load_demand_capacity()` 读取入口，前端入口后续确定。
+- **R123**：补充审计测试与修正旧测试预期，覆盖 region 数据定位、交易策略 profile 定位、光伏接入后的负荷守恒、API 契约和数据可信度基础文件。
+
+---
+
+## 第 13 轮（删除旧前端实现，2026-06-07）
+
+- **R124**：删除已废弃的 Streamlit demo 前端（`app.py`、`src/ui/`、`scripts/run_streamlit.*`、`.streamlit/`），项目唯一可运行前端入口为 `frontend/` SPA，经 `run.py` 启动的 FastAPI 服务在 `http://127.0.0.1:8000/` 静态托管。
+- **R125**：Python 依赖清单移除旧 Streamlit/Plotly/Matplotlib/Seaborn UI 依赖，保留核心计算、数据处理、FastAPI 后端和 pytest 测试依赖。
 
 ---
 

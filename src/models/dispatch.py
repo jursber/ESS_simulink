@@ -91,7 +91,6 @@ class HourlyData:
     Q_dayahead: float                 # kWh, 日前申报电量（declaration 口径）
     P_ref: float = 0.0                # 元/kWh, 中长期结算参考点价格（广西等）
     q_dayahead_cleared: Optional[float] = None  # kWh, 日前出清电量；None 时与 Q_dayahead 相同
-    c_lt_block_yuan: float = 0.0      # 元, 该时段中长期合约阻塞等附加电费（广东型）
 
 
 @dataclass
@@ -112,7 +111,6 @@ class DispatchResult:
     C_mlt: float = 0.0
     C_da: float = 0.0
     C_rt: float = 0.0
-    C_lt_block: float = 0.0
     C_guangxi_month_smooth: float = 0.0
     C_purchase_monthly_constant: float = 0.0
     C_shanxi_wholesale_addon: float = 0.0

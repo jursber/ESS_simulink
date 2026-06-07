@@ -13,6 +13,9 @@ from src.models.wholesale import WholesaleSettlementConfig
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 PARAMS_DIR = DATA_DIR / "params"
 WHOLESALE_SETTLEMENT_PATH = PARAMS_DIR / "wholesale_settlement.csv"
+TRADING_STRATEGY_DIR = DATA_DIR / "trading_strategy"
+DISPATCH_LOAD_DIR = DATA_DIR / "dispatch_load"
+DEMAND_CAPACITY_DIR = DATA_DIR / "demand_capacity"
 
 
 def _ym(date_str: Optional[str]) -> str:
@@ -84,6 +87,44 @@ def _filter_hourly_csv_by_date(df: pd.DataFrame, date: Optional[str], label: str
             f"{label}：日期 {date} 须包含 hour=0..23 共 24 行，实际 {len(out)} 行"
         )
     return out
+
+
+def _region_alias(region: str) -> str:
+    """将方案 region 映射为行政电价目录名。"""
+    aliases = {
+        "henan": "Henan",
+        "beijing": "Beijing",
+        "guangdong": "Guangdong",
+        "shandong": "Shandong",
+        "shanxi": "Shanxi",
+        "zhejiang": "Zhejiang",
+        "jiangsu": "Jiangsu",
+    }
+    return aliases.get(region, region)
+
+
+def _find_profile_month_file(base: Path, profile: str, date: Optional[str]) -> Path:
+    """按交易策略 profile + 月份定位文件。"""
+    ym = _ym(date)
+    profile_dir = base / profile
+    if profile_dir.exists():
+        path = profile_dir / f"{ym}.csv"
+        if path.exists():
+            return path
+        files = sorted(profile_dir.glob("*.csv"))
+        if files:
+            return files[0]
+
+    # 兼容旧目录：data/contract_position/202603.csv
+    legacy_base = DATA_DIR / base.name
+    legacy_path = legacy_base / f"{ym}.csv"
+    if legacy_path.exists():
+        return legacy_path
+    legacy_files = sorted(legacy_base.glob("*.csv")) if legacy_base.exists() else []
+    if legacy_files:
+        return legacy_files[0]
+
+    raise FileNotFoundError(f"未找到交易策略 {profile} 的数据文件: {base}")
 
 
 class ConfigLoader:
@@ -237,12 +278,12 @@ class ConfigLoader:
         """
         ym = _ym(getattr(ConfigLoader, '_current_date', None)) or "202603"
         if mode == "admin":
-            path = DATA_DIR / "tariff" / "administrative_tariff" / "Beijing" / f"{ym}_commercial.csv"
+            region_dir = DATA_DIR / "tariff" / "administrative_tariff" / _region_alias(region)
+            path = region_dir / f"{ym}_commercial.csv"
             if not path.exists():
-                admin_dir = DATA_DIR / "tariff" / "administrative_tariff" / "Beijing"
-                files = sorted(admin_dir.glob(f"{ym}_*.csv"))
+                files = sorted(region_dir.glob(f"{ym}_*.csv"))
                 if not files:
-                    raise FileNotFoundError(f"未找到行政分时电价文件: {admin_dir}")
+                    raise FileNotFoundError(f"未找到行政分时电价文件: {region_dir}")
                 path = files[0]
             raw = pd.read_csv(path, comment='#', encoding='utf-8-sig')
             return _convert_tariff_format(raw)
@@ -266,22 +307,16 @@ class ConfigLoader:
         date: Optional[str] = None,
         profile: str = "mock_henan",
     ) -> pd.DataFrame:
-        """加载中长期合约持仓（含 P_ref、阻塞附加费等可选列）。"""
-        ym = _ym(date)
-        path = DATA_DIR / "contract_position" / f"{ym}.csv"
-        if not path.exists():
-            # fallback: 读取目录下第一个文件
-            pos_dir = DATA_DIR / "contract_position"
-            files = sorted(pos_dir.glob("*.csv"))
-            if not files:
-                raise FileNotFoundError(f"未找到中长期合约持仓文件: {pos_dir}")
-            path = files[0]
+        """按交易策略 profile 加载中长期合约持仓。"""
+        path = _find_profile_month_file(
+            TRADING_STRATEGY_DIR / "contract_position", profile, date
+        )
         raw = pd.read_csv(path, comment='#')
         df = _filter_hourly_csv_by_date(raw, date, path.name)
         if "p_ref_yuan_per_kwh" not in df.columns:
             df["p_ref_yuan_per_kwh"] = 0.0
-        if "c_lt_block_yuan" not in df.columns:
-            df["c_lt_block_yuan"] = 0.0
+        if "c_lt_block_yuan" in df.columns:
+            df = df.drop(columns=["c_lt_block_yuan"])
         return df
 
     @staticmethod
@@ -290,15 +325,10 @@ class ConfigLoader:
         date: Optional[str] = None,
         profile: str = "mock_henan",
     ) -> pd.DataFrame:
-        """加载日前电量（含出清电量列，用于 cleared 口径）。"""
-        ym = _ym(date)
-        path = DATA_DIR / "dayahead_position" / f"{ym}.csv"
-        if not path.exists():
-            pos_dir = DATA_DIR / "dayahead_position"
-            files = sorted(pos_dir.glob("*.csv"))
-            if not files:
-                raise FileNotFoundError(f"未找到日前报电量文件: {pos_dir}")
-            path = files[0]
+        """按交易策略 profile 加载日前报电量。"""
+        path = _find_profile_month_file(
+            TRADING_STRATEGY_DIR / "dayahead_position", profile, date
+        )
         raw = pd.read_csv(path, comment='#')
         df = _filter_hourly_csv_by_date(raw, date, path.name)
         if "q_dayahead_cleared_kwh" not in df.columns:
@@ -351,19 +381,34 @@ class ConfigLoader:
         df = pd.DataFrame(rows, columns=["param", "value", "unit", "editable"])
         df.to_csv(path, index=False, encoding="utf-8-sig")
 
-    # ---- 系统负荷 ----
+    # ---- 统调负荷 ----
 
     @staticmethod
-    def load_system_load(date: Optional[str] = None) -> list[float]:
+    def load_dispatch_load(region: str = "henan", date: Optional[str] = None) -> list[float]:
         """加载统调负荷曲线（24 小时 MW）。"""
         ym = _ym(date)
-        path = DATA_DIR / "system_load" / f"{ym}.csv"
+        region_dir = DISPATCH_LOAD_DIR / region
+        path = region_dir / f"{ym}.csv"
         if not path.exists():
-            sload_dir = DATA_DIR / "system_load"
-            files = sorted(sload_dir.glob("*.csv"))
+            files = sorted(region_dir.glob("*.csv")) if region_dir.exists() else []
             if not files:
-                return [3000.0] * 24
+                raise FileNotFoundError(f"未找到统调负荷数据: {region_dir}")
             path = files[0]
         df = pd.read_csv(path, comment='#')
         df = _filter_hourly_csv_by_date(df, date, path.name)
-        return [float(df[df["hour"] == h]["system_load_mw"].iloc[0]) for h in range(24)]
+        value_col = "dispatch_load_mw" if "dispatch_load_mw" in df.columns else "system_load_mw"
+        return [float(df[df["hour"] == h][value_col].iloc[0]) for h in range(24)]
+
+    @staticmethod
+    def load_system_load(date: Optional[str] = None) -> list[float]:
+        """兼容旧调用：加载河南统调负荷。"""
+        return ConfigLoader.load_dispatch_load("henan", date)
+
+    @staticmethod
+    def load_demand_capacity(region: str = "henan") -> dict:
+        """加载需量/容量单价参数。"""
+        path = DEMAND_CAPACITY_DIR / region / "standard.csv"
+        if not path.exists():
+            raise FileNotFoundError(f"未找到需量/容量单价文件: {path}")
+        df = pd.read_csv(path, comment='#')
+        return {str(r["param"]): r["value"] for _, r in df.iterrows()}

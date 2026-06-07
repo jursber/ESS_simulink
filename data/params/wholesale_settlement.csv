@@ -4,7 +4,6 @@ market_region_code,CN,-,true
 settlement_mode,GUANGDONG_STYLE,-,true
 time_granularity,1h,-,true
 da_quantity_definition,declaration,-,true
-price_node,unified,-,true
 contract_curve_profile,mock_henan,-,true
 dayahead_curve_profile,mock_henan,-,true
 purchase_monthly_constant_yuan,0,-,true

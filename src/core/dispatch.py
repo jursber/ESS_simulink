@@ -265,7 +265,6 @@ def run_dispatch(
         result.C_mlt = bd.C_mlt
         result.C_da = bd.C_da
         result.C_rt = bd.C_rt
-        result.C_lt_block = bd.C_lt_block
         result.C_guangxi_month_smooth = bd.C_month_smooth
         result.C_purchase_monthly_constant = bd.C_monthly_constant
         result.C_shanxi_wholesale_addon = bd.C_shanxi_addon

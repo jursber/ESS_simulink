@@ -1,5 +1,5 @@
 ﻿# MOCK DATA - 待替换为真实数据
-date,hour,system_load_mw
+date,hour,dispatch_load_mw
 2026-03-15,0,3200
 2026-03-15,1,2950
 2026-03-15,2,2800
