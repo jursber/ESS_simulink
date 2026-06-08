@@ -6,7 +6,7 @@ let currentPanel = null;
 
 // 占位面板模板
 function placeholderHTML(title) {
-  return `<div class="params-placeholder"><div style="text-align:center;color:var(--text-3)"><div style="font-size:16px;margin-bottom:8px">${title}</div><div style="font-size:var(--fs-12)">待实现</div></div></div>`;
+  return `<div class="params-placeholder"><div style="text-align:center;color:var(--text-3)"><div style="font-size:16px;margin-bottom:8px">${title}</div><div style="font-size:var(--fs-12)">当前暂无可编辑字段，后续将随数据资产接入自动扩展</div></div></div>`;
 }
 
 // 表格面板模板
@@ -230,7 +230,7 @@ async function renderPanelContent(panelId) {
         · 10:00~14:00 — 峰值区间（正午）<br>
         · 14:00~18:00 — 逐渐下降（日落）<br>
         · 18:00~24:00 — 出力为零（夜间）<br><br>
-        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要辐照度数据源</div>
+        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">当前边界：暂按已登记的典型光伏出力曲线运行；接入逐时辐照度/温度数据后可升级为气象驱动模型。</div>
       </div></div>`;
       break;
     case 'wholesale':
@@ -254,7 +254,7 @@ async function renderPanelContent(panelId) {
         <b style="color:var(--text-1)">与储能的协同</b><br>
         · 光储联合调度：光伏余量优先充储<br>
         · 储能削峰填谷配合光伏出力波动<br><br>
-        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">状态：待实现 — 需要光伏模块和电价模型完善</div>
+        <div style="color:var(--text-3);font-size:var(--fs-11);margin-top:8px">当前边界：光伏投资收益、上网收益和本地消纳收益已接入；复杂合同能源管理分成暂按参数草稿沉淀。</div>
       </div></div>`;
       break;
     case 'ess-biz':
@@ -277,8 +277,55 @@ async function renderPanelContent(panelId) {
         <b style="color:var(--text-1)">B4 总社会福利最高</b> — 最大化用户+售电+储能三方总收益
       </div></div>`;
       break;
+    case 'data-assets':
+      panel.innerHTML = '<div class="loading">正在扫描数据资产</div>';
+      renderDataAssetsPanel(panel);
+      break;
   }
   bindDirtyTracking();
+}
+
+async function renderDataAssetsPanel(panel) {
+  try {
+    const data = await api('/data-assets');
+    const trustRows = (data.trust || []).map(r => `
+      <tr>
+        <td>${r.data_type || '--'}</td>
+        <td>${r.region || '--'}</td>
+        <td>${r.trust_level || '--'}</td>
+        <td>${String(r.is_mock) === 'true' ? '是' : '否'}</td>
+        <td style="text-align:left">${r.notes || ''}</td>
+      </tr>
+    `).join('');
+    const cards = (data.groups || []).map(g => {
+      const files = (g.files || []).slice(0, 10).map(f => `
+        <tr>
+          <td style="text-align:left"><code>${f.path}</code></td>
+          <td>${f.rows}</td>
+          <td>${f.size_kb}</td>
+          <td style="text-align:left">${(f.columns || []).slice(0, 6).join(', ')}</td>
+        </tr>
+      `).join('');
+      return `<div class="params-section">
+        <div class="params-section-hd">${g.label} <span style="font-size:var(--fs-11);color:var(--text-3);font-weight:400">共 ${g.count} 个文件</span></div>
+        <div style="overflow:auto">
+          <table class="data-table">
+            <tr><th>文件</th><th>行数</th><th>KB</th><th>字段预览</th></tr>
+            ${files || '<tr><td colspan="4">暂无数据文件</td></tr>'}
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+    panel.innerHTML = `<div class="params-section">
+      <div class="params-section-hd">数据可信度登记</div>
+      <table class="data-table">
+        <tr><th>数据类型</th><th>范围</th><th>可信等级</th><th>Mock</th><th>备注</th></tr>
+        ${trustRows || '<tr><td colspan="5">暂无可信度登记</td></tr>'}
+      </table>
+    </div>${cards}`;
+  } catch (e) {
+    panel.innerHTML = `<div class="params-section"><div style="color:var(--danger)">数据资产加载失败：${e.message}</div></div>`;
+  }
 }
 
 // 现货电价图表
@@ -1215,7 +1262,7 @@ App.params = {
   renderSpotPriceCharts, onSpotPriceSetChange,
   switchTariffTouTab, renderTariffTouTab,
   onLoadCurveChange, onLoadScaleModeChange, onLoadScaleChange, onLoadRandomnessChange,
-  onPvTariffModeChange,
+  onPvTariffModeChange, renderDataAssetsPanel,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

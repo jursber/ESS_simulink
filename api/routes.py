@@ -1,7 +1,10 @@
 """API 路由。"""
 from __future__ import annotations
 
+import hashlib
+import json
 import pandas as pd
+import re
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
@@ -22,7 +25,7 @@ from api.schemas import (
     WelfareData,
     WholesaleOverrides,
 )
-from src.core.calculator import calculate, effective_wholesale_for_scenario
+from src.core.calculator import calculate, effective_wholesale_for_scenario, resolve_runtime_params
 from src.data.config import ConfigLoader
 from src.data.loader import DataLoader
 from src.data.scenario import ScenarioConfig, ScenarioManager
@@ -32,13 +35,41 @@ from src.models.wholesale import UI_OPTION_LISTS, WholesaleSettlementConfig
 router = APIRouter()
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
+DOCS_DIR = ROOT / "docs"
+PRD_DIR = ROOT / "PRD"
 
 # 计算结果缓存（内存级，重启清空）
 _result_cache: dict[str, CalculateResponse] = {}
 CACHE_MAX_SIZE = 100
 
-def _cache_key(scenario_id: str, pricing_mode: str, business_model: str, settlement: str, contract: str, dayahead: str) -> str:
-    return f"{scenario_id}|{pricing_mode}|{business_model}|{settlement}|{contract}|{dayahead}"
+def _params_version() -> list[tuple[str, int, int]]:
+    """Return a compact version signature for global parameter files."""
+    version = []
+    for path in sorted((DATA_DIR / "params").glob("*.csv")):
+        stat = path.stat()
+        version.append((path.name, stat.st_mtime_ns, stat.st_size))
+    return version
+
+
+def _scenario_fingerprint(config: ScenarioConfig) -> str:
+    payload = {
+        "scenario": config.to_dict(),
+        "params": _params_version(),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _cache_key(
+    scenario_id: str,
+    pricing_mode: str,
+    business_model: str,
+    settlement: str,
+    contract: str,
+    dayahead: str,
+    fingerprint: str,
+) -> str:
+    return f"{scenario_id}|{pricing_mode}|{business_model}|{settlement}|{contract}|{dayahead}|{fingerprint}"
 
 PM_LABELS = {
     "M1": "行政分时", "M2": "江苏模式", "M3": "合同分时",
@@ -286,6 +317,70 @@ def get_scenario(scenario_id: str):
     return cfg.to_dict()
 
 
+@router.post("/scenarios")
+def create_scenario(req: dict):
+    """创建方案。用于方案管理页的轻量 CRUD。"""
+    name = str(req.get("name") or "未命名方案")
+    cfg = ScenarioConfig(
+        name=name,
+        region=str(req.get("region") or "henan"),
+        pricing_mode=str(req.get("pricing_mode") or "M1"),
+        business_model=str(req.get("business_model") or "B1"),
+        selected_date=str(req.get("selected_date") or "2026-03-15"),
+        ess_params=req.get("ess_params") or {},
+        financial_params=req.get("financial_params") or {},
+        private_overrides=req.get("private_overrides") or {},
+    )
+    sid = ScenarioManager().save(cfg)
+    return {"status": "ok", "id": sid, "scenario": cfg.to_dict()}
+
+
+@router.put("/scenarios/{scenario_id}")
+def update_scenario(scenario_id: str, req: dict):
+    mgr = ScenarioManager()
+    try:
+        cfg = mgr.load(scenario_id)
+    except FileNotFoundError:
+        raise HTTPException(404, f"方案 {scenario_id} 不存在")
+
+    for key in ("name", "region", "pricing_mode", "business_model", "selected_date"):
+        if key in req:
+            setattr(cfg, key, req[key])
+    if "ess_params" in req:
+        cfg.ess_params = req["ess_params"] or {}
+    if "financial_params" in req:
+        cfg.financial_params = req["financial_params"] or {}
+    if "private_overrides" in req:
+        cfg.private_overrides = req["private_overrides"] or {}
+    mgr.save(cfg)
+    _result_cache.clear()
+    return {"status": "ok", "scenario": cfg.to_dict()}
+
+
+@router.post("/scenarios/{scenario_id}/duplicate")
+def duplicate_scenario(scenario_id: str, req: dict | None = None):
+    mgr = ScenarioManager()
+    try:
+        cfg = mgr.load(scenario_id)
+    except FileNotFoundError:
+        raise HTTPException(404, f"方案 {scenario_id} 不存在")
+    cfg.id = None
+    cfg.name = (req or {}).get("name") or f"{cfg.name}-副本"
+    sid = mgr.save(cfg)
+    return {"status": "ok", "id": sid, "scenario": cfg.to_dict()}
+
+
+@router.delete("/scenarios/{scenario_id}")
+def delete_scenario(scenario_id: str):
+    mgr = ScenarioManager()
+    try:
+        mgr.delete(scenario_id)
+    except FileNotFoundError:
+        raise HTTPException(404, f"方案 {scenario_id} 不存在")
+    _result_cache.clear()
+    return {"status": "ok"}
+
+
 @router.get("/options", response_model=OptionsResponse)
 def get_options():
     return OptionsResponse(
@@ -305,17 +400,6 @@ def get_options():
 
 @router.post("/calculate", response_model=CalculateResponse)
 def run_calculation(req: CalculateRequest):
-    # 缓存检查
-    ov = req.wholesale_overrides
-    key = _cache_key(
-        req.scenario_id, req.pricing_mode, req.business_model,
-        ov.settlement_mode if ov else "",
-        ov.contract_curve_profile if ov else "",
-        ov.dayahead_curve_profile if ov else "",
-    )
-    if key in _result_cache:
-        return _result_cache[key]
-
     try:
         mgr = ScenarioManager()
         config = mgr.load(req.scenario_id)
@@ -324,6 +408,18 @@ def run_calculation(req: CalculateRequest):
 
     config.pricing_mode = req.pricing_mode
     config.business_model = req.business_model
+
+    # 缓存 key 必须包含方案内容和全局参数版本，否则参数编辑后可能返回旧结果。
+    ov = req.wholesale_overrides
+    key = _cache_key(
+        req.scenario_id, req.pricing_mode, req.business_model,
+        ov.settlement_mode if ov else "",
+        ov.contract_curve_profile if ov else "",
+        ov.dayahead_curve_profile if ov else "",
+        _scenario_fingerprint(config),
+    )
+    if key in _result_cache:
+        return _result_cache[key]
 
     wholesale_cfg = effective_wholesale_for_scenario(config)
     if ov:
@@ -342,7 +438,7 @@ def run_calculation(req: CalculateRequest):
     except Exception as e:
         raise HTTPException(422, f"计算失败: {e}")
 
-    ess = ConfigLoader.load_ess_defaults(config.region)
+    ess, _ = resolve_runtime_params(config)
     prod_mwh = _day_production_load_mwh(config.region, config.selected_date)
 
     # 获取 load_real 用于前端图表
@@ -370,6 +466,90 @@ def run_calculation(req: CalculateRequest):
     _result_cache[key] = resp
 
     return resp
+
+
+def _scenario_compare_metrics(
+    scenario_id: str,
+    pricing_mode: str | None = None,
+    business_model: str | None = None,
+) -> dict:
+    mgr = ScenarioManager()
+    cfg = mgr.load(scenario_id)
+    if pricing_mode:
+        cfg.pricing_mode = pricing_mode
+    if business_model:
+        cfg.business_model = business_model
+    wholesale_cfg = effective_wholesale_for_scenario(cfg)
+    result = calculate(cfg, wholesale_cfg=wholesale_cfg)
+    ess, _ = resolve_runtime_params(cfg)
+    prod_mwh = _day_production_load_mwh(cfg.region, cfg.selected_date)
+    load_real = _load_real_series(cfg.region, cfg.selected_date)
+    resp = _build_response(result, cfg, ess, prod_mwh, 20.0, load_real=load_real)
+    import numpy as np
+    load_arr = np.array(load_real)
+    resp.load_cv = float(np.std(load_arr) / np.mean(load_arr)) if np.mean(load_arr) > 0 else 0
+    resp.econ_ratings = _compute_econ_ratings(resp, result)
+    return {
+        "id": scenario_id,
+        "name": cfg.name,
+        "region": cfg.region,
+        "date": cfg.selected_date,
+        "pricing_mode": cfg.pricing_mode,
+        "pricing_mode_label": PM_LABELS.get(cfg.pricing_mode, cfg.pricing_mode),
+        "business_model": cfg.business_model,
+        "business_model_label": BM_LABELS.get(cfg.business_model, cfg.business_model),
+        "metrics": {
+            "total_welfare_wan": resp.welfare.total_welfare_wan,
+            "user_savings_wan": resp.welfare.user_savings_wan,
+            "user_total_wan": resp.welfare.user_total_wan,
+            "ess_irr_pct": resp.investment.irr_pct,
+            "ess_payback_years": resp.investment.roi_years,
+            "ess_annual_arbitrage_wan": resp.investment.annual_arbitrage_wan,
+            "ess_cycles_day": resp.investment.equivalent_cycles,
+            "retail_profit_wan": resp.investment.retail_profit_wan or 0,
+            "pv_irr_pct": resp.pv_investment.irr_pct if resp.pv_investment else None,
+            "pv_annual_gen_mwh": resp.pv_investment.annual_gen_mwh if resp.pv_investment else 0,
+            "pv_self_rate": resp.pv_investment.self_rate if resp.pv_investment else None,
+            "load_cv": resp.load_cv,
+        },
+        "ratings": [r.model_dump() for r in resp.econ_ratings],
+    }
+
+
+@router.post("/compare")
+def compare_scenarios(req: dict):
+    """多方案对比。最多 4 个方案，返回横向指标矩阵。"""
+    items = req.get("items") or []
+    if not items:
+        raise HTTPException(400, "至少选择一个方案")
+    if len(items) > 4:
+        raise HTTPException(400, "最多支持 4 个方案")
+
+    rows = []
+    for item in items:
+        try:
+            rows.append(_scenario_compare_metrics(
+                str(item["scenario_id"]),
+                item.get("pricing_mode"),
+                item.get("business_model"),
+            ))
+        except FileNotFoundError:
+            raise HTTPException(404, f"方案 {item.get('scenario_id')} 不存在")
+    metric_defs = [
+        {"key": "total_welfare_wan", "label": "总社会福利提升", "unit": "万元", "direction": "max"},
+        {"key": "user_savings_wan", "label": "终端用户节费", "unit": "万元", "direction": "max"},
+        {"key": "user_total_wan", "label": "用户实际用电成本", "unit": "万元", "direction": "min"},
+        {"key": "ess_irr_pct", "label": "储能 IRR", "unit": "%", "direction": "max"},
+        {"key": "ess_payback_years", "label": "储能静态回收期", "unit": "年", "direction": "min"},
+        {"key": "ess_annual_arbitrage_wan", "label": "储能年套利创值", "unit": "万元", "direction": "max"},
+        {"key": "ess_cycles_day", "label": "日等效循环次数", "unit": "次/日", "direction": "balanced"},
+        {"key": "retail_profit_wan", "label": "售电公司利润", "unit": "万元", "direction": "max"},
+        {"key": "pv_irr_pct", "label": "光伏 IRR", "unit": "%", "direction": "max"},
+        {"key": "pv_annual_gen_mwh", "label": "光伏年发电量", "unit": "MWh", "direction": "max"},
+        {"key": "pv_self_rate", "label": "光伏本地消纳率", "unit": "%", "direction": "max"},
+        {"key": "load_cv", "label": "用户负荷变异系数", "unit": "-", "direction": "context"},
+    ]
+    return {"items": rows, "metrics": metric_defs}
 
 
 # ---------- 全局参数 ----------
@@ -704,7 +884,7 @@ def update_pv_params(req: dict):
 @router.get("/params/spot-prices")
 def get_spot_prices():
     """返回现货电价数据（日前/实时/价差）。"""
-    spot_dir = DATA_DIR / "spot_price"
+    spot_dir = DATA_DIR / "spot_price" / "henan"
     files = sorted(spot_dir.glob("*.csv"))
     if not files:
         return {"day_ahead": [0.0]*24, "real_time": [0.0]*24}
@@ -729,6 +909,255 @@ def get_pv_curve(region: str, curve_type: str):
 def list_algorithms():
     from src.core.registry import list_algorithms as _list
     return _list()
+
+
+def _safe_csv_summary(path: Path) -> dict:
+    try:
+        df = pd.read_csv(path, comment="#", nrows=50, encoding="utf-8-sig")
+        cols = list(df.columns)
+        row_count = sum(1 for _ in open(path, "r", encoding="utf-8", errors="ignore")) - 1
+    except Exception:
+        cols = []
+        row_count = 0
+    return {
+        "path": path.relative_to(ROOT).as_posix(),
+        "name": path.name,
+        "columns": cols,
+        "rows": max(row_count, 0),
+        "size_kb": round(path.stat().st_size / 1024, 1),
+    }
+
+
+def _safe_model_param_path(model_id: str) -> Path:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", model_id):
+        raise HTTPException(400, "非法模型 ID")
+    return DATA_DIR / "model_params" / f"{model_id}.json"
+
+
+def _model_param_draft(model_id: str) -> dict:
+    path = _safe_model_param_path(model_id)
+    if not path.exists():
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data if isinstance(data, dict) else {}
+
+
+def _apply_model_draft(model: dict) -> dict:
+    draft = _model_param_draft(str(model.get("id", "")))
+    for param in model.get("params", []):
+        if param.get("key") in draft:
+            param["value"] = draft[param["key"]]
+    model["draft_saved"] = bool(draft)
+    return model
+
+
+@router.get("/data-assets")
+def list_data_assets():
+    """按业务口径列出 data 目录中的核心数据资产。"""
+    groups = [
+        ("params", "全局参数", DATA_DIR / "params"),
+        ("tariff", "分时电价", DATA_DIR / "tariff"),
+        ("spot_price", "现货价格", DATA_DIR / "spot_price"),
+        ("dispatch_load", "统调负荷", DATA_DIR / "dispatch_load"),
+        ("load", "用户典型负荷", DATA_DIR / "load"),
+        ("pv_curves", "光伏出力", DATA_DIR / "pv_curves"),
+        ("trading_strategy", "交易策略持仓", DATA_DIR / "trading_strategy"),
+        ("demand_capacity", "需量/容量单价", DATA_DIR / "demand_capacity"),
+        ("catalog", "数据可信度", DATA_DIR / "catalog"),
+    ]
+    trust = []
+    trust_path = DATA_DIR / "catalog" / "data_trust.csv"
+    if trust_path.exists():
+        trust = pd.read_csv(trust_path, comment="#").to_dict(orient="records")
+
+    assets = []
+    for key, label, root in groups:
+        files = []
+        if root.exists():
+            files = [_safe_csv_summary(p) for p in sorted(root.rglob("*.csv"))[:80]]
+        assets.append({
+            "key": key,
+            "label": label,
+            "count": len(files),
+            "files": files,
+        })
+    return {"groups": assets, "trust": trust}
+
+
+@router.get("/models")
+def list_models():
+    """模型管理页数据：列出当前已实现/可配置/待接入模型。"""
+    from src.core.registry import list_algorithms as _list_algorithms
+
+    algorithms = _list_algorithms()
+    if not algorithms:
+        algorithms = [{
+            "id": "optimize_arbitrage",
+            "desc": "滑窗穷举套利调度（默认）：按有效价差寻找充放电窗口",
+        }]
+
+    data = {
+        "categories": [
+            {
+                "key": "dispatch",
+                "label": "调度模型",
+                "models": [
+                    {
+                        "id": a["id"],
+                        "name": a["id"],
+                        "description": a.get("desc", ""),
+                        "status": "已接入",
+                        "params": [
+                            {"key": "window_hours", "label": "搜索窗口", "value": 24, "unit": "h", "editable": True},
+                            {"key": "min_spread", "label": "最小套利价差", "value": 0.0, "unit": "元/kWh", "editable": True},
+                            {"key": "cycle_penalty", "label": "循环惩罚系数", "value": 0.0, "unit": "-", "editable": True},
+                        ],
+                    }
+                    for a in algorithms
+                ],
+            },
+            {
+                "key": "pricing",
+                "label": "零售电价模型",
+                "models": [
+                    {"id": k, "name": v, "description": "用户侧电价曲线生成模型", "status": "已接入", "params": []}
+                    for k, v in PM_LABELS.items()
+                ],
+            },
+            {
+                "key": "business",
+                "label": "商业模式/优化目标",
+                "models": [
+                    {"id": k, "name": v, "description": "决定储能调度目标与收益归属", "status": "已接入", "params": []}
+                    for k, v in BM_LABELS.items()
+                ],
+            },
+            {
+                "key": "wholesale",
+                "label": "批发侧结算模型",
+                "models": [
+                    {
+                        "id": value,
+                        "name": label,
+                        "description": "中长期、日前、实时组合购电结算抽象",
+                        "status": "简化接入",
+                        "params": [
+                            {"key": "time_granularity", "label": "时间粒度", "value": "1h", "unit": "", "editable": False},
+                            {"key": "da_quantity_definition", "label": "日前电量口径", "value": "declaration", "unit": "", "editable": True},
+                        ],
+                    }
+                    for value, label in UI_OPTION_LISTS["settlement_mode"]
+                ],
+            },
+            {
+                "key": "financial",
+                "label": "投资评价模型",
+                "models": [
+                    {
+                        "id": "irr_npv_payback",
+                        "name": "IRR / NPV / 静态回收期",
+                        "description": "储能与光伏投资收益评价，当前不考虑融资结构",
+                        "status": "已接入",
+                        "params": [
+                            {"key": "r_discount", "label": "折现率", "value": ConfigLoader.load_financial_defaults("henan").get("r_discount", 0.06), "unit": "-", "editable": True}
+                        ],
+                    }
+                ],
+            },
+        ]
+    }
+    for category in data["categories"]:
+        category["models"] = [_apply_model_draft(model) for model in category["models"]]
+    return data
+
+
+@router.put("/models/{model_id}/params")
+def update_model_params(model_id: str, req: dict):
+    """保存模型超参草稿。当前先作为 mock 配置落盘，后续再接入算法。"""
+    path = _safe_model_param_path(model_id)
+    model_dir = path.parent
+    model_dir.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(req, f, ensure_ascii=False, indent=2)
+    return {"status": "ok", "model_id": model_id}
+
+
+_HELP_DOCS = [
+    {
+        "id": "overview",
+        "title": "系统总览",
+        "category": "使用指南",
+        "content": """# 系统总览
+
+本系统用于模拟源网荷储售一体化场景下，不同电价模式、交易策略、储能/光伏参数和商业模式对收益的影响。
+
+当前建议先使用“单方案分析”完成一个可信闭环，再进入“多方案对比”横向比较方案差异。""",
+    },
+    {
+        "id": "single-scenario",
+        "title": "单方案分析",
+        "category": "使用指南",
+        "content": """# 单方案分析
+
+单方案分析页关注一个方案在典型日边界条件下的调度、收益和经济性。
+
+关键区域包括：系统构成、商业模式、电价模式、运行参数、方案概览、多方收益、光储投资分析和典型日能量分析。""",
+    },
+    {
+        "id": "compare",
+        "title": "多方案对比",
+        "category": "使用指南",
+        "content": """# 多方案对比
+
+多方案对比最多支持 4 个方案。横向卡片对应不同方案，纵向指标对应收益、成本、IRR、回收期、循环次数、光伏消纳率等关键指标。
+
+指标中的高亮值代表在当前对比组内更优。""",
+    },
+    {
+        "id": "data-trust",
+        "title": "数据可信度",
+        "category": "数据说明",
+        "content": """# 数据可信度
+
+数据可信度登记在 `data/catalog/data_trust.csv` 中。该文件只记录可信等级、是否 mock、适用范围和内部备注，不记录敏感来源细节。""",
+    },
+]
+
+
+@router.get("/docs")
+def list_docs():
+    docs = [{"id": d["id"], "title": d["title"], "category": d["category"]} for d in _HELP_DOCS]
+    for root, category in ((DOCS_DIR, "工程文档"), (PRD_DIR, "需求文档")):
+        if root.exists():
+            for path in sorted(root.glob("*.md"))[:40]:
+                docs.append({
+                    "id": f"file:{path.relative_to(ROOT).as_posix()}",
+                    "title": path.stem,
+                    "category": category,
+                })
+    return {"docs": docs}
+
+
+@router.get("/docs/{doc_id:path}")
+def get_doc(doc_id: str):
+    for doc in _HELP_DOCS:
+        if doc["id"] == doc_id:
+            return doc
+    if doc_id.startswith("file:"):
+        rel = doc_id[5:]
+        path = (ROOT / rel).resolve()
+        if ROOT not in path.parents:
+            raise HTTPException(400, "非法文档路径")
+        if not path.exists() or path.suffix.lower() != ".md":
+            raise HTTPException(404, "文档不存在")
+        return {
+            "id": doc_id,
+            "title": path.stem,
+            "category": "工程文档",
+            "content": path.read_text(encoding="utf-8", errors="ignore"),
+        }
+    raise HTTPException(404, "文档不存在")
 
 
 # ---------- 中长期量价曲线 ----------

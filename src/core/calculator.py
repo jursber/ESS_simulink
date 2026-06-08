@@ -1,5 +1,6 @@
 """共享计算器 — 统一的调度计算入口，避免页面间代码重复。"""
 
+from dataclasses import asdict
 from typing import Optional
 
 from src.data.scenario import ScenarioConfig
@@ -7,8 +8,37 @@ from src.data.loader import DataLoader
 from src.data.config import ConfigLoader
 from src.core.pricing import compute_user_price
 from src.core.dispatch import run_dispatch
-from src.models.dispatch import BusinessModel, PricingMode, FinancialParams, PVParams, DispatchResult
+from src.models.dispatch import BusinessModel, PricingMode, ESSParams, FinancialParams, PVParams, DispatchResult
 from src.models.wholesale import WholesaleSettlementConfig
+
+
+def _coerce_ess_params(values: dict) -> dict:
+    """Convert scenario/global ESS values into ESSParams constructor types."""
+    out = {}
+    int_keys = {"design_life", "cycle_life"}
+    bool_keys = {"degrade_enabled", "cycle_enabled"}
+    valid_keys = set(ESSParams.__dataclass_fields__)
+    for key, value in values.items():
+        if key not in valid_keys:
+            continue
+        if key in bool_keys:
+            if isinstance(value, str):
+                out[key] = value.strip().lower() in {"1", "true", "yes", "y"}
+            else:
+                out[key] = bool(value)
+        elif key in int_keys:
+            out[key] = int(float(value))
+        else:
+            out[key] = float(value)
+    return out
+
+
+def resolve_runtime_params(config: ScenarioConfig) -> tuple[ESSParams, dict]:
+    """Resolve scenario private params against global defaults for runtime use."""
+    ess_defaults = asdict(ConfigLoader.load_ess_defaults(config.region))
+    fin_defaults = ConfigLoader.load_financial_defaults(config.region)
+    ess_values, fin_values = config.resolve_params(ess_defaults, fin_defaults)
+    return ESSParams(**_coerce_ess_params(ess_values)), fin_values
 
 
 def effective_wholesale_for_scenario(config: ScenarioConfig) -> WholesaleSettlementConfig:
@@ -74,7 +104,7 @@ def calculate(
     for i, h in enumerate(hourly):
         h.P_user = P_user[i]
 
-    fin_defaults = ConfigLoader.load_financial_defaults(region)
+    ess_params, fin_defaults = resolve_runtime_params(config)
     r_user_map = {"B1": float(fin_defaults["r_user_b1"]),
                   "B2": float(fin_defaults["r_user_b2"]),
                   "B3": float(fin_defaults.get("r_user_b2", 0.5))}
@@ -102,10 +132,10 @@ def calculate(
         hourly,
         BusinessModel(bm_code),
         PricingMode(config.pricing_mode),
-        ConfigLoader.load_ess_defaults(region),
+        ess_params,
         FinancialParams(
             r_discount=float(fin_defaults.get("r_discount", 0.06)),
-            r_user=r_user_map.get(bm_prefix, 0.30),
+            r_user=float(fin_defaults.get("r_user", r_user_map.get(bm_prefix, 0.30))),
         ),
         wholesale_cfg=wholesale_cfg,
         pv_params=pv_params if pv_params.cap_rated > 0 else None,

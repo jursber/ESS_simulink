@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=1920,initial-scale=1">
 <title>源网荷储售综合模拟仿真系统</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<link rel="stylesheet" href="css/style.v4.css">
+<link rel="stylesheet" href="css/style.v4.css?v=20260608-night">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -349,7 +349,7 @@
             <div class="param-row">
               <span class="param-label">电价曲线</span>
               <select class="param-select" id="sel-pricing-curve"></select>
-              <a class="link-btn" onclick="alert('编辑功能待实现')">编辑</a>
+              <a class="link-btn" onclick="App.params.selectPanel('tariff-tou');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
             </div>
           </div>
 
@@ -359,12 +359,12 @@
             <div class="param-row">
               <span class="param-label">现货电价</span>
               <select class="param-select" id="sel-spot-profile"></select>
-              <a class="link-btn" onclick="alert('编辑功能待实现')">编辑</a>
+              <a class="link-btn" onclick="App.params.selectPanel('spot-price');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
             </div>
             <div class="param-row">
               <span class="param-label">中长期电价</span>
               <select class="param-select" id="sel-contract-profile"></select>
-              <a class="link-btn" onclick="alert('编辑功能待实现')">编辑</a>
+              <a class="link-btn" onclick="App.params.selectPanel('contract');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
             </div>
           </div>
 
@@ -372,10 +372,10 @@
           <div class="param-sec" id="sec-device-params">
             <div class="param-sec-title">设备参数</div>
             <div class="device-tabs">
-              <a class="device-tab" onclick="alert('设备参数编辑待实现')">用户</a>
-              <a class="device-tab" onclick="alert('设备参数编辑待实现')">储能</a>
-              <a class="device-tab" onclick="alert('设备参数编辑待实现')">光伏</a>
-              <a class="device-tab" onclick="alert('设备参数编辑待实现')">售电</a>
+              <a class="device-tab" onclick="App.params.selectPanel('load-curve');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">用户</a>
+              <a class="device-tab" onclick="App.params.selectPanel('ess');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">储能</a>
+              <a class="device-tab" onclick="App.params.selectPanel('pv');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">光伏</a>
+              <a class="device-tab" onclick="App.params.selectPanel('wholesale');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">售电</a>
             </div>
           </div>
 
@@ -393,6 +393,7 @@
             <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.analysis.toggleSlot(0)"><span class="slot-dot"></span><span>方案 A</span></button>
             <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.analysis.toggleSlot(1)"><span class="slot-dot"></span><span>方案 B</span></button>
             <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.analysis.toggleSlot(2)"><span class="slot-dot"></span><span>方案 C</span></button>
+            <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.analysis.toggleSlot(3)"><span class="slot-dot"></span><span>方案 D</span></button>
             <button class="slot-add" id="slot-add" onclick="App.analysis.addSlot()" title="记录当前方案">+</button>
           </div>
           <button class="slot-compare" id="slot-compare" onclick="App.analysis.openCompareModal()" title="比较" disabled>比较</button>
@@ -406,14 +407,67 @@
     <div class="modal-box">
       <div class="modal-hd"><span class="modal-title">方案比较</span><span class="modal-close" onclick="App.analysis.closeCompareModal()">&times;</span></div>
       <div class="modal-body">
-        <div class="modal-placeholder">选择要比较的方案，自定义对比指标（待实现）</div>
+        <div class="modal-placeholder">方案比较已升级到“多方案对比”页面。点击底部“比较”会自动带入当前槽位。</div>
       </div>
     </div>
   </div>
 
-  <!-- PAGE 2-3 占位 -->
-  <div class="page-wrap" id="page-compare"><div class="p-compare">多方案对比（待实现）</div></div>
-  <div class="page-wrap" id="page-scenarios"><div class="p-scenarios">方案管理（待实现）</div></div>
+  <!-- PAGE 2: 多方案对比 -->
+  <div class="page-wrap" id="page-compare">
+    <div class="workspace-page compare-page">
+      <div class="workspace-hd">
+        <div>
+          <div class="workspace-title">多方案对比</div>
+          <div class="workspace-sub">最多 4 个方案横向对比，指标按收益、投资、运行、风险分组。</div>
+        </div>
+        <div class="workspace-actions">
+          <button class="btn" onclick="App.compare.addLane()">添加方案</button>
+          <button class="btn primary" onclick="App.compare.runCompare()">刷新对比</button>
+        </div>
+      </div>
+      <div class="compare-lanes" id="compare-lanes"></div>
+      <div class="compare-matrix-wrap" id="compare-matrix-wrap"></div>
+    </div>
+  </div>
+
+  <!-- PAGE 3: 方案管理 -->
+  <div class="page-wrap" id="page-scenarios">
+    <div class="workspace-page">
+      <div class="workspace-hd">
+        <div>
+          <div class="workspace-title">方案管理</div>
+          <div class="workspace-sub">保存、复制、编辑和删除历史方案；后续方案快照会接入深度精算配置。</div>
+        </div>
+        <div class="workspace-actions">
+          <button class="btn" onclick="App.scenarios.createScenario()">新建方案</button>
+          <button class="btn primary" onclick="App.scenarios.load()">刷新列表</button>
+        </div>
+      </div>
+      <div class="workspace-table-card">
+        <table class="data-table scenario-table">
+          <thead><tr><th>方案名称</th><th>地区</th><th>电价模式</th><th>商业模式</th><th>日期</th><th>私有参数</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="scenario-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: 模型管理 -->
+  <div class="page-wrap" id="page-model-mgmt">
+    <div class="workspace-page">
+      <div class="workspace-hd">
+        <div>
+          <div class="workspace-title">模型管理</div>
+          <div class="workspace-sub">统一查看测算、仿真、调度、结算、投资评价模型；已成型算法支持超参草稿保存。</div>
+        </div>
+        <div class="workspace-actions">
+          <button class="btn primary" onclick="App.models.load()">刷新模型</button>
+        </div>
+      </div>
+      <div class="model-catalog" id="model-catalog"></div>
+    </div>
+  </div>
+
   <div class="page-wrap" id="page-params">
     <div class="p-params-layout">
       <div class="params-sidebar">
@@ -442,6 +496,10 @@
             <div class="params-menu-item" data-panel="pv-biz" onclick="App.params.selectPanel('pv-biz')">光伏商业模式</div>
             <div class="params-menu-item" data-panel="ess-biz" onclick="App.params.selectPanel('ess-biz')">储能商业模式</div>
             <div class="params-menu-item" data-panel="biz-note" onclick="App.params.selectPanel('biz-note')">其他模式说明</div>
+          </div>
+          <div class="params-menu-group">
+            <div class="params-menu-group-hd">数据资产</div>
+            <div class="params-menu-item" data-panel="data-assets" onclick="App.params.selectPanel('data-assets')">数据资产总览</div>
           </div>
         </div>
       </div>
@@ -483,17 +541,35 @@
         <div class="params-panel" id="panel-pv-biz"></div>
         <div class="params-panel" id="panel-ess-biz"></div>
         <div class="params-panel" id="panel-biz-note"></div>
+        <div class="params-panel" id="panel-data-assets"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 6: 文档 -->
+  <div class="page-wrap" id="page-docs">
+    <div class="docs-layout">
+      <div class="docs-sidebar">
+        <div class="docs-search-wrap">
+          <input id="docs-search" class="docs-search" placeholder="搜索文档..." oninput="App.docs.filter()">
+        </div>
+        <div class="docs-list" id="docs-list"></div>
+      </div>
+      <div class="docs-main">
+        <div class="docs-article" id="docs-article">
+          <div class="params-placeholder">选择左侧文档查看正文</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<script src="js/app.v4.js"></script>
-<script src="js/charts.v4.js"></script>
-<script src="js/flow.v4.js"></script>
-<script src="js/analysis.v4.js"></script>
-<script src="js/params.v4.js"></script>
-<script src="js/compare.v4.js"></script>
+<script src="js/app.v4.js?v=20260608-night"></script>
+<script src="js/charts.v4.js?v=20260608-night"></script>
+<script src="js/flow.v4.js?v=20260608-night"></script>
+<script src="js/analysis.v4.js?v=20260608-night"></script>
+<script src="js/params.v4.js?v=20260608-night"></script>
+<script src="js/compare.v4.js?v=20260608-night"></script>
 <script>
 window.runCalculation = () => App.analysis?.runCalculation?.();
 window.switchInvTab = (t) => App.analysis?.switchInvTab?.(t);

@@ -1,5 +1,6 @@
 // ===== app.js =====
 window.App = window.App || { state: {}, charts: {}, flow: {}, analysis: {}, params: {}, compare: {} };
+var App = window.App;
 
 // --- 状态 ---
 let state = { scenarios: [], currentScenario: null, options: null, result: null };
@@ -85,6 +86,10 @@ document.querySelectorAll('.top-nav-item[data-page]').forEach(item => {
     const btnLoad = document.querySelector('.topbar-actions .btn');
     if (btnLoad) btnLoad.disabled = (page === 'params');
     if (page === 'params') { await App.params.loadGlobalParams(); App.params.initParamsMenu(); }
+    if (page === 'compare') { await App.compare?.init?.(); }
+    if (page === 'scenarios') { await App.scenarios?.load?.(); }
+    if (page === 'model-mgmt') { await App.models?.load?.(); }
+    if (page === 'docs') { await App.docs?.load?.(); }
   });
 });
 
@@ -111,7 +116,26 @@ document.querySelectorAll('.topbar-tab[data-tab]').forEach(tab => {
 });
 
 function loadScenarios() { init(); }
-function saveScenario() { alert('保存方案功能待实现'); }
+async function saveScenario() {
+  const scenarioId = state.currentScenario;
+  if (!scenarioId) {
+    alert('当前没有可保存的方案');
+    return;
+  }
+  const pricingMode = document.getElementById('sel-retail-pricing')?.value || 'M1';
+  const businessModel = 'B1';
+  try {
+    await api(`/scenarios/${scenarioId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ pricing_mode: pricingMode, business_model: businessModel }),
+    });
+    const tagCalc = document.getElementById('tag-calc');
+    if (tagCalc) tagCalc.textContent = '方案已保存';
+    await loadScenarios();
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
 function resetParams() {
   if (currentPage === 'params') {
     if (!confirm('这会将当前页面所有参数重置为系统初始值，但您已录入的自定义数据不会被删除。是否确定？')) return;

@@ -151,6 +151,76 @@ def test_api_options_and_calculate_response_contract():
     assert isinstance(data["econ_ratings"], list)
 
 
+def test_workspace_api_contracts_for_new_pages():
+    """多方案、方案管理、模型管理、数据资产和文档页依赖的 API 应保持可用。"""
+    client = TestClient(app)
+    scenarios = client.get("/api/scenarios").json()
+    assert len(scenarios) >= 1
+
+    compare_items = [
+        {"scenario_id": s["id"], "pricing_mode": "M1", "business_model": "B1"}
+        for s in scenarios[:4]
+    ]
+    compare = client.post("/api/compare", json={"items": compare_items})
+    assert compare.status_code == 200, compare.text
+    compare_data = compare.json()
+    assert len(compare_data["items"]) == len(compare_items)
+    assert any(m["key"] == "total_welfare_wan" for m in compare_data["metrics"])
+
+    overflow = client.post("/api/compare", json={"items": compare_items + [compare_items[0]]})
+    assert overflow.status_code == 400
+
+    models = client.get("/api/models")
+    assert models.status_code == 200
+    model_data = models.json()
+    assert {c["key"] for c in model_data["categories"]} >= {"dispatch", "pricing", "business"}
+
+    save_model = client.put("/api/models/greedy_window/params", json={"window_hours": 12})
+    assert save_model.status_code == 200
+    rejected_model = client.put("/api/models/bad.name/params", json={"window_hours": 12})
+    assert rejected_model.status_code == 400
+    models_after_save = client.get("/api/models").json()
+    dispatch_models = next(c for c in models_after_save["categories"] if c["key"] == "dispatch")["models"]
+    greedy = next(m for m in dispatch_models if m["id"] == "greedy_window")
+    assert greedy["draft_saved"] is True
+    assert next(p for p in greedy["params"] if p["key"] == "window_hours")["value"] == 12
+
+    assets = client.get("/api/data-assets")
+    assert assets.status_code == 200
+    asset_data = assets.json()
+    assert {g["key"] for g in asset_data["groups"]} >= {"params", "spot_price", "load", "pv_curves"}
+    assert isinstance(asset_data["trust"], list)
+
+    docs = client.get("/api/docs")
+    assert docs.status_code == 200
+    doc_list = docs.json()["docs"]
+    assert doc_list
+    detail = client.get(f"/api/docs/{doc_list[0]['id']}")
+    assert detail.status_code == 200
+    assert "content" in detail.json()
+
+
+def test_scenario_crud_api_roundtrip():
+    """方案管理页的新增、改名、复制、删除流程应闭环。"""
+    client = TestClient(app)
+    created = client.post("/api/scenarios", json={"name": "audit-api-crud", "pricing_mode": "M3"})
+    assert created.status_code == 200, created.text
+    sid = created.json()["id"]
+    try:
+        renamed = client.put(f"/api/scenarios/{sid}", json={"name": "audit-api-crud-renamed"})
+        assert renamed.status_code == 200
+        detail = client.get(f"/api/scenarios/{sid}")
+        assert detail.json()["name"] == "audit-api-crud-renamed"
+
+        copied = client.post(f"/api/scenarios/{sid}/duplicate", json={"name": "audit-api-crud-copy"})
+        assert copied.status_code == 200
+        copy_id = copied.json()["id"]
+        delete_copy = client.delete(f"/api/scenarios/{copy_id}")
+        assert delete_copy.status_code == 200
+    finally:
+        client.delete(f"/api/scenarios/{sid}")
+
+
 def test_admin_tariff_loader_should_use_requested_region():
     """请求河南行政分时电价时，应返回河南文件中的价格，而不是北京价格。"""
     tariff = ConfigLoader.load_tariff("henan", "admin")
@@ -164,7 +234,6 @@ def test_admin_tariff_loader_should_use_requested_region():
     assert actual_h0 == pytest.approx(expected_h0, abs=1e-9)
 
 
-@pytest.mark.xfail(reason="calculate() 尚未应用 ScenarioConfig.ess_params/private_overrides", strict=True)
 def test_scenario_ess_private_override_should_affect_dispatch_power_limit():
     """方案私有储能功率应影响调度上限。"""
     cfg = _base_config(ess_params={"power_rated": 0.1, "cap_rated": 200})
@@ -177,11 +246,14 @@ def test_available_dates_should_not_reuse_demo_data_for_unknown_region():
     assert DataLoader.get_available_dates("unknown-region") == []
 
 
-@pytest.mark.xfail(reason="API 结果缓存 key 未包含全局参数版本或方案参数覆盖，存在陈旧结果风险", strict=True)
 def test_calculate_cache_key_should_include_all_result_affecting_inputs():
     """缓存 key 应包含会影响结果的全部输入维度。"""
-    from api.routes import _cache_key
+    from api.routes import _cache_key, _scenario_fingerprint
 
-    key_a = _cache_key("s1", "M1", "B1", "GUANGDONG_STYLE", "mock_henan", "mock_henan")
-    key_b = _cache_key("s1", "M1", "B1", "GUANGDONG_STYLE", "mock_henan", "mock_henan")
+    cfg_a = _base_config(ess_params={"power_rated": 0.1})
+    cfg_b = _base_config(ess_params={"power_rated": 0.2})
+    fp_a = _scenario_fingerprint(cfg_a)
+    fp_b = _scenario_fingerprint(cfg_b)
+    key_a = _cache_key("s1", "M1", "B1", "GUANGDONG_STYLE", "mock_henan", "mock_henan", fp_a)
+    key_b = _cache_key("s1", "M1", "B1", "GUANGDONG_STYLE", "mock_henan", "mock_henan", fp_b)
     assert key_a != key_b

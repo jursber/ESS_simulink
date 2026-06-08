@@ -1,8 +1,8 @@
 // ===== analysis.js =====
 
 // --- 方案槽位 ---
-const SLOT_NAMES = ['方案 A', '方案 B', '方案 C'];
-let slots = [null, null, null]; // 3 个槽位
+const SLOT_NAMES = ['方案 A', '方案 B', '方案 C', '方案 D'];
+let slots = [null, null, null, null]; // 4 个槽位
 
 function getActiveSlots() {
   return slots.map((s, i) => s !== null ? i : -1).filter(i => i >= 0);
@@ -63,7 +63,9 @@ function toggleSlot(i) {
 
 function openCompareModal() {
   if (!slots.some(s => s !== null)) return;
-  document.getElementById('modal-compare').style.display = 'flex';
+  const active = slots.filter(Boolean);
+  if (App.compare?.loadFromSlots) App.compare.loadFromSlots(active);
+  document.querySelector('.top-nav-item[data-page="compare"]')?.click();
 }
 
 function closeCompareModal(e) {
@@ -565,4 +567,5 @@ App.analysis = {
   addSlot, toggleSlot, openCompareModal, closeCompareModal,
   updateTopology, toggleBizDropdown, addBizEntity, removeBizEntity, onRetailPricingChange,
   addGroup, removeGroup,
+  getSlots: () => slots.filter(Boolean),
 };

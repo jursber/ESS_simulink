@@ -32,8 +32,8 @@ ESS_simulink/
 │   └── scenarios/          # 方案 JSON 文件
 ├── frontend/               # 前端 SPA（FastAPI 静态托管）
 │   ├── index.html          # HTML 骨架
-│   ├── css/style.css       # 全局样式
-│   └── js/                 # JS 模块（app/analysis/charts/flow/params/compare）
+│   ├── css/style.v4.css    # 当前有效全局样式
+│   └── js/                 # 当前有效 JS 模块（*.v4.js）
 ├── src/
 │   ├── core/               # 核心计算引擎
 │   │   ├── calculator.py   # 统一计算入口 calculate()
@@ -141,9 +141,12 @@ window.runCalculation = () => App.analysis.runCalculation();
 
 - 单方案分析：完整（方案概览、多方收益、光储投资分析、调度曲线）
 - 缺省参数：完整（5 分类 16 子项，左右分栏）
-- 多方案对比：待实现
-- 方案管理：待实现
-- 光伏模块：参数框架已实现，计算逻辑待接入
+- 单方案分析：完整度较高，已支持光伏、储能、负荷、现货电价等主链路
+- 多方案对比：已接入页面与 `POST /api/compare`，最多支持 4 个方案
+- 方案管理：已接入轻量 CRUD 页面与 API
+- 模型管理：已接入模型目录与超参草稿保存
+- 缺省参数：已新增数据资产总览
+- 帮助文档：已接入内置文档、`docs/*.md`、`PRD/*.md`
 
 ## 并行开发规则（两个 Claude 窗口同时工作时）
 
@@ -153,9 +156,9 @@ window.runCalculation = () => App.analysis.runCalculation();
 
 | 负责方 | 文件 |
 |--------|------|
-| Session 1（单方案分析） | `js/analysis.js`, `js/charts.js`, `js/flow.js` |
-| Session 2（缺省参数） | `js/params.js` |
-| 共享（禁止同时编辑） | `js/app.js`, `css/style.v4.css`, `index.html`, `api/routes.py` |
+| Session 1（单方案分析） | `js/analysis.v4.js`, `js/charts.v4.js`, `js/flow.v4.js` |
+| Session 2（缺省参数） | `js/params.v4.js` |
+| 共享（禁止同时编辑） | `js/app.v4.js`, `js/compare.v4.js`, `css/style.v4.css`, `index.html`, `api/routes.py` |
 
 - 任一方编辑共享文件前，必须先确认另一方没有在编辑
 - 重启服务前确认对方不在编辑状态
