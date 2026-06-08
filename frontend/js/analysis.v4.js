@@ -442,7 +442,7 @@ function updateDispatchOptions() {
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = bizGroups.map((_, i) =>
-    `<option value="group${i}">${GROUP_NAMES[i]}最优</option>`
+    `<option value="group${i}">${GROUP_NAMES[i]}收益之和最优</option>`
   ).join('');
   // 尝试保持之前的选择
   if (prev && sel.querySelector(`option[value="${prev}"]`)) {
@@ -553,12 +553,12 @@ const PRICING_CURVE_MAP = {
   ],
 };
 
-function onRetailPricingChange() {
+function onRetailPricingChange(mark = true) {
   const retailPricing = document.getElementById('sel-retail-pricing').value;
   const curveSelect = document.getElementById('sel-pricing-curve');
   const curves = PRICING_CURVE_MAP[retailPricing] || [];
   curveSelect.innerHTML = curves.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
-  onParamChange();
+  if (mark) onParamChange();
 }
 
 // --- App 注册 ---
@@ -567,5 +567,6 @@ App.analysis = {
   addSlot, toggleSlot, openCompareModal, closeCompareModal,
   updateTopology, toggleBizDropdown, addBizEntity, removeBizEntity, onRetailPricingChange,
   addGroup, removeGroup,
+  _setLoading: setLoading,
   getSlots: () => slots.filter(Boolean),
 };

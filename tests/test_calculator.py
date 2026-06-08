@@ -13,7 +13,7 @@ class TestCalculator:
     """测试 calculator.calculate() 正常返回。"""
 
     @pytest.mark.parametrize("bm", ["B1", "B2a", "B2b", "B2c", "B3a", "B3b", "B4"])
-    @pytest.mark.parametrize("pm", ["M1", "M2", "M3", "M4", "M5"])
+    @pytest.mark.parametrize("pm", ["M1", "M2", "M3", "M4", "M4-contract", "M5"])
     def test_calculate_returns_dispatch_result(self, bm, pm):
         config = ScenarioConfig(
             name=f"test-{bm}-{pm}",
@@ -27,6 +27,36 @@ class TestCalculator:
         assert len(result.load_ESS) == 24
         assert len(result.SOC) == 24
         assert len(result.load_grid) == 24
+
+    def test_calculate_honors_disabled_ess(self):
+        config = ScenarioConfig(
+            name="no-ess",
+            region="henan",
+            business_model="B1",
+            pricing_mode="M1",
+            selected_date="2026-03-15",
+            system={"net_load": True, "ess": False, "pv": False},
+        )
+        result = calculate(config)
+        assert sum(abs(v) for v in result.load_ESS) == 0
+        assert result.equivalent_cycles == 0
+        assert result.irr == 0
+
+    def test_calculate_honors_enabled_pv_and_load_profile(self):
+        config = ScenarioConfig(
+            name="pv-load-profile",
+            region="henan",
+            business_model="B1",
+            pricing_mode="M1",
+            selected_date="2026-03-15",
+            system={"net_load": True, "ess": True, "pv": True},
+            pv_params={"cap_rated": 500},
+            run_curves={"load_profile": "steady_24h", "pv_region": "henan", "pv_curve_type": "sunny"},
+        )
+        result = calculate(config)
+        assert result.pv_cap_kw == 500
+        assert sum(result.pv_generation) > 0
+        assert len(result.load_real) == 24
 
     def test_calculate_b1_m1_reasonable(self):
         config = ScenarioConfig(
@@ -88,15 +118,20 @@ class TestFinancialDefaultsSavedAndLoaded:
             float(fin[k])
 
     def test_save_and_reload_roundtrip(self):
-        import tempfile
+        import shutil
+        import uuid
         import pandas as pd
         from pathlib import Path
 
         new_data = {"r_discount": 0.10, "r_user_b1": 0.25, "r_user_b2": 0.55}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "financial_defaults.csv"
+        tmpdir = Path(".test_financial") / uuid.uuid4().hex
+        tmpdir.mkdir(parents=True, exist_ok=True)
+        try:
+            path = tmpdir / "financial_defaults.csv"
             ConfigLoader.save_financial_defaults(new_data, path)
             df = pd.read_csv(path)
             reloaded = {r["param"]: r["value"] for _, r in df.iterrows()}
             assert float(reloaded["r_discount"]) == 0.10
             assert float(reloaded["r_user_b1"]) == 0.25
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)

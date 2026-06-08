@@ -99,6 +99,7 @@ class DispatchResult:
     load_ESS: list[float] = field(default_factory=lambda: [0.0] * 24)   # kWh
     SOC: list[float] = field(default_factory=lambda: [0.0] * 24)         # 0..1
     load_grid: list[float] = field(default_factory=lambda: [0.0] * 24)   # kWh
+    load_real: list[float] = field(default_factory=lambda: [0.0] * 24)   # kWh
 
     # 收益分解
     user_bill_no_ess: float = 0.0

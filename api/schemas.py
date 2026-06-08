@@ -16,8 +16,14 @@ class WholesaleOverrides(BaseModel):
 
 class CalculateRequest(BaseModel):
     scenario_id: str
+    variant_key: str = "A"
     pricing_mode: str = "M1"
     business_model: str = "B1"
+    system: Optional[dict[str, Any]] = None
+    ess_params: Optional[dict[str, Any]] = None
+    pv_params: Optional[dict[str, Any]] = None
+    run_curves: Optional[dict[str, Any]] = None
+    private_overrides: Optional[dict[str, Any]] = None
     wholesale_overrides: Optional[WholesaleOverrides] = None
 
 
@@ -152,6 +158,7 @@ class TariffRow(BaseModel):
 
 class GlobalParamsResponse(BaseModel):
     ess: dict[str, Any]
+    pv: dict[str, Any] = {}
     financial: dict[str, Any]
     wholesale: dict[str, Any]
     tariff_admin: list[TariffRow]

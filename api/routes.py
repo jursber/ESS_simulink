@@ -73,7 +73,7 @@ def _cache_key(
 
 PM_LABELS = {
     "M1": "行政分时", "M2": "江苏模式", "M3": "合同分时",
-    "M4": "现货联动", "M5": "一口价",
+    "M4": "现货联动", "M4-contract": "中长期联动", "M5": "一口价",
 }
 BM_LABELS = {
     "B1": "用户+储能", "B2a": "售电公司最优", "B2b": "储能运营商最优",
@@ -328,8 +328,12 @@ def create_scenario(req: dict):
         business_model=str(req.get("business_model") or "B1"),
         selected_date=str(req.get("selected_date") or "2026-03-15"),
         ess_params=req.get("ess_params") or {},
+        pv_params=req.get("pv_params") or {},
         financial_params=req.get("financial_params") or {},
         private_overrides=req.get("private_overrides") or {},
+        system=req.get("system") or None,
+        run_curves=req.get("run_curves") or None,
+        variants=req.get("variants") or None,
     )
     sid = ScenarioManager().save(cfg)
     return {"status": "ok", "id": sid, "scenario": cfg.to_dict()}
@@ -348,10 +352,18 @@ def update_scenario(scenario_id: str, req: dict):
             setattr(cfg, key, req[key])
     if "ess_params" in req:
         cfg.ess_params = req["ess_params"] or {}
+    if "pv_params" in req:
+        cfg.pv_params = req["pv_params"] or {}
     if "financial_params" in req:
         cfg.financial_params = req["financial_params"] or {}
     if "private_overrides" in req:
         cfg.private_overrides = req["private_overrides"] or {}
+    if "system" in req:
+        cfg.system = req["system"] or {"net_load": True, "ess": True, "pv": False}
+    if "run_curves" in req:
+        cfg.run_curves = req["run_curves"] or {}
+    if "variants" in req:
+        cfg.variants = cfg._normalize_variants(req["variants"] or {})
     mgr.save(cfg)
     _result_cache.clear()
     return {"status": "ok", "scenario": cfg.to_dict()}
@@ -402,17 +414,31 @@ def get_options():
 def run_calculation(req: CalculateRequest):
     try:
         mgr = ScenarioManager()
-        config = mgr.load(req.scenario_id)
+        parent = mgr.load(req.scenario_id)
     except FileNotFoundError:
         raise HTTPException(404, f"方案 {req.scenario_id} 不存在")
 
-    config.pricing_mode = req.pricing_mode
-    config.business_model = req.business_model
+    variant_overrides = {
+        "pricing_mode": req.pricing_mode,
+        "business_model": req.business_model,
+    }
+    if req.system is not None:
+        variant_overrides["system"] = req.system
+    if req.ess_params is not None:
+        variant_overrides["ess_params"] = req.ess_params
+    if req.pv_params is not None:
+        variant_overrides["pv_params"] = req.pv_params
+    if req.run_curves is not None:
+        variant_overrides["run_curves"] = req.run_curves
+    if req.private_overrides is not None:
+        variant_overrides["private_overrides"] = req.private_overrides
+
+    config = parent.variant_config(req.variant_key, variant_overrides)
 
     # 缓存 key 必须包含方案内容和全局参数版本，否则参数编辑后可能返回旧结果。
     ov = req.wholesale_overrides
     key = _cache_key(
-        req.scenario_id, req.pricing_mode, req.business_model,
+        f"{req.scenario_id}:{req.variant_key}", req.pricing_mode, req.business_model,
         ov.settlement_mode if ov else "",
         ov.contract_curve_profile if ov else "",
         ov.dayahead_curve_profile if ov else "",
@@ -439,10 +465,10 @@ def run_calculation(req: CalculateRequest):
         raise HTTPException(422, f"计算失败: {e}")
 
     ess, _ = resolve_runtime_params(config)
-    prod_mwh = _day_production_load_mwh(config.region, config.selected_date)
 
-    # 获取 load_real 用于前端图表
-    load_real = _load_real_series(config.region, config.selected_date)
+    # 获取 load_real 用于前端图表；若方案选择了运行曲线，使用算法实际输入。
+    load_real = list(getattr(result, "load_real", None) or _load_real_series(config.region, config.selected_date))
+    prod_mwh = sum(load_real) / 1000.0
 
     # 获取电价曲线
     try:
@@ -472,18 +498,22 @@ def _scenario_compare_metrics(
     scenario_id: str,
     pricing_mode: str | None = None,
     business_model: str | None = None,
+    variant_key: str = "A",
+    variant_payload: dict | None = None,
+    alias: str | None = None,
 ) -> dict:
     mgr = ScenarioManager()
-    cfg = mgr.load(scenario_id)
+    parent = mgr.load(scenario_id)
+    cfg = parent.variant_config(variant_key, variant_payload or {})
     if pricing_mode:
         cfg.pricing_mode = pricing_mode
     if business_model:
         cfg.business_model = business_model
     wholesale_cfg = effective_wholesale_for_scenario(cfg)
     result = calculate(cfg, wholesale_cfg=wholesale_cfg)
+    load_real = list(getattr(result, "load_real", None) or _load_real_series(cfg.region, cfg.selected_date))
     ess, _ = resolve_runtime_params(cfg)
-    prod_mwh = _day_production_load_mwh(cfg.region, cfg.selected_date)
-    load_real = _load_real_series(cfg.region, cfg.selected_date)
+    prod_mwh = sum(load_real) / 1000.0
     resp = _build_response(result, cfg, ess, prod_mwh, 20.0, load_real=load_real)
     import numpy as np
     load_arr = np.array(load_real)
@@ -491,7 +521,8 @@ def _scenario_compare_metrics(
     resp.econ_ratings = _compute_econ_ratings(resp, result)
     return {
         "id": scenario_id,
-        "name": cfg.name,
+        "name": alias or cfg.name,
+        "variant_key": variant_key,
         "region": cfg.region,
         "date": cfg.selected_date,
         "pricing_mode": cfg.pricing_mode,
@@ -532,6 +563,9 @@ def compare_scenarios(req: dict):
                 str(item["scenario_id"]),
                 item.get("pricing_mode"),
                 item.get("business_model"),
+                item.get("variant_key") or "A",
+                item.get("variant"),
+                item.get("alias"),
             ))
         except FileNotFoundError:
             raise HTTPException(404, f"方案 {item.get('scenario_id')} 不存在")
@@ -569,6 +603,7 @@ def _tariff_to_rows(df: pd.DataFrame) -> list[TariffRow]:
 @router.get("/global-params", response_model=GlobalParamsResponse)
 def get_global_params():
     ess = ConfigLoader.load_ess_defaults("henan")
+    pv = ConfigLoader.load_pv_defaults("henan")
     fin = ConfigLoader.load_financial_defaults("henan")
     wcfg = ConfigLoader.load_wholesale_settlement()
     tariff_admin = ConfigLoader.load_tariff("henan", "admin")
@@ -590,6 +625,7 @@ def get_global_params():
             "cycle_enabled": ess.cycle_enabled,
             "r_ess_share": ess.r_ess_share,
         },
+        pv=pv,
         financial={k: float(v) for k, v in fin.items()},
         wholesale=wcfg.to_flat_dict(),
         tariff_admin=_tariff_to_rows(tariff_admin),

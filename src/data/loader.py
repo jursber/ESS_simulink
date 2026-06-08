@@ -167,6 +167,41 @@ class DataLoader:
         return hourly
 
     @staticmethod
+    def load_profile_hourly(
+        profile_name: str,
+        avg_load_mw: Optional[float] = None,
+        max_load_mw: Optional[float] = None,
+    ) -> list[float]:
+        """加载用户净生产负荷典型曲线，返回 24 小时 kWh。
+
+        典型曲线文件以 MW 存储分钟级形状。仿真按小时能量计算，因此
+        小时平均 MW × 1000 得到该小时 kWh。
+        """
+        path = LOAD_DIR / f"{profile_name}.csv"
+        if not path.exists():
+            raise FileNotFoundError(f"未找到负荷曲线: {profile_name}")
+        df = pd.read_csv(path, comment='#')
+        if "load_MW" not in df.columns:
+            raise ValueError(f"负荷曲线 {profile_name} 缺少 load_MW 列")
+        minute_data = [float(v) for v in df["load_MW"].tolist()]
+        if len(minute_data) != 1440:
+            raise ValueError(f"负荷曲线 {profile_name} 需要 1440 个分钟点")
+
+        if avg_load_mw is not None:
+            cur_avg = sum(minute_data) / len(minute_data)
+            if cur_avg > 0:
+                ratio = float(avg_load_mw) / cur_avg
+                minute_data = [v * ratio for v in minute_data]
+        elif max_load_mw is not None:
+            cur_max = max(minute_data)
+            if cur_max > 0:
+                ratio = float(max_load_mw) / cur_max
+                minute_data = [v * ratio for v in minute_data]
+
+        hourly_mw = aggregate_minute_to_hour(minute_data)
+        return [v * 1000.0 for v in hourly_mw]
+
+    @staticmethod
     def get_monthly_pda(region: str) -> list[float]:
         """返回全月日前电价扁平列表 (元/kWh)。用于 M4 现货联动电价计算。"""
         # 读取指定地区 spot_price 目录下所有月份文件

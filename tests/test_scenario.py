@@ -2,8 +2,8 @@
 import sys
 sys.path.insert(0, '.')
 
-import os
-import tempfile
+import shutil
+import uuid
 from pathlib import Path
 
 import pytest
@@ -13,9 +13,13 @@ from src.data.scenario import ScenarioManager, ScenarioConfig
 
 @pytest.fixture
 def manager():
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(".test_scenarios") / uuid.uuid4().hex
+    tmp.mkdir(parents=True, exist_ok=True)
+    try:
         mgr = ScenarioManager(storage_dir=tmp)
         yield mgr
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 @pytest.fixture
@@ -53,6 +57,36 @@ class TestScenarioConfig:
         assert cfg2.business_model == sample_config.business_model
         assert cfg2.ess_params == sample_config.ess_params
         assert cfg2.financial_params == sample_config.financial_params
+
+    def test_variants_default_to_a(self):
+        cfg = ScenarioConfig(name="test", region="henan")
+        assert set(cfg.variants) == {"A"}
+        assert cfg.variants["A"]["system"]["net_load"] is True
+        assert cfg.variants["A"]["system"]["ess"] is True
+        assert cfg.variants["A"]["system"]["pv"] is False
+
+    def test_variant_config_applies_saved_variant_and_request_overrides(self):
+        cfg = ScenarioConfig(
+            name="test",
+            region="henan",
+            variants={
+                "A": {"pricing_mode": "M1", "system": {"net_load": True, "ess": True, "pv": False}},
+                "B": {
+                    "pricing_mode": "M3",
+                    "business_model": "B1",
+                    "system": {"net_load": True, "ess": False, "pv": True},
+                    "pv_params": {"cap_rated": 500},
+                    "run_curves": {"load_profile": "steady_24h"},
+                },
+            },
+        )
+
+        variant = cfg.variant_config("B", {"system": {"net_load": True, "ess": False, "pv": False}})
+
+        assert variant.pricing_mode == "M3"
+        assert variant.system == {"net_load": True, "ess": False, "pv": False}
+        assert variant.pv_params == {"cap_rated": 500}
+        assert variant.run_curves["load_profile"] == "steady_24h"
 
 
 class TestScenarioManagerSaveLoad:

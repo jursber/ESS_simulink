@@ -127,6 +127,9 @@ def optimize_arbitrage(
     按 P_eff 排序选出候选池（pool_size 个），再在池内用滑动窗口
     选取不同起点的 N 小时作为充/放电候选，确保时序多样性。
     """
+    if params.cap_rated <= 0 or params.max_power <= 0:
+        return [0.0] * 24, [soc_initial] * 24, 0.0
+
     best_profit = -float("inf")
     best_load_ESS = [0.0] * 24
     best_SOC = [0.0] * 24
@@ -243,6 +246,7 @@ def run_dispatch(
     result.load_ESS = load_ESS
     result.SOC = SOC
     result.load_grid = load_grid
+    result.load_real = load_real
 
     # 4. 用户侧
     user_bill_no_ess = sum(load_real[h] * P_user[h] for h in range(24))
@@ -298,7 +302,7 @@ def run_dispatch(
     result.ess_net_annual = result.ess_revenue * 365 - om_annual
 
     total_discharge = sum(max(0, load_ESS[h]) for h in range(24))
-    result.equivalent_cycles = total_discharge / params.cap_rated
+    result.equivalent_cycles = total_discharge / params.cap_rated if params.cap_rated > 0 else 0.0
 
     # 9. 电价曲线（供前端图表使用）
     result.P_user_curve = P_user
@@ -354,6 +358,8 @@ def _annual_cashflow(bm: BusinessModel, result: DispatchResult, om_annual: float
 
 def _npv(investment: float, annual_cf: float, params: ESSParams, fin: FinancialParams) -> float:
     """计算 10 年 NPV。"""
+    if investment <= 0 or params.cap_rated <= 0:
+        return 0.0
     npv = -investment
     for yr in range(1, params.design_life + 1):
         cap_eff = params.cap_rated * (1 - params.r_degrade) ** yr
@@ -365,6 +371,8 @@ def _npv(investment: float, annual_cf: float, params: ESSParams, fin: FinancialP
 def _compute_irr(investment: float, annual_cf: float, params: ESSParams,
                  max_iter: int = 200, tol: float = 1e-6) -> float:
     """二分法求解 IRR。"""
+    if investment <= 0 or params.cap_rated <= 0 or annual_cf <= 0:
+        return 0.0
     lo, hi = -0.5, 2.0
     for _ in range(max_iter):
         mid = (lo + hi) / 2

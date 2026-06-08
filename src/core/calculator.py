@@ -12,6 +12,13 @@ from src.models.dispatch import BusinessModel, PricingMode, ESSParams, Financial
 from src.models.wholesale import WholesaleSettlementConfig
 
 
+def _runtime_pricing_mode(value: str) -> PricingMode:
+    """Map UI-only pricing options to the closest implemented pricing engine."""
+    if value == "M4-contract":
+        return PricingMode.M4_SPOT_LINKED
+    return PricingMode(value)
+
+
 def _coerce_ess_params(values: dict) -> dict:
     """Convert scenario/global ESS values into ESSParams constructor types."""
     out = {}
@@ -33,11 +40,28 @@ def _coerce_ess_params(values: dict) -> dict:
     return out
 
 
+def _coerce_pv_params(values: dict) -> dict:
+    out = {}
+    int_keys = {"design_life"}
+    valid_keys = set(PVParams.__dataclass_fields__)
+    for key, value in values.items():
+        if key not in valid_keys:
+            continue
+        if key in int_keys:
+            out[key] = int(float(value))
+        else:
+            out[key] = float(value)
+    return out
+
+
 def resolve_runtime_params(config: ScenarioConfig) -> tuple[ESSParams, dict]:
     """Resolve scenario private params against global defaults for runtime use."""
     ess_defaults = asdict(ConfigLoader.load_ess_defaults(config.region))
     fin_defaults = ConfigLoader.load_financial_defaults(config.region)
     ess_values, fin_values = config.resolve_params(ess_defaults, fin_defaults)
+    if not (config.system or {}).get("ess", True):
+        ess_values["cap_rated"] = 0
+        ess_values["power_rated"] = 0
     return ESSParams(**_coerce_ess_params(ess_values)), fin_values
 
 
@@ -92,7 +116,8 @@ def calculate(
         "contract": ConfigLoader.load_tariff(region, "contract"),
         "flat_price": 0.55,
     }
-    P_user = compute_user_price(PricingMode(config.pricing_mode), tariffs,
+    pricing_mode = _runtime_pricing_mode(config.pricing_mode)
+    P_user = compute_user_price(pricing_mode, tariffs,
                                  DataLoader.get_monthly_pda(region))
 
     hourly = DataLoader.load_processed_load(
@@ -101,6 +126,16 @@ def calculate(
         P_ref=P_ref,
         q_dayahead_cleared=q_cleared,
     )
+    run_curves = config.run_curves or {}
+    profile_name = run_curves.get("load_profile")
+    if profile_name and profile_name != "daily_default":
+        load_override = DataLoader.load_profile_hourly(
+            str(profile_name),
+            avg_load_mw=run_curves.get("avg_load"),
+            max_load_mw=run_curves.get("max_load"),
+        )
+        for h, load_value in enumerate(load_override):
+            hourly[h].load_real = float(load_value)
     for i, h in enumerate(hourly):
         h.P_user = P_user[i]
 
@@ -113,25 +148,21 @@ def calculate(
 
     # 光伏参数
     pv_dict = ConfigLoader.load_pv_defaults(region)
-    pv_params = PVParams(
-        cap_rated=float(pv_dict.get("cap_rated", 0)),
-        feed_in_tariff=float(pv_dict.get("feed_in_tariff", 0.4)),
-        self_use_discount=float(pv_dict.get("self_use_discount", 0.8)),
-        unit_cost=float(pv_dict.get("unit_cost", 3.5)),
-        r_om=float(pv_dict.get("r_om", 0.015)),
-        design_life=int(pv_dict.get("design_life", 25)),
-        r_degrade_first=float(pv_dict.get("r_degrade_first", 0.02)),
-        r_degrade=float(pv_dict.get("r_degrade", 0.005)),
-    )
+    pv_dict.update(config.pv_params or {})
+    if not (config.system or {}).get("pv", False):
+        pv_dict["cap_rated"] = 0
+    pv_params = PVParams(**_coerce_pv_params(pv_dict))
+    pv_region = str((config.run_curves or {}).get("pv_region") or pv_dict.get("region", region))
+    pv_curve_type = str((config.run_curves or {}).get("pv_curve_type") or pv_dict.get("curve_type", "annual_avg"))
     pv_curve = ConfigLoader.load_pv_curve(
-        str(pv_dict.get("region", region)),
-        str(pv_dict.get("curve_type", "annual_avg")),
+        pv_region,
+        pv_curve_type,
     )
 
     return run_dispatch(
         hourly,
         BusinessModel(bm_code),
-        PricingMode(config.pricing_mode),
+        pricing_mode,
         ess_params,
         FinancialParams(
             r_discount=float(fin_defaults.get("r_discount", 0.06)),

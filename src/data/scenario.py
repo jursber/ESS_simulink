@@ -25,9 +25,13 @@ class ScenarioConfig:
         pricing_mode: str = "M1",
         business_model: str = "B1",
         ess_params: dict | None = None,
+        pv_params: dict | None = None,
         financial_params: dict | None = None,
         selected_date: str = "2026-03-15",
         private_overrides: dict | None = None,
+        system: dict | None = None,
+        run_curves: dict | None = None,
+        variants: dict | None = None,
         id: str | None = None,
         created_at: str | None = None,
     ):
@@ -38,9 +42,47 @@ class ScenarioConfig:
         self.pricing_mode = pricing_mode
         self.business_model = business_model
         self.ess_params = ess_params or {}
+        self.pv_params = pv_params or {}
         self.financial_params = financial_params or {}
         self.selected_date = selected_date
         self.private_overrides = private_overrides or {}
+        self.system = system or {"net_load": True, "ess": True, "pv": False}
+        self.run_curves = run_curves or {}
+        self.variants = self._normalize_variants(variants)
+
+    def _base_variant(self) -> dict:
+        return {
+            "key": "A",
+            "name": "A",
+            "pricing_mode": self.pricing_mode,
+            "business_model": self.business_model,
+            "selected_date": self.selected_date,
+            "region": self.region,
+            "system": deepcopy(self.system),
+            "ess_params": deepcopy(self.ess_params),
+            "pv_params": deepcopy(self.pv_params),
+            "financial_params": deepcopy(self.financial_params),
+            "private_overrides": deepcopy(self.private_overrides),
+            "run_curves": deepcopy(self.run_curves),
+            "dispatch_target": "group0",
+            "wholesale_overrides": {},
+        }
+
+    def _normalize_variants(self, variants: dict | None) -> dict:
+        if not variants:
+            return {"A": self._base_variant()}
+        normalized = {}
+        for key in ("A", "B", "C", "D"):
+            if key in variants:
+                item = deepcopy(variants[key]) or {}
+                base = self._base_variant()
+                base.update(item)
+                base["key"] = key
+                base["name"] = item.get("name") or key
+                normalized[key] = base
+        if "A" not in normalized:
+            normalized["A"] = self._base_variant()
+        return normalized
 
     def to_dict(self) -> dict:
         return {
@@ -51,9 +93,13 @@ class ScenarioConfig:
             "pricing_mode": self.pricing_mode,
             "business_model": self.business_model,
             "ess_params": self.ess_params,
+            "pv_params": self.pv_params,
             "financial_params": self.financial_params,
             "selected_date": self.selected_date,
             "private_overrides": self.private_overrides,
+            "system": self.system,
+            "run_curves": self.run_curves,
+            "variants": self.variants,
         }
 
     @classmethod
@@ -66,9 +112,37 @@ class ScenarioConfig:
             pricing_mode=d.get("pricing_mode", "M1"),
             business_model=d.get("business_model", "B1"),
             ess_params=d.get("ess_params", {}),
+            pv_params=d.get("pv_params", {}),
             financial_params=d.get("financial_params", {}),
             selected_date=d.get("selected_date", "2026-03-15"),
             private_overrides=d.get("private_overrides", {}),
+            system=d.get("system"),
+            run_curves=d.get("run_curves"),
+            variants=d.get("variants"),
+        )
+
+    def variant_config(self, variant_key: str = "A", overrides: dict | None = None) -> "ScenarioConfig":
+        """返回用于一次仿真的子方案配置，不修改父方案对象。"""
+        key = variant_key if variant_key in self.variants else "A"
+        data = deepcopy(self.variants.get(key, self._base_variant()))
+        if overrides:
+            for k, v in overrides.items():
+                data[k] = deepcopy(v)
+        return ScenarioConfig(
+            id=self.id,
+            name=f"{self.name}-{key}",
+            created_at=self.created_at,
+            region=data.get("region", self.region),
+            pricing_mode=data.get("pricing_mode", self.pricing_mode),
+            business_model=data.get("business_model", self.business_model),
+            ess_params=data.get("ess_params") or {},
+            pv_params=data.get("pv_params") or {},
+            financial_params=data.get("financial_params") or {},
+            selected_date=data.get("selected_date", self.selected_date),
+            private_overrides=data.get("private_overrides") or {},
+            system=data.get("system") or {"net_load": True, "ess": True, "pv": False},
+            run_curves=data.get("run_curves") or {},
+            variants={key: data},
         )
 
     def resolve_params(self, global_ess: dict, global_fin: dict) -> tuple[dict, dict]:

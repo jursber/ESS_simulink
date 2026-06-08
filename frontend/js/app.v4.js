@@ -39,6 +39,7 @@ function populateSelects() {
 
 function fillSelect(id, items) {
   const sel = document.getElementById(id);
+  if (!sel) return;
   sel.innerHTML = items.map(it => `<option value="${it.value}">${it.label}</option>`).join('');
 }
 
@@ -49,7 +50,11 @@ function fillScenarioSelect(id) {
 
 async function selectScenario(id) {
   state.currentScenario = id;
-  await runCalculation();
+  if (App.workbench?.loadParent) {
+    await App.workbench.loadParent(id);
+  } else if (App.analysis?.runCalculation) {
+    await App.analysis.runCalculation();
+  }
 }
 
 // --- 导航 ---
@@ -120,6 +125,15 @@ async function saveScenario() {
   const scenarioId = state.currentScenario;
   if (!scenarioId) {
     alert('当前没有可保存的方案');
+    return;
+  }
+  if (App.workbench?.saveParentScenario) {
+    try {
+      await App.workbench.saveParentScenario();
+      state.scenarios = await api('/scenarios');
+    } catch (e) {
+      alert('保存失败: ' + e.message);
+    }
     return;
   }
   const pricingMode = document.getElementById('sel-retail-pricing')?.value || 'M1';

@@ -25,7 +25,7 @@
   <div class="topbar-right">
     <div class="topbar-actions">
       <button class="btn" onclick="loadScenarios()">加载</button>
-      <button class="btn" onclick="saveScenario()">保存</button>
+      <button class="btn" onclick="saveScenario()">保存方案</button>
       <button class="btn" onclick="resetParams()">重置</button>
     </div>
   </div>
@@ -64,13 +64,13 @@
                         <line x1="175" y1="108" x2="175" y2="176" class="flow-line-solid" stroke="#7EA8FA"/>
                         <line x1="60" y1="176" x2="456" y2="176" stroke="#7EA8FA" stroke-width="2" stroke-linecap="round" fill="none" class="flow-node" opacity=".5"/>
                         <line x1="100" y1="176" x2="100" y2="218" class="flow-line-solid" stroke="#4E9F3D"/>
-                        <line x1="205" y1="176" x2="205" y2="218" class="flow-line-solid" stroke="#F2A104" opacity=".35"/>
-                        <line x1="310" y1="176" x2="310" y2="218" class="flow-line-solid" stroke="#D4ADFC"/>
-                        <line x1="416" y1="176" x2="416" y2="218" class="flow-line-solid" stroke="#D4ADFC" opacity=".35"/>
+                        <line x1="205" y1="176" x2="205" y2="218" class="flow-line-solid" stroke="#4E9F3D" opacity=".35"/>
+                        <line x1="310" y1="176" x2="310" y2="218" class="flow-line-solid" stroke="#F2A104"/>
+                        <line x1="416" y1="176" x2="416" y2="218" class="flow-line-solid" stroke="#F2A104" opacity=".35"/>
                         <line x1="340" y1="56" x2="340" y2="84" class="flow-line-dash flow-forward" stroke="#7EA8FA"/>
                         <line x1="199" y1="96" x2="302" y2="96" class="flow-line-dash flow-forward" stroke="#7EA8FA"/>
                         <!-- 光点动画 -->
-                        <circle r="3" fill="#F2A104" opacity=".8" class="flow-pulse"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#pv-path"/></animateMotion></circle>
+                        <circle r="3" fill="#4E9F3D" opacity=".8" class="flow-pulse"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#pv-path"/></animateMotion></circle>
                         <path id="pv-path" d="M205,218 L205,176" fill="none"/>
                         <circle r="3" fill="#4E9F3D" opacity=".8" class="flow-pulse"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#ess-path"/></animateMotion></circle>
                         <path id="ess-path" d="M100,218 L100,176" fill="none"/>
@@ -87,14 +87,14 @@
                         <rect x="60" y="218" width="80" height="36" rx="5" fill="rgba(78,159,61,0.10)" stroke="#4E9F3D" stroke-width="1.5" class="flow-node" id="flow-ess"/>
                         <text x="100" y="241" text-anchor="middle" fill="#4E9F3D" font-size="11" font-weight="600">储能</text>
                         <!-- 光伏 -->
-                        <rect x="165" y="218" width="80" height="36" rx="5" fill="rgba(242,161,4,0.08)" stroke="#F2A104" stroke-width="1.5" opacity=".35" class="flow-node" id="flow-pv"/>
-                        <text x="205" y="241" text-anchor="middle" fill="rgba(242,161,4,0.4)" font-size="11" font-weight="600" id="flow-pv-text">光伏</text>
+                        <rect x="165" y="218" width="80" height="36" rx="5" fill="rgba(78,159,61,0.10)" stroke="#4E9F3D" stroke-width="1.5" opacity=".8" class="flow-node" id="flow-pv"/>
+                        <text x="205" y="241" text-anchor="middle" fill="rgba(78,159,61,0.45)" font-size="11" font-weight="600" id="flow-pv-text">光伏</text>
                         <!-- 净生产负荷 -->
-                        <rect x="270" y="218" width="80" height="36" rx="5" fill="rgba(212,173,252,0.08)" stroke="#D4ADFC" stroke-width="1.5" class="flow-node"/>
-                        <text x="310" y="241" text-anchor="middle" fill="#D4ADFC" font-size="11" font-weight="600">净生产负荷</text>
+                        <rect x="270" y="218" width="80" height="36" rx="5" fill="rgba(242,161,4,0.10)" stroke="#F2A104" stroke-width="1.5" class="flow-node" id="flow-net-load"/>
+                        <text x="310" y="241" text-anchor="middle" fill="#F2A104" font-size="11" font-weight="600" id="flow-net-load-text">净生产负荷</text>
                         <!-- 可调负荷 -->
-                        <rect x="376" y="218" width="80" height="36" rx="5" fill="rgba(212,173,252,0.08)" stroke="#D4ADFC" stroke-width="1.5" opacity=".35" class="flow-node" id="flow-load-flex"/>
-                        <text x="416" y="241" text-anchor="middle" fill="rgba(212,173,252,0.4)" font-size="11" font-weight="600" id="flow-flex-text">可调负荷</text>
+                        <rect x="376" y="218" width="80" height="36" rx="5" fill="rgba(242,161,4,0.04)" stroke="#F2A104" stroke-width="1.5" opacity=".8" class="flow-node topo-disabled-svg" id="flow-load-flex"/>
+                        <text x="416" y="241" text-anchor="middle" fill="rgba(176,176,176,0.45)" font-size="11" font-weight="600" opacity=".8" id="flow-flex-text">可调负荷</text>
                       </svg>
                     </div>
                     <!-- 各方经济性概览 -->
@@ -228,7 +228,7 @@
                 </div>
               </div>
               <div id="inv-none-content" style="display:none;flex:1;align-items:center;justify-content:center">
-                <div style="font-size:16px;color:var(--text-2);font-weight:var(--fw-medium)">无能源设施</div>
+                <div style="font-size:16px;color:var(--text-2);font-weight:var(--fw-medium)">当前未选择任意光储设施</div>
               </div>
             </div>
           </div>
@@ -272,6 +272,10 @@
         <div class="param-card">
           <div class="param-hd">
             <span class="param-hd-title">参数调节区</span>
+            <div class="sim-tabs">
+              <button class="sim-tab active">单日简单模拟</button>
+              <button class="sim-tab" disabled>多日深度模拟</button>
+            </div>
           </div>
 
           <!-- 系统构成 -->
@@ -279,15 +283,15 @@
             <div class="param-sec-title">系统构成</div>
             <div class="topo-controls" style="flex-direction:row;flex-wrap:wrap;gap:12px">
               <label class="checkbox-item">
-                <input type="checkbox" id="chk-load" checked onchange="App.analysis.updateTopology()">
+                <input type="checkbox" id="chk-load" checked disabled onchange="App.workbench.updateCompositionUI(true)">
                 <span>用户净生产负荷</span>
               </label>
               <label class="checkbox-item">
-                <input type="checkbox" id="chk-ess" checked onchange="App.analysis.updateTopology()">
+                <input type="checkbox" id="chk-ess" checked onchange="App.workbench.updateCompositionUI(true)">
                 <span>表后储能</span>
               </label>
               <label class="checkbox-item">
-                <input type="checkbox" id="chk-pv" onchange="App.analysis.updateTopology()">
+                <input type="checkbox" id="chk-pv" onchange="App.workbench.updateCompositionUI(true)">
                 <span>分布式光伏</span>
               </label>
               <label class="toggle-item">
@@ -321,9 +325,12 @@
             <div class="biz-dropdown" id="biz-dropdown" style="display:none"></div>
             <div class="param-row" style="margin-top:10px">
               <span class="param-label">调度目标</span>
-              <select class="param-select" id="sel-dispatch-target">
-                <option value="group0">第一组最优</option>
-              </select>
+              <div class="dispatch-target-line">
+                <select class="param-select" id="sel-dispatch-target" onchange="App.workbench.markChanged()">
+                  <option value="group0">第一组收益之和最优</option>
+                </select>
+                <label class="demand-check"><input type="checkbox" disabled>考虑需量</label>
+              </div>
             </div>
           </div>
 
@@ -332,13 +339,13 @@
             <div class="param-sec-title">电价模式</div>
             <div class="param-row">
               <span class="param-label">批发侧规则</span>
-              <select class="param-select" id="sel-wholesale-rule">
-                <option value="GUANGDONG_STYLE">广东型三部制</option>
+              <select class="param-select" id="sel-wholesale-rule" onchange="App.workbench.markChanged()">
+                <option value="GUANGDONG_STYLE">主流三部制</option>
               </select>
             </div>
             <div class="param-row">
-              <span class="param-label">零售电价</span>
-              <select class="param-select" id="sel-retail-pricing" onchange="App.analysis.onRetailPricingChange()">
+              <span class="param-label">零售侧电价</span>
+              <select class="param-select" id="sel-retail-pricing" onchange="App.analysis.onRetailPricingChange();App.workbench.markChanged()">
                 <option value="M1">行政分时</option>
                 <option value="M3">合同分时</option>
                 <option value="M5">固定价格</option>
@@ -348,23 +355,32 @@
             </div>
             <div class="param-row">
               <span class="param-label">电价曲线</span>
-              <select class="param-select" id="sel-pricing-curve"></select>
+              <select class="param-select" id="sel-pricing-curve" onchange="App.workbench.markChanged()"></select>
               <a class="link-btn" onclick="App.params.selectPanel('tariff-tou');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
             </div>
           </div>
 
-          <!-- 运行参数 -->
+          <!-- 运行曲线 -->
           <div class="param-sec" id="sec-run-params">
-            <div class="param-sec-title">运行参数</div>
+            <div class="param-sec-title">运行曲线</div>
             <div class="param-row">
-              <span class="param-label">现货电价</span>
-              <select class="param-select" id="sel-spot-profile"></select>
-              <a class="link-btn" onclick="App.params.selectPanel('spot-price');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
+              <span class="param-label">用户净生产负荷曲线</span>
+              <select class="param-select" id="sel-load-profile" onchange="App.workbench.markChanged()"></select>
+              <a class="link-btn" onclick="App.workbench.openLoadModal()">编辑</a>
             </div>
             <div class="param-row">
-              <span class="param-label">中长期电价</span>
-              <select class="param-select" id="sel-contract-profile"></select>
-              <a class="link-btn" onclick="App.params.selectPanel('contract');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
+              <span class="param-label">光伏出力地区</span>
+              <select class="param-select" id="sel-pv-region" onchange="App.workbench.markChanged()">
+                <option value="henan">河南</option>
+              </select>
+            </div>
+            <div class="param-row">
+              <span class="param-label">光伏曲线类型</span>
+              <select class="param-select" id="sel-pv-curve-type" onchange="App.workbench.markChanged()">
+                <option value="annual_avg">年平均</option>
+                <option value="sunny">晴天</option>
+                <option value="cloudy">阴天</option>
+              </select>
             </div>
           </div>
 
@@ -372,10 +388,8 @@
           <div class="param-sec" id="sec-device-params">
             <div class="param-sec-title">设备参数</div>
             <div class="device-tabs">
-              <a class="device-tab" onclick="App.params.selectPanel('load-curve');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">用户</a>
-              <a class="device-tab" onclick="App.params.selectPanel('ess');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">储能</a>
-              <a class="device-tab" onclick="App.params.selectPanel('pv');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">光伏</a>
-              <a class="device-tab" onclick="App.params.selectPanel('wholesale');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">售电</a>
+              <a class="device-tab" id="device-ess-btn" onclick="App.workbench.openDeviceModal('ess')">储能</a>
+              <a class="device-tab" id="device-pv-btn" onclick="App.workbench.openDeviceModal('pv')">光伏</a>
             </div>
           </div>
 
@@ -390,13 +404,14 @@
         <!-- 方案槽位区 -->
         <div class="slot-bar" id="slot-bar">
           <div class="slot-group">
-            <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.analysis.toggleSlot(0)"><span class="slot-dot"></span><span>方案 A</span></button>
-            <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.analysis.toggleSlot(1)"><span class="slot-dot"></span><span>方案 B</span></button>
-            <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.analysis.toggleSlot(2)"><span class="slot-dot"></span><span>方案 C</span></button>
-            <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.analysis.toggleSlot(3)"><span class="slot-dot"></span><span>方案 D</span></button>
-            <button class="slot-add" id="slot-add" onclick="App.analysis.addSlot()" title="记录当前方案">+</button>
+            <button class="slot-btn" data-slot="0" id="slot-0" onclick="App.workbench.switchSlot(0)"><span class="slot-dot"></span><span class="slot-label">A</span></button>
+            <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.workbench.switchSlot(1)"><span class="slot-dot"></span><span class="slot-label">B</span></button>
+            <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.workbench.switchSlot(2)"><span class="slot-dot"></span><span class="slot-label">C</span></button>
+            <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.workbench.switchSlot(3)"><span class="slot-dot"></span><span class="slot-label">D</span></button>
+            <button class="slot-add" id="slot-add" onclick="App.workbench.addSlot()" title="新增子方案">+</button>
           </div>
-          <button class="slot-compare" id="slot-compare" onclick="App.analysis.openCompareModal()" title="比较" disabled>比较</button>
+          <button class="slot-compare" id="slot-stash" onclick="App.workbench.stashActiveVariant()" title="暂存">暂存</button>
+          <button class="slot-compare" id="slot-compare" onclick="App.workbench.openCompare()" title="比较" disabled>比较</button>
         </div>
       </div>
     </div>
@@ -570,8 +585,9 @@
 <script src="js/analysis.v4.js?v=20260608-night"></script>
 <script src="js/params.v4.js?v=20260608-night"></script>
 <script src="js/compare.v4.js?v=20260608-night"></script>
+<script src="js/workbench.v4.js?v=20260608-workbench"></script>
 <script>
-window.runCalculation = () => App.analysis?.runCalculation?.();
+window.runCalculation = () => App.workbench?.runCalculation?.();
 window.switchInvTab = (t) => App.analysis?.switchInvTab?.(t);
 window.toggleSection = (el) => App.params?.toggleSection?.(el);
 window.switchTariffTab = (m) => App.params?.switchTariffTab?.(m);
@@ -584,9 +600,9 @@ window.loadGlobalParams = () => App.params?.loadGlobalParams?.();
 window.selectPanel = (id) => App.params?.selectPanel?.(id);
 window.onContractModeChange = () => App.params?.onContractModeChange?.();
 window.onContractCurveChange = () => App.params?.onContractCurveChange?.();
-window.toggleSlot = (i) => App.analysis?.toggleSlot?.(i);
-window.addSlot = () => App.analysis?.addSlot?.();
-window.openCompareModal = () => App.analysis?.openCompareModal?.();
+window.toggleSlot = (i) => App.workbench?.switchSlot?.(i);
+window.addSlot = () => App.workbench?.addSlot?.();
+window.openCompareModal = () => App.workbench?.openCompare?.();
 window.closeCompareModal = (e) => App.analysis?.closeCompareModal?.(e);
 window.onContractCurveTypeChange = () => App.params?.onContractCurveTypeChange?.();
 window.onTariffAdminCurveChange = () => App.params?.onTariffAdminCurveChange?.();

@@ -94,6 +94,8 @@
     if (!slots || !slots.length) return;
     state.lanes = slots.slice(0, 4).map((s, i) => ({
       scenario_id: s.scenarioId,
+      variant_key: s.variantKey || 'A',
+      variant: s.variant || null,
       pricing_mode: s.pricingMode || 'M1',
       business_model: s.businessModel || 'B1',
       alias: s.label || `方案 ${String.fromCharCode(65 + i)}`,
@@ -178,6 +180,10 @@
     const details = await Promise.all(list.map(s => App.api(`/scenarios/${s.id}`).catch(() => null)));
     body.innerHTML = details.filter(Boolean).map(d => {
       const overrides = Object.keys(d.private_overrides || {}).length + Object.keys(d.ess_params || {}).length + Object.keys(d.financial_params || {}).length;
+      const variantKeys = Object.keys(d.variants || { A: {} }).filter(k => ['A','B','C','D'].includes(k));
+      const variantButtons = variantKeys.map(k =>
+        `<button class="mini-action scenario-variant-btn" onclick="App.scenarios.use('${d.id}','${k}')">${k}</button>`
+      ).join('');
       return `
         <tr>
           <td><input class="table-input" value="${esc(d.name)}" onchange="App.scenarios.rename('${d.id}',this.value)"></td>
@@ -189,9 +195,12 @@
           <td>${esc((d.created_at || '').slice(0, 10))}</td>
           <td>
             <button class="mini-action" onclick="App.scenarios.duplicate('${d.id}')">复制</button>
-            <button class="mini-action" onclick="App.scenarios.use('${d.id}')">加载</button>
+            <button class="mini-action" onclick="App.scenarios.use('${d.id}','A')">加载A</button>
             <button class="mini-action danger" onclick="App.scenarios.remove('${d.id}')">删除</button>
           </td>
+        </tr>
+        <tr class="scenario-variant-row">
+          <td colspan="8"><span class="scenario-variant-label">子方案</span>${variantButtons}</td>
         </tr>
       `;
     }).join('');
@@ -224,8 +233,10 @@
     await App.loadScenarios();
   }
 
-  async function useScenario(id) {
-    App.selectScenario(id);
+  async function useScenario(id, variantKey = 'A') {
+    await App.selectScenario(id);
+    const idx = ['A','B','C','D'].indexOf(variantKey);
+    if (idx >= 0) App.workbench?.switchSlot?.(idx);
     document.querySelector('.top-nav-item[data-page="analysis"]')?.click();
   }
 
