@@ -356,7 +356,6 @@
             <div class="param-row">
               <span class="param-label">电价曲线</span>
               <select class="param-select" id="sel-pricing-curve" onchange="App.workbench.markChanged()"></select>
-              <a class="link-btn" onclick="App.params.selectPanel('tariff-tou');document.querySelector('.top-nav-item[data-page=&quot;params&quot;]').click()">编辑</a>
             </div>
           </div>
 
@@ -366,21 +365,10 @@
             <div class="param-row">
               <span class="param-label">用户净生产负荷曲线</span>
               <select class="param-select" id="sel-load-profile" onchange="App.workbench.markChanged()"></select>
-              <a class="link-btn" onclick="App.workbench.openLoadModal()">编辑</a>
             </div>
             <div class="param-row">
-              <span class="param-label">光伏出力地区</span>
-              <select class="param-select" id="sel-pv-region" onchange="App.workbench.markChanged()">
-                <option value="henan">河南</option>
-              </select>
-            </div>
-            <div class="param-row">
-              <span class="param-label">光伏曲线类型</span>
-              <select class="param-select" id="sel-pv-curve-type" onchange="App.workbench.markChanged()">
-                <option value="annual_avg">年平均</option>
-                <option value="sunny">晴天</option>
-                <option value="cloudy">阴天</option>
-              </select>
+              <span class="param-label">光伏出力曲线</span>
+              <select class="param-select" id="sel-pv-curve-id" onchange="App.workbench.markChanged()"></select>
             </div>
           </div>
 

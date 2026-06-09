@@ -581,6 +581,10 @@ const PRICING_CURVE_MAP = {
 };
 
 function onRetailPricingChange(mark = true) {
+  if (App.workbench?.refreshPricingCurveOptions) {
+    App.workbench.refreshPricingCurveOptions(mark);
+    return;
+  }
   const retailPricing = document.getElementById('sel-retail-pricing').value;
   const curveSelect = document.getElementById('sel-pricing-curve');
   const curves = PRICING_CURVE_MAP[retailPricing] || [];

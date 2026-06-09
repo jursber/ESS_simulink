@@ -9,6 +9,7 @@
     parentDirty: false,
     globalParams: null,
     loadProfiles: [],
+    simpleDayCatalog: null,
   };
 
   const clone = (v) => JSON.parse(JSON.stringify(v || {}));
@@ -29,8 +30,9 @@
       private_overrides: {},
       run_curves: {
         load_profile: 'daily_default',
-        pv_region: 'henan',
-        pv_curve_type: 'annual_avg',
+        pv_curve_id: '',
+        spot_curve_id: '',
+        retail_curve_id: 'admin',
       },
       wholesale_overrides: {
         settlement_mode: 'GUANGDONG_STYLE',
@@ -87,9 +89,11 @@
   function collectVariantFromUI() {
     const current = mergeVariant(state.activeKey, activeVariant());
     const wholesale = current.wholesale_overrides || {};
+    const pricingMode = el('sel-retail-pricing')?.value || current.pricing_mode || 'M1';
+    const priceChoice = selectedPricingCurve();
     return {
       ...current,
-      pricing_mode: el('sel-retail-pricing')?.value || current.pricing_mode || 'M1',
+      pricing_mode: pricingMode,
       business_model: current.business_model || 'B1',
       dispatch_target: el('sel-dispatch-target')?.value || 'group0',
       ui_state: {
@@ -104,8 +108,9 @@
       run_curves: {
         ...(current.run_curves || {}),
         load_profile: el('sel-load-profile')?.value || current.run_curves?.load_profile || 'daily_default',
-        pv_region: el('sel-pv-region')?.value || current.run_curves?.pv_region || 'henan',
-        pv_curve_type: el('sel-pv-curve-type')?.value || current.run_curves?.pv_curve_type || 'annual_avg',
+        pv_curve_id: el('sel-pv-curve-id')?.value || current.run_curves?.pv_curve_id || '',
+        spot_curve_id: priceChoice.category === 'spot' ? priceChoice.value : '',
+        retail_curve_id: priceChoice.category === 'retail' ? priceChoice.value : (current.run_curves?.retail_curve_id || 'admin'),
       },
       wholesale_overrides: {
         ...wholesale,
@@ -141,9 +146,8 @@
     if (el('chk-ess')) el('chk-ess').checked = v.system?.ess !== false;
     if (el('chk-pv')) el('chk-pv').checked = !!v.system?.pv;
     if (el('sel-load-profile')) el('sel-load-profile').value = v.run_curves?.load_profile || 'daily_default';
-    if (el('sel-pv-region')) el('sel-pv-region').value = v.run_curves?.pv_region || 'henan';
-    if (el('sel-pv-curve-type')) el('sel-pv-curve-type').value = v.run_curves?.pv_curve_type || 'annual_avg';
-    if (App.analysis?.onRetailPricingChange) App.analysis.onRetailPricingChange(false);
+    if (el('sel-pv-curve-id')) setSelectValue(el('sel-pv-curve-id'), v.run_curves?.pv_curve_id || '');
+    refreshPricingCurveOptions(false, v);
     updateCompositionUI(false);
   }
 
@@ -277,8 +281,7 @@
     paintNode('flow-pv', 'flow-pv-text', hasPv, '#4E9F3D', 'rgba(78,159,61,0.10)');
     paintNode('flow-net-load', 'flow-net-load-text', true, '#F2A104', 'rgba(242,161,4,0.10)');
     paintNode('flow-load-flex', 'flow-flex-text', false, '#F2A104', 'rgba(242,161,4,0.04)');
-    toggleControl('sel-pv-region', hasPv);
-    toggleControl('sel-pv-curve-type', hasPv);
+    toggleControl('sel-pv-curve-id', hasPv);
     toggleDeviceButton('device-ess-btn', hasEss);
     toggleDeviceButton('device-pv-btn', hasPv);
     if (!hasEss) clearFacilityResults('ess');
@@ -329,12 +332,61 @@
     return state.loadProfiles;
   }
 
+  async function ensureSimpleDayCatalog() {
+    if (!state.simpleDayCatalog) state.simpleDayCatalog = await App.api('/simple-day/catalog');
+    return state.simpleDayCatalog;
+  }
+
+  function optionHtml(items, valueKey = 'id') {
+    return (items || []).map(item => `<option value="${item[valueKey]}" data-category="${item.category || ''}">${item.label || item.id}</option>`).join('');
+  }
+
+  function selectedPricingCurve() {
+    const select = el('sel-pricing-curve');
+    const option = select?.selectedOptions?.[0];
+    return {
+      value: select?.value || '',
+      category: option?.dataset?.category || '',
+    };
+  }
+
+  function setSelectValue(select, value) {
+    if (!select) return;
+    if (value && [...select.options].some(opt => opt.value === value)) {
+      select.value = value;
+    } else if (select.options.length) {
+      select.selectedIndex = 0;
+    }
+  }
+
   async function initRunCurveControls() {
-    const profiles = await ensureLoadProfiles().catch(() => []);
+    const catalog = await ensureSimpleDayCatalog().catch(() => null);
+    const profiles = catalog?.load || await ensureLoadProfiles().catch(() => []);
     const sel = el('sel-load-profile');
     if (sel && profiles.length) {
-      sel.innerHTML = profiles.map(p => `<option value="${p.name}">${p.label || p.name}</option>`).join('');
+      sel.innerHTML = profiles.map(p => `<option value="${p.id || p.name}">${p.label || p.id || p.name}</option>`).join('');
     }
+    const pvSel = el('sel-pv-curve-id');
+    if (pvSel && catalog?.pv?.length) {
+      pvSel.innerHTML = optionHtml(catalog.pv);
+    }
+    const priceSel = el('sel-pricing-curve');
+    if (priceSel) {
+      refreshPricingCurveOptions(false);
+    }
+  }
+
+  function refreshPricingCurveOptions(mark = true, variant = null) {
+    const priceSel = el('sel-pricing-curve');
+    if (!priceSel || !state.simpleDayCatalog) return;
+    const v = variant || activeVariant() || {};
+    const pricingMode = el('sel-retail-pricing')?.value || v.pricing_mode || 'M1';
+    const useSpot = pricingMode === 'M4' || pricingMode === 'M4-contract';
+    const items = useSpot ? (state.simpleDayCatalog.spot || []).slice(0, 200) : (state.simpleDayCatalog.retail || []);
+    priceSel.innerHTML = optionHtml(items);
+    const selected = useSpot ? v.run_curves?.spot_curve_id : v.run_curves?.retail_curve_id;
+    setSelectValue(priceSel, selected || '');
+    if (mark) markChanged();
   }
 
   function openDeviceModal(kind) {
@@ -519,6 +571,7 @@
     stashActiveVariant,
     saveParentScenario,
     markChanged,
+    refreshPricingCurveOptions,
     updateCompositionUI,
     openDeviceModal,
     openLoadModal,
