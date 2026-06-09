@@ -298,6 +298,12 @@ def _build_response(
             retail_profit_wan=result.retail_profit / 10000 if result.retail_profit else 0,
         ),
         pv_investment=pv_invest,
+        simulation_meta={
+            **(getattr(result, "simulation_meta", {}) or {}),
+            "monthly_estimation": "daily_result_times_30",
+            "annualization": "daily_result_times_365",
+            "display_label": "单日典型曲线 | 月度*30 | 年度*365",
+        },
     )
 
 
@@ -536,6 +542,7 @@ def _scenario_compare_metrics(
         "pricing_mode_label": PM_LABELS.get(cfg.pricing_mode, cfg.pricing_mode),
         "business_model": cfg.business_model,
         "business_model_label": BM_LABELS.get(cfg.business_model, cfg.business_model),
+        "simulation_meta": resp.simulation_meta,
         "metrics": {
             "total_welfare_wan": resp.welfare.total_welfare_wan,
             "user_savings_wan": resp.welfare.user_savings_wan,

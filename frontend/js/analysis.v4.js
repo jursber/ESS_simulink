@@ -249,6 +249,8 @@ function renderResult(r) {
 
   document.getElementById('tag-pm').textContent = document.getElementById('sel-retail-pricing')?.selectedOptions[0]?.text || '合同分时';
   document.getElementById('tag-bm').textContent = '商业模式';
+  const tagSimulation = document.getElementById('tag-simulation');
+  if (tagSimulation) tagSimulation.textContent = r.simulation_meta?.display_label || '单日典型曲线 | 月度*30 | 年度*365';
 
   // 多方收益
   document.getElementById('welfare-badge').textContent = `总社会福利提升 ${fmt(welfare.total_welfare_wan)} 万元`;

@@ -137,6 +137,7 @@ class CalculateResponse(BaseModel):
     pv_investment: Optional[PVInvestmentData] = None
     econ_ratings: list[EconRating] = []
     load_cv: Optional[float] = None
+    simulation_meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class OptionsResponse(BaseModel):

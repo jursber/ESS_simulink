@@ -201,8 +201,20 @@ def test_workspace_api_contracts_for_new_pages():
     assert "content" in detail.json()
 
 
-def test_calculate_and_compare_use_same_variant_snapshot_contract():
+def test_calculate_and_compare_use_same_variant_snapshot_contract(monkeypatch):
     """同一子方案快照经单方案计算和多方案对比应得到一致核心指标。"""
+    from src.data.simple_day_catalog import SimpleDayCatalog
+
+    monkeypatch.setattr(
+        SimpleDayCatalog,
+        "load_spot_curve",
+        lambda self, curve_id: ([0.10 + h * 0.001 for h in range(24)], [0.20 + h * 0.001 for h in range(24)]),
+    )
+    monkeypatch.setattr(
+        SimpleDayCatalog,
+        "load_pv_curve",
+        lambda self, curve_id: [0.05 if 7 <= h <= 17 else 0.0 for h in range(24)],
+    )
     client = TestClient(app)
     created = client.post(
         "/api/scenarios",
@@ -215,16 +227,21 @@ def test_calculate_and_compare_use_same_variant_snapshot_contract():
                 "B": {
                     "key": "B",
                     "name": "B",
-                    "pricing_mode": "M3",
+                    "pricing_mode": "M4",
                     "business_model": "B1",
                     "selected_date": "2026-03-15",
                     "region": "henan",
-                    "system": {"net_load": True, "ess": True, "pv": False},
+                    "system": {"net_load": True, "ess": True, "pv": True},
                     "ess_params": {"power_rated": 0.2, "cap_rated": 500},
-                    "pv_params": {},
+                    "pv_params": {"cap_rated": 100},
                     "financial_params": {},
                     "private_overrides": {},
-                    "run_curves": {"load_profile": "steady_24h"},
+                    "run_curves": {
+                        "load_profile": "steady_24h",
+                        "pv_curve_id": "Test:pv",
+                        "spot_curve_id": "Test:spot",
+                        "retail_curve_id": "admin",
+                    },
                     "dispatch_target": "group0",
                     "wholesale_overrides": {
                         "settlement_mode": "GUANGDONG_STYLE",
@@ -271,7 +288,14 @@ def test_calculate_and_compare_use_same_variant_snapshot_contract():
         )
         assert compare.status_code == 200, compare.text
         calc_data = calc.json()
-        compare_metrics = compare.json()["items"][0]["metrics"]
+        compare_item = compare.json()["items"][0]
+        compare_metrics = compare_item["metrics"]
+        assert calc_data["simulation_meta"]["simulation_mode"] == "simple_day"
+        assert calc_data["simulation_meta"]["spot_curve_id"] == "Test:spot"
+        assert calc_data["simulation_meta"]["pv_curve_id"] == "Test:pv"
+        assert calc_data["simulation_meta"]["annualization"] == "daily_result_times_365"
+        assert compare_item["simulation_meta"]["spot_curve_id"] == "Test:spot"
+        assert compare_item["simulation_meta"]["pv_curve_id"] == "Test:pv"
         assert compare_metrics["total_welfare_wan"] == pytest.approx(
             calc_data["welfare"]["total_welfare_wan"], abs=1e-6
         )
