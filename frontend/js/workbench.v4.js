@@ -37,6 +37,9 @@
         contract_curve_profile: 'mock_henan',
         dayahead_curve_profile: 'mock_henan',
       },
+      ui_state: {
+        biz_groups: [[]],
+      },
     };
   }
 
@@ -55,10 +58,14 @@
       private_overrides: { ...(incoming.private_overrides || {}) },
       run_curves: { ...base.run_curves, ...(incoming.run_curves || {}) },
       wholesale_overrides: { ...base.wholesale_overrides, ...(incoming.wholesale_overrides || {}) },
+      ui_state: {
+        ...base.ui_state,
+        ...(incoming.ui_state || {}),
+      },
     };
   }
 
-  async function loadParent(scenarioId) {
+  async function loadParent(scenarioId, preferredKey = 'A') {
     if (!scenarioId) return;
     await initRunCurveControls();
     state.parent = await App.api(`/scenarios/${scenarioId}`);
@@ -69,7 +76,7 @@
       state.variants[k] = mergeVariant(k, raw[k] || {});
     });
     if (!state.variants.A) state.variants.A = mergeVariant('A', {});
-    state.activeKey = state.variants.A ? 'A' : Object.keys(state.variants)[0];
+    state.activeKey = state.variants[preferredKey] ? preferredKey : (state.variants.A ? 'A' : Object.keys(state.variants)[0]);
     state.dirtyDraft.clear();
     state.parentDirty = false;
     applyVariantToUI(activeVariant());
@@ -83,8 +90,12 @@
     return {
       ...current,
       pricing_mode: el('sel-retail-pricing')?.value || current.pricing_mode || 'M1',
-      business_model: 'B1',
+      business_model: current.business_model || 'B1',
       dispatch_target: el('sel-dispatch-target')?.value || 'group0',
+      ui_state: {
+        ...(current.ui_state || {}),
+        biz_groups: App.analysis?.getBizGroupsSnapshot?.() || current.ui_state?.biz_groups || [[]],
+      },
       system: {
         net_load: true,
         ess: !!el('chk-ess')?.checked,
@@ -98,9 +109,9 @@
       },
       wholesale_overrides: {
         ...wholesale,
-        settlement_mode: 'GUANGDONG_STYLE',
-        contract_curve_profile: wholesale.contract_curve_profile || 'mock_henan',
-        dayahead_curve_profile: wholesale.dayahead_curve_profile || 'mock_henan',
+        settlement_mode: el('sel-wholesale-rule')?.value || wholesale.settlement_mode || 'GUANGDONG_STYLE',
+        contract_curve_profile: el('sel-contract-profile')?.value || wholesale.contract_curve_profile || 'mock_henan',
+        dayahead_curve_profile: el('sel-spot-profile')?.value || wholesale.dayahead_curve_profile || 'mock_henan',
       },
     };
   }
@@ -118,7 +129,11 @@
   function applyVariantToUI(v) {
     if (!v) return;
     if (el('sel-retail-pricing')) el('sel-retail-pricing').value = v.pricing_mode || 'M1';
+    if (App.analysis?.setBizGroupsSnapshot) App.analysis.setBizGroupsSnapshot(v.ui_state?.biz_groups || [[]]);
     if (el('sel-dispatch-target')) el('sel-dispatch-target').value = v.dispatch_target || 'group0';
+    if (el('sel-wholesale-rule')) el('sel-wholesale-rule').value = v.wholesale_overrides?.settlement_mode || 'GUANGDONG_STYLE';
+    if (el('sel-contract-profile')) el('sel-contract-profile').value = v.wholesale_overrides?.contract_curve_profile || 'mock_henan';
+    if (el('sel-spot-profile')) el('sel-spot-profile').value = v.wholesale_overrides?.dayahead_curve_profile || 'mock_henan';
     if (el('chk-load')) {
       el('chk-load').checked = true;
       el('chk-load').disabled = true;
@@ -145,25 +160,38 @@
       if (text) text.textContent = key;
     });
     const add = el('slot-add');
-    if (add) add.style.display = Object.keys(state.variants).length >= 4 ? 'none' : 'inline-flex';
+    if (add) {
+      const full = Object.keys(state.variants).length >= 4;
+      add.style.display = full ? 'none' : 'inline-flex';
+      add.disabled = full;
+    }
     const compare = el('slot-compare');
     if (compare) compare.disabled = Object.keys(state.variants).length < 2;
   }
 
-  function switchSlot(index) {
+  async function switchSlot(index) {
     const key = KEYS[index];
     if (!state.variants[key]) return;
+    if (key === state.activeKey) {
+      persistCurrentUIToMemory(false);
+      renderSlots();
+      return;
+    }
     persistCurrentUIToMemory(false);
     state.activeKey = key;
     applyVariantToUI(activeVariant());
     renderSlots();
+    await runCalculation();
   }
 
   function addSlot() {
     persistCurrentUIToMemory(false);
     const next = KEYS.find(k => !state.variants[k]);
     if (!next) return;
-    state.variants[next] = mergeVariant(next, collectVariantFromUI());
+    const snapshot = collectVariantFromUI();
+    snapshot.key = next;
+    snapshot.name = next;
+    state.variants[next] = mergeVariant(next, snapshot);
     state.activeKey = next;
     state.dirtyDraft.add(next);
     state.parentDirty = true;
@@ -189,6 +217,13 @@
       pricing_mode: state.variants.A?.pricing_mode || 'M1',
       business_model: state.variants.A?.business_model || 'B1',
       selected_date: state.variants.A?.selected_date || state.parent.selected_date || '2026-03-15',
+      system: state.variants.A?.system || state.parent.system,
+      ess_params: state.variants.A?.ess_params || {},
+      pv_params: state.variants.A?.pv_params || {},
+      financial_params: state.variants.A?.financial_params || {},
+      private_overrides: state.variants.A?.private_overrides || {},
+      wholesale_overrides: state.variants.A?.wholesale_overrides || {},
+      run_curves: state.variants.A?.run_curves || {},
       variants: state.variants,
     };
     const res = await App.api(`/scenarios/${state.parent.id}`, {

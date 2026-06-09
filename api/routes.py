@@ -331,6 +331,7 @@ def create_scenario(req: dict):
         pv_params=req.get("pv_params") or {},
         financial_params=req.get("financial_params") or {},
         private_overrides=req.get("private_overrides") or {},
+        wholesale_overrides=req.get("wholesale_overrides") or {},
         system=req.get("system") or None,
         run_curves=req.get("run_curves") or None,
         variants=req.get("variants") or None,
@@ -358,6 +359,8 @@ def update_scenario(scenario_id: str, req: dict):
         cfg.financial_params = req["financial_params"] or {}
     if "private_overrides" in req:
         cfg.private_overrides = req["private_overrides"] or {}
+    if "wholesale_overrides" in req:
+        cfg.wholesale_overrides = req["wholesale_overrides"] or {}
     if "system" in req:
         cfg.system = req["system"] or {"net_load": True, "ess": True, "pv": False}
     if "run_curves" in req:
@@ -434,30 +437,23 @@ def run_calculation(req: CalculateRequest):
         variant_overrides["private_overrides"] = req.private_overrides
 
     config = parent.variant_config(req.variant_key, variant_overrides)
+    if req.wholesale_overrides is not None:
+        merged_wholesale = dict(config.wholesale_overrides or {})
+        ov_data = req.wholesale_overrides.model_dump(exclude_none=True)
+        merged_wholesale.update(ov_data)
+        config.wholesale_overrides = merged_wholesale
 
     # 缓存 key 必须包含方案内容和全局参数版本，否则参数编辑后可能返回旧结果。
-    ov = req.wholesale_overrides
+    wholesale_cfg = effective_wholesale_for_scenario(config)
     key = _cache_key(
         f"{req.scenario_id}:{req.variant_key}", req.pricing_mode, req.business_model,
-        ov.settlement_mode if ov else "",
-        ov.contract_curve_profile if ov else "",
-        ov.dayahead_curve_profile if ov else "",
+        wholesale_cfg.settlement_mode.value,
+        wholesale_cfg.contract_curve_profile,
+        wholesale_cfg.dayahead_curve_profile,
         _scenario_fingerprint(config),
     )
     if key in _result_cache:
         return _result_cache[key]
-
-    wholesale_cfg = effective_wholesale_for_scenario(config)
-    if ov:
-        flat = wholesale_cfg.to_flat_dict()
-        ov = req.wholesale_overrides
-        if ov.settlement_mode is not None:
-            flat["settlement_mode"] = ov.settlement_mode
-        if ov.contract_curve_profile is not None:
-            flat["contract_curve_profile"] = ov.contract_curve_profile
-        if ov.dayahead_curve_profile is not None:
-            flat["dayahead_curve_profile"] = ov.dayahead_curve_profile
-        wholesale_cfg = WholesaleSettlementConfig.from_flat_dict(flat)
 
     try:
         result = calculate(config, wholesale_cfg=wholesale_cfg)

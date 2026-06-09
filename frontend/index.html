@@ -408,7 +408,7 @@
             <button class="slot-btn" data-slot="1" id="slot-1" onclick="App.workbench.switchSlot(1)"><span class="slot-dot"></span><span class="slot-label">B</span></button>
             <button class="slot-btn" data-slot="2" id="slot-2" onclick="App.workbench.switchSlot(2)"><span class="slot-dot"></span><span class="slot-label">C</span></button>
             <button class="slot-btn" data-slot="3" id="slot-3" onclick="App.workbench.switchSlot(3)"><span class="slot-dot"></span><span class="slot-label">D</span></button>
-            <button class="slot-add" id="slot-add" onclick="App.workbench.addSlot()" title="新增子方案">+</button>
+            <button class="slot-add" id="slot-add" onclick="addSlot()" title="新增子方案">+</button>
           </div>
           <button class="slot-compare" id="slot-stash" onclick="App.workbench.stashActiveVariant()" title="暂存">暂存</button>
           <button class="slot-compare" id="slot-compare" onclick="App.workbench.openCompare()" title="比较" disabled>比较</button>
@@ -579,13 +579,13 @@
   </div>
 </div>
 
-<script src="js/app.v4.js?v=20260608-night"></script>
+<script src="js/app.v4.js?v=20260609-snapshot-contract"></script>
 <script src="js/charts.v4.js?v=20260608-night"></script>
 <script src="js/flow.v4.js?v=20260608-night"></script>
-<script src="js/analysis.v4.js?v=20260608-night"></script>
+<script src="js/analysis.v4.js?v=20260609-snapshot-contract"></script>
 <script src="js/params.v4.js?v=20260608-night"></script>
-<script src="js/compare.v4.js?v=20260608-night"></script>
-<script src="js/workbench.v4.js?v=20260608-workbench"></script>
+<script src="js/compare.v4.js?v=20260609-snapshot-contract"></script>
+<script src="js/workbench.v4.js?v=20260609-snapshot-contract"></script>
 <script>
 window.runCalculation = () => App.workbench?.runCalculation?.();
 window.switchInvTab = (t) => App.analysis?.switchInvTab?.(t);
@@ -601,7 +601,14 @@ window.selectPanel = (id) => App.params?.selectPanel?.(id);
 window.onContractModeChange = () => App.params?.onContractModeChange?.();
 window.onContractCurveChange = () => App.params?.onContractCurveChange?.();
 window.toggleSlot = (i) => App.workbench?.switchSlot?.(i);
-window.addSlot = () => App.workbench?.addSlot?.();
+window.addSlot = () => {
+  if (App.workbench?.addSlot) {
+    App.workbench.addSlot();
+    return;
+  }
+  console.warn('Workbench is not ready, retrying add slot once.');
+  setTimeout(() => App.workbench?.addSlot?.(), 100);
+};
 window.openCompareModal = () => App.workbench?.openCompare?.();
 window.closeCompareModal = (e) => App.analysis?.closeCompareModal?.(e);
 window.onContractCurveTypeChange = () => App.params?.onContractCurveTypeChange?.();

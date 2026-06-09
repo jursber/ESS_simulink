@@ -234,9 +234,7 @@
   }
 
   async function useScenario(id, variantKey = 'A') {
-    await App.selectScenario(id);
-    const idx = ['A','B','C','D'].indexOf(variantKey);
-    if (idx >= 0) App.workbench?.switchSlot?.(idx);
+    await App.selectScenario(id, variantKey);
     document.querySelector('.top-nav-item[data-page="analysis"]')?.click();
   }
 

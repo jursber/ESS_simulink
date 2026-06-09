@@ -48,10 +48,11 @@ function fillScenarioSelect(id) {
   sel.innerHTML = state.scenarios.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 }
 
-async function selectScenario(id) {
+async function selectScenario(id, variantKey = 'A') {
   state.currentScenario = id;
   if (App.workbench?.loadParent) {
-    await App.workbench.loadParent(id);
+    await App.workbench.loadParent(id, variantKey);
+    await App.workbench.runCalculation?.();
   } else if (App.analysis?.runCalculation) {
     await App.analysis.runCalculation();
   }

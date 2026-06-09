@@ -29,6 +29,7 @@ class ScenarioConfig:
         financial_params: dict | None = None,
         selected_date: str = "2026-03-15",
         private_overrides: dict | None = None,
+        wholesale_overrides: dict | None = None,
         system: dict | None = None,
         run_curves: dict | None = None,
         variants: dict | None = None,
@@ -46,6 +47,7 @@ class ScenarioConfig:
         self.financial_params = financial_params or {}
         self.selected_date = selected_date
         self.private_overrides = private_overrides or {}
+        self.wholesale_overrides = wholesale_overrides or {}
         self.system = system or {"net_load": True, "ess": True, "pv": False}
         self.run_curves = run_curves or {}
         self.variants = self._normalize_variants(variants)
@@ -63,9 +65,9 @@ class ScenarioConfig:
             "pv_params": deepcopy(self.pv_params),
             "financial_params": deepcopy(self.financial_params),
             "private_overrides": deepcopy(self.private_overrides),
+            "wholesale_overrides": deepcopy(self.wholesale_overrides),
             "run_curves": deepcopy(self.run_curves),
             "dispatch_target": "group0",
-            "wholesale_overrides": {},
         }
 
     def _normalize_variants(self, variants: dict | None) -> dict:
@@ -97,6 +99,7 @@ class ScenarioConfig:
             "financial_params": self.financial_params,
             "selected_date": self.selected_date,
             "private_overrides": self.private_overrides,
+            "wholesale_overrides": self.wholesale_overrides,
             "system": self.system,
             "run_curves": self.run_curves,
             "variants": self.variants,
@@ -116,6 +119,7 @@ class ScenarioConfig:
             financial_params=d.get("financial_params", {}),
             selected_date=d.get("selected_date", "2026-03-15"),
             private_overrides=d.get("private_overrides", {}),
+            wholesale_overrides=d.get("wholesale_overrides", {}),
             system=d.get("system"),
             run_curves=d.get("run_curves"),
             variants=d.get("variants"),
@@ -140,6 +144,7 @@ class ScenarioConfig:
             financial_params=data.get("financial_params") or {},
             selected_date=data.get("selected_date", self.selected_date),
             private_overrides=data.get("private_overrides") or {},
+            wholesale_overrides=data.get("wholesale_overrides") or {},
             system=data.get("system") or {"net_load": True, "ess": True, "pv": False},
             run_curves=data.get("run_curves") or {},
             variants={key: data},

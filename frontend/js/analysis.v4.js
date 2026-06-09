@@ -20,6 +20,7 @@ function refreshSlotUI() {
 }
 
 function updateAddBtnState() {
+  if (App.workbench) return;
   const btn = document.getElementById('slot-add');
   if (!btn) return;
   const tagCalc = document.getElementById('tag-calc');
@@ -394,6 +395,32 @@ const MAX_GROUPS = 4;
 let bizGroups = [[]];
 let activeDropdownGroup = -1;
 
+function normalizeBizGroups(groups) {
+  if (!Array.isArray(groups) || groups.length === 0) return [[]];
+  const seen = new Set();
+  return groups.slice(0, MAX_GROUPS).map(group => {
+    if (!Array.isArray(group)) return [];
+    return group.filter(entityId => {
+      const valid = BIZ_ENTITIES.some(e => e.id === entityId);
+      if (!valid || seen.has(entityId)) return false;
+      seen.add(entityId);
+      return true;
+    });
+  });
+}
+
+function getBizGroupsSnapshot() {
+  return JSON.parse(JSON.stringify(bizGroups));
+}
+
+function setBizGroupsSnapshot(groups) {
+  bizGroups = normalizeBizGroups(groups);
+  activeDropdownGroup = -1;
+  const dropdown = document.getElementById('biz-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  renderBizGroups();
+}
+
 function getAssignedEntities() {
   return bizGroups.flat();
 }
@@ -566,7 +593,7 @@ App.analysis = {
   switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings,
   addSlot, toggleSlot, openCompareModal, closeCompareModal,
   updateTopology, toggleBizDropdown, addBizEntity, removeBizEntity, onRetailPricingChange,
-  addGroup, removeGroup,
+  addGroup, removeGroup, getBizGroupsSnapshot, setBizGroupsSnapshot,
   _setLoading: setLoading,
   getSlots: () => slots.filter(Boolean),
 };

@@ -35,6 +35,11 @@ def sample_config():
         financial_params={"r_discount": 0.06, "r_user": 0.30},
         selected_date="2026-03-15",
         private_overrides={},
+        wholesale_overrides={
+            "settlement_mode": "GUANGDONG_STYLE",
+            "contract_curve_profile": "mock_henan",
+            "dayahead_curve_profile": "mock_henan",
+        },
     )
 
 
@@ -57,6 +62,7 @@ class TestScenarioConfig:
         assert cfg2.business_model == sample_config.business_model
         assert cfg2.ess_params == sample_config.ess_params
         assert cfg2.financial_params == sample_config.financial_params
+        assert cfg2.wholesale_overrides == sample_config.wholesale_overrides
 
     def test_variants_default_to_a(self):
         cfg = ScenarioConfig(name="test", region="henan")
@@ -77,6 +83,11 @@ class TestScenarioConfig:
                     "system": {"net_load": True, "ess": False, "pv": True},
                     "pv_params": {"cap_rated": 500},
                     "run_curves": {"load_profile": "steady_24h"},
+                    "wholesale_overrides": {
+                        "settlement_mode": "GUANGDONG_STYLE",
+                        "contract_curve_profile": "mock_henan",
+                        "dayahead_curve_profile": "mock_henan",
+                    },
                 },
             },
         )
@@ -87,6 +98,7 @@ class TestScenarioConfig:
         assert variant.system == {"net_load": True, "ess": False, "pv": False}
         assert variant.pv_params == {"cap_rated": 500}
         assert variant.run_curves["load_profile"] == "steady_24h"
+        assert variant.wholesale_overrides["contract_curve_profile"] == "mock_henan"
 
 
 class TestScenarioManagerSaveLoad:

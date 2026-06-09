@@ -130,7 +130,8 @@ def test_api_options_and_calculate_response_contract():
     options = client.get("/api/options")
     assert options.status_code == 200
     option_data = options.json()
-    assert len(option_data["pricing_modes"]) == 5
+    pricing_values = {item["value"] for item in option_data["pricing_modes"]}
+    assert pricing_values >= {"M1", "M2", "M3", "M4", "M4-contract", "M5"}
     assert len(option_data["business_models"]) == 7
 
     resp = client.post(
@@ -198,6 +199,90 @@ def test_workspace_api_contracts_for_new_pages():
     detail = client.get(f"/api/docs/{doc_list[0]['id']}")
     assert detail.status_code == 200
     assert "content" in detail.json()
+
+
+def test_calculate_and_compare_use_same_variant_snapshot_contract():
+    """同一子方案快照经单方案计算和多方案对比应得到一致核心指标。"""
+    client = TestClient(app)
+    created = client.post(
+        "/api/scenarios",
+        json={
+            "name": "audit-snapshot-contract",
+            "pricing_mode": "M1",
+            "business_model": "B1",
+            "variants": {
+                "A": {"pricing_mode": "M1", "business_model": "B1"},
+                "B": {
+                    "key": "B",
+                    "name": "B",
+                    "pricing_mode": "M3",
+                    "business_model": "B1",
+                    "selected_date": "2026-03-15",
+                    "region": "henan",
+                    "system": {"net_load": True, "ess": True, "pv": False},
+                    "ess_params": {"power_rated": 0.2, "cap_rated": 500},
+                    "pv_params": {},
+                    "financial_params": {},
+                    "private_overrides": {},
+                    "run_curves": {"load_profile": "steady_24h"},
+                    "dispatch_target": "group0",
+                    "wholesale_overrides": {
+                        "settlement_mode": "GUANGDONG_STYLE",
+                        "contract_curve_profile": "mock_henan",
+                        "dayahead_curve_profile": "mock_henan",
+                    },
+                },
+            },
+        },
+    )
+    assert created.status_code == 200, created.text
+    sid = created.json()["id"]
+    try:
+        scenario = client.get(f"/api/scenarios/{sid}").json()
+        variant = scenario["variants"]["B"]
+        calc = client.post(
+            "/api/calculate",
+            json={
+                "scenario_id": sid,
+                "variant_key": "B",
+                "pricing_mode": variant["pricing_mode"],
+                "business_model": variant["business_model"],
+                "system": variant["system"],
+                "ess_params": variant["ess_params"],
+                "pv_params": variant["pv_params"],
+                "run_curves": variant["run_curves"],
+                "private_overrides": variant["private_overrides"],
+                "wholesale_overrides": variant["wholesale_overrides"],
+            },
+        )
+        assert calc.status_code == 200, calc.text
+        compare = client.post(
+            "/api/compare",
+            json={
+                "items": [{
+                    "scenario_id": sid,
+                    "pricing_mode": variant["pricing_mode"],
+                    "business_model": variant["business_model"],
+                    "variant_key": "B",
+                    "variant": variant,
+                    "alias": "B",
+                }]
+            },
+        )
+        assert compare.status_code == 200, compare.text
+        calc_data = calc.json()
+        compare_metrics = compare.json()["items"][0]["metrics"]
+        assert compare_metrics["total_welfare_wan"] == pytest.approx(
+            calc_data["welfare"]["total_welfare_wan"], abs=1e-6
+        )
+        assert compare_metrics["ess_irr_pct"] == pytest.approx(
+            calc_data["investment"]["irr_pct"], abs=1e-6
+        )
+        assert compare_metrics["ess_cycles_day"] == pytest.approx(
+            calc_data["investment"]["equivalent_cycles"], abs=1e-6
+        )
+    finally:
+        client.delete(f"/api/scenarios/{sid}")
 
 
 def test_scenario_crud_api_roundtrip():

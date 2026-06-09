@@ -3,10 +3,47 @@
   "name": "新方案-1",
   "created_at": "2026-05-17T00:16:31.533550+00:00",
   "region": "henan",
-  "pricing_mode": "M1",
+  "pricing_mode": "M5",
   "business_model": "B1",
   "ess_params": {},
+  "pv_params": {},
   "financial_params": {},
   "selected_date": "2026-03-15",
-  "private_overrides": {}
+  "private_overrides": {},
+  "system": {
+    "net_load": true,
+    "ess": true,
+    "pv": false
+  },
+  "run_curves": {},
+  "variants": {
+    "A": {
+      "key": "A",
+      "name": "A",
+      "pricing_mode": "M5",
+      "business_model": "B1",
+      "selected_date": "2026-03-15",
+      "region": "henan",
+      "system": {
+        "net_load": true,
+        "ess": true,
+        "pv": false
+      },
+      "ess_params": {},
+      "pv_params": {},
+      "financial_params": {},
+      "private_overrides": {},
+      "run_curves": {
+        "load_profile": "daily_default",
+        "pv_region": "henan",
+        "pv_curve_type": "annual_avg"
+      },
+      "dispatch_target": "group0",
+      "wholesale_overrides": {
+        "settlement_mode": "GUANGDONG_STYLE",
+        "contract_curve_profile": "mock_henan",
+        "dayahead_curve_profile": "mock_henan"
+      }
+    }
+  }
 }

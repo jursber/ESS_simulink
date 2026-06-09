@@ -66,9 +66,10 @@ def resolve_runtime_params(config: ScenarioConfig) -> tuple[ESSParams, dict]:
 
 
 def effective_wholesale_for_scenario(config: ScenarioConfig) -> WholesaleSettlementConfig:
-    """合并全局 wholesale CSV 与方案 `private_overrides` 中以 `wholesale.*` 为键的项。"""
+    """合并全局 wholesale CSV、方案快照字段和 `wholesale.*` 私有覆盖。"""
     base = ConfigLoader.load_wholesale_settlement()
     flat = base.to_flat_dict()
+    flat.update(config.wholesale_overrides or {})
     ov = config.private_overrides or {}
     numeric = {
         "purchase_monthly_constant_yuan",
