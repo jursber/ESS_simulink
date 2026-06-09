@@ -58,6 +58,56 @@ class TestCalculator:
         assert sum(result.pv_generation) > 0
         assert len(result.load_real) == 24
 
+    def test_calculate_honors_spot_curve_id(self, monkeypatch):
+        from src.data.simple_day_catalog import SimpleDayCatalog
+
+        def fake_spot_curve(self, curve_id):
+            assert curve_id == "Test:spot"
+            return [0.10 + h * 0.001 for h in range(24)], [0.20 + h * 0.001 for h in range(24)]
+
+        monkeypatch.setattr(SimpleDayCatalog, "load_spot_curve", fake_spot_curve)
+        config = ScenarioConfig(
+            name="spot-curve-id",
+            region="henan",
+            business_model="B1",
+            pricing_mode="M4",
+            selected_date="2026-03-15",
+            run_curves={"spot_curve_id": "Test:spot"},
+        )
+
+        result = calculate(config)
+
+        assert result.P_da_curve[0] == pytest.approx(0.10)
+        assert result.P_rt_curve[-1] == pytest.approx(0.223)
+        assert result.P_user_curve == pytest.approx(result.P_da_curve)
+        assert result.simulation_meta["spot_curve_id"] == "Test:spot"
+
+    def test_calculate_honors_pv_curve_id(self, monkeypatch):
+        from src.data.simple_day_catalog import SimpleDayCatalog
+
+        def fake_pv_curve(self, curve_id):
+            assert curve_id == "Test:pv"
+            return [0.5] * 24
+
+        monkeypatch.setattr(SimpleDayCatalog, "load_pv_curve", fake_pv_curve)
+        config = ScenarioConfig(
+            name="pv-curve-id",
+            region="henan",
+            business_model="B1",
+            pricing_mode="M1",
+            selected_date="2026-03-15",
+            system={"net_load": True, "ess": True, "pv": True},
+            pv_params={"cap_rated": 100},
+            run_curves={"pv_curve_id": "Test:pv"},
+        )
+
+        result = calculate(config)
+
+        assert result.pv_cap_kw == 100
+        assert result.pv_generation == pytest.approx([50.0] * 24)
+        assert result.pv_total_gen_daily == pytest.approx(1200.0)
+        assert result.simulation_meta["pv_curve_id"] == "Test:pv"
+
     def test_calculate_b1_m1_reasonable(self):
         config = ScenarioConfig(
             name="test",

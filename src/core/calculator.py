@@ -6,6 +6,7 @@ from typing import Optional
 from src.data.scenario import ScenarioConfig
 from src.data.loader import DataLoader
 from src.data.config import ConfigLoader
+from src.data.simple_day_catalog import SimpleDayCatalog
 from src.core.pricing import compute_user_price
 from src.core.dispatch import run_dispatch
 from src.models.dispatch import BusinessModel, PricingMode, ESSParams, FinancialParams, PVParams, DispatchResult
@@ -96,10 +97,16 @@ def calculate(
     """
     region = config.region
     date = config.selected_date
+    run_curves = config.run_curves or {}
+    catalog = SimpleDayCatalog()
 
     wholesale_cfg = wholesale_cfg or effective_wholesale_for_scenario(config)
 
-    P_da, P_rt = DataLoader.load_spot_prices(region, date)
+    spot_curve_id = run_curves.get("spot_curve_id")
+    if spot_curve_id:
+        P_da, P_rt = catalog.load_spot_curve(str(spot_curve_id))
+    else:
+        P_da, P_rt = DataLoader.load_spot_prices(region, date)
     ct = ConfigLoader.load_contract_position(
         region, date, profile=wholesale_cfg.contract_curve_profile
     )
@@ -118,8 +125,8 @@ def calculate(
         "flat_price": 0.55,
     }
     pricing_mode = _runtime_pricing_mode(config.pricing_mode)
-    P_user = compute_user_price(pricing_mode, tariffs,
-                                 DataLoader.get_monthly_pda(region))
+    pda_for_user_price = P_da if spot_curve_id else DataLoader.get_monthly_pda(region)
+    P_user = compute_user_price(pricing_mode, tariffs, pda_for_user_price)
 
     hourly = DataLoader.load_processed_load(
         region, date, P_da, P_rt,
@@ -127,14 +134,9 @@ def calculate(
         P_ref=P_ref,
         q_dayahead_cleared=q_cleared,
     )
-    run_curves = config.run_curves or {}
     profile_name = run_curves.get("load_profile")
     if profile_name and profile_name != "daily_default":
-        load_override = DataLoader.load_profile_hourly(
-            str(profile_name),
-            avg_load_mw=run_curves.get("avg_load"),
-            max_load_mw=run_curves.get("max_load"),
-        )
+        load_override = catalog.load_load_curve(str(profile_name), date=date)
         for h, load_value in enumerate(load_override):
             hourly[h].load_real = float(load_value)
     for i, h in enumerate(hourly):
@@ -153,14 +155,18 @@ def calculate(
     if not (config.system or {}).get("pv", False):
         pv_dict["cap_rated"] = 0
     pv_params = PVParams(**_coerce_pv_params(pv_dict))
-    pv_region = str((config.run_curves or {}).get("pv_region") or pv_dict.get("region", region))
-    pv_curve_type = str((config.run_curves or {}).get("pv_curve_type") or pv_dict.get("curve_type", "annual_avg"))
-    pv_curve = ConfigLoader.load_pv_curve(
-        pv_region,
-        pv_curve_type,
-    )
+    pv_curve_id = run_curves.get("pv_curve_id")
+    if pv_curve_id:
+        pv_curve = catalog.load_pv_curve(str(pv_curve_id))
+    else:
+        pv_region = str(run_curves.get("pv_region") or pv_dict.get("region", region))
+        pv_curve_type = str(run_curves.get("pv_curve_type") or pv_dict.get("curve_type", "annual_avg"))
+        pv_curve = ConfigLoader.load_pv_curve(
+            pv_region,
+            pv_curve_type,
+        )
 
-    return run_dispatch(
+    result = run_dispatch(
         hourly,
         BusinessModel(bm_code),
         pricing_mode,
@@ -173,3 +179,11 @@ def calculate(
         pv_params=pv_params if pv_params.cap_rated > 0 else None,
         pv_curve=pv_curve,
     )
+    result.simulation_meta = {
+        "simulation_mode": "simple_day",
+        "curve_source": "typical_catalog" if (spot_curve_id or pv_curve_id or profile_name) else "legacy_default",
+        "load_profile": str(profile_name or "daily_default"),
+        "pv_curve_id": str(pv_curve_id) if pv_curve_id else None,
+        "spot_curve_id": str(spot_curve_id) if spot_curve_id else None,
+    }
+    return result
