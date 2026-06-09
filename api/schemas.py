@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------- 请求 ----------
@@ -145,6 +145,21 @@ class OptionsResponse(BaseModel):
     settlement_modes: list[OptionItem]
     contract_profiles: list[OptionItem]
     dayahead_profiles: list[OptionItem]
+
+
+class CurveCatalogItem(BaseModel):
+    id: str
+    label: str
+    category: str
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class SimpleDayCatalogResponse(BaseModel):
+    load: list[CurveCatalogItem] = Field(default_factory=list)
+    pv: list[CurveCatalogItem] = Field(default_factory=list)
+    spot: list[CurveCatalogItem] = Field(default_factory=list)
+    retail: list[CurveCatalogItem] = Field(default_factory=list)
+    wholesale: list[CurveCatalogItem] = Field(default_factory=list)
 
 
 # ---------- 全局参数 ----------

@@ -20,6 +20,7 @@ from api.schemas import (
     OverviewData,
     PVInvestmentData,
     ScenarioBrief,
+    SimpleDayCatalogResponse,
     TariffRow,
     TimeSeries,
     WelfareData,
@@ -29,6 +30,7 @@ from src.core.calculator import calculate, effective_wholesale_for_scenario, res
 from src.data.config import ConfigLoader
 from src.data.loader import DataLoader
 from src.data.scenario import ScenarioConfig, ScenarioManager
+from src.data.simple_day_catalog import SimpleDayCatalog
 from src.models.dispatch import BusinessModel, PricingMode
 from src.models.wholesale import UI_OPTION_LISTS, WholesaleSettlementConfig
 
@@ -411,6 +413,15 @@ def get_options():
             OptionItem(value=v, label=l) for v, l in UI_OPTION_LISTS["dayahead_curve_profile"]
         ],
     )
+
+
+@router.get("/simple-day/catalog", response_model=SimpleDayCatalogResponse)
+def get_simple_day_catalog():
+    """Return fixed typical-curve options for simple-day simulation."""
+    try:
+        return SimpleDayCatalog(DATA_DIR).list_catalog()
+    except Exception as exc:
+        raise HTTPException(500, f"单日典型曲线目录加载失败: {exc}")
 
 
 @router.post("/calculate", response_model=CalculateResponse)
