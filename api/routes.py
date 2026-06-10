@@ -75,7 +75,7 @@ def _cache_key(
 
 PM_LABELS = {
     "M1": "行政分时", "M2": "江苏模式", "M3": "合同分时",
-    "M4": "现货联动", "M4-contract": "中长期联动", "M5": "一口价",
+    "M4": "现货联动", "M4-contract": "月度联动", "M5": "固定价格",
 }
 BM_LABELS = {
     "B1": "用户+储能", "B2a": "售电公司最优", "B2b": "储能运营商最优",
@@ -430,6 +430,49 @@ def get_simple_day_catalog():
         raise HTTPException(500, f"单日典型曲线目录加载失败: {exc}")
 
 
+@router.get("/simple-day/curve")
+def get_simple_day_curve(category: str, curve_id: str, price_kind: str | None = None):
+    """Return 24-hour preview data for a fixed simple-day curve."""
+    catalog = SimpleDayCatalog(DATA_DIR)
+    try:
+        if category == "pv":
+            values = catalog.load_pv_curve(curve_id)
+            return {
+                "category": "pv",
+                "curve_id": curve_id,
+                "hours": list(range(24)),
+                "values": values,
+                "unit": "kWh/kWp",
+            }
+        if category == "spot":
+            day_ahead, real_time = catalog.load_spot_curve(curve_id)
+            selected = real_time if price_kind == "real_time" else day_ahead
+            return {
+                "category": "spot",
+                "curve_id": curve_id,
+                "price_kind": "real_time" if price_kind == "real_time" else "day_ahead",
+                "hours": list(range(24)),
+                "values": selected,
+                "day_ahead": day_ahead,
+                "real_time": real_time,
+                "unit": "元/kWh",
+            }
+        if category == "monthly":
+            values = catalog.load_monthly_price_curve(curve_id)
+            return {
+                "category": "monthly",
+                "curve_id": curve_id,
+                "hours": list(range(24)),
+                "values": values,
+                "unit": "元/kWh",
+            }
+    except KeyError:
+        raise HTTPException(404, f"未找到曲线: {curve_id}")
+    except Exception as exc:
+        raise HTTPException(400, f"曲线读取失败: {exc}")
+    raise HTTPException(400, f"不支持的曲线类型: {category}")
+
+
 @router.post("/calculate", response_model=CalculateResponse)
 def run_calculation(req: CalculateRequest):
     try:
@@ -448,6 +491,8 @@ def run_calculation(req: CalculateRequest):
         variant_overrides["ess_params"] = req.ess_params
     if req.pv_params is not None:
         variant_overrides["pv_params"] = req.pv_params
+    if req.financial_params is not None:
+        variant_overrides["financial_params"] = req.financial_params
     if req.run_curves is not None:
         variant_overrides["run_curves"] = req.run_curves
     if req.private_overrides is not None:

@@ -49,6 +49,7 @@ class SimpleDayCatalog:
             "load": [item.to_dict() for item in self.list_load_profiles()],
             "pv": [item.to_dict() for item in self.list_pv_curves()],
             "spot": [item.to_dict() for item in self.list_spot_curves()],
+            "monthly": [item.to_dict() for item in self.list_monthly_curves()],
             "retail": [item.to_dict() for item in self.list_retail_curves()],
             "wholesale": [item.to_dict() for item in self.list_wholesale_profiles()],
         }
@@ -97,10 +98,15 @@ class SimpleDayCatalog:
                 row.get("weather_label") or row.get("weather_type"),
             )
             meta = {
+                "province": _none_to_empty(row.get("province")),
                 "province_code": _none_to_empty(row.get("province_code")),
+                "city": _none_to_empty(row.get("city")),
                 "city_code": _none_to_empty(row.get("city_code")),
                 "season": _none_to_empty(row.get("season")),
+                "season_label": _none_to_empty(row.get("season_label")),
                 "weather_type": _none_to_empty(row.get("weather_type")),
+                "weather_label": _none_to_empty(row.get("weather_label")),
+                "daily_kwh_per_mw": _none_to_empty(row.get("daily_kwh_per_mw")),
                 "unit": _none_to_empty(row.get("unit")),
                 "file": file_path,
             }
@@ -135,14 +141,34 @@ class SimpleDayCatalog:
             options.append(CurveOption(curve_id, label or curve_id, "spot", meta))
         return options
 
+    def list_monthly_curves(self) -> list[CurveOption]:
+        """List available monthly comprehensive price curves."""
+        base = self.data_dir / "trading_strategy" / "contract_position"
+        if not base.exists():
+            return []
+
+        options: list[CurveOption] = []
+        for profile_dir in sorted(path for path in base.iterdir() if path.is_dir()):
+            for path in sorted(profile_dir.glob("*.csv")):
+                curve_id = f"{profile_dir.name}:{path.stem}"
+                meta = {
+                    "profile": profile_dir.name,
+                    "month": path.stem,
+                    "unit": "yuan_per_kwh",
+                    "file": self._rel(path),
+                }
+                label = f"{profile_dir.name} / {path.stem} 月度综合价曲线"
+                options.append(CurveOption(curve_id, label, "monthly", meta))
+        return options
+
     def list_retail_curves(self) -> list[CurveOption]:
         tariff_dir = self.data_dir / "tariff"
         if not tariff_dir.exists():
             return []
         return [
-            CurveOption("admin", "administrative tariff", "retail", {"mode": "admin"}),
-            CurveOption("contract", "contract tariff", "retail", {"mode": "contract"}),
-            CurveOption("flat", "flat tariff", "retail", {"mode": "flat"}),
+            CurveOption("admin", "行政分时", "retail", {"mode": "admin"}),
+            CurveOption("contract", "合同分时", "retail", {"mode": "contract"}),
+            CurveOption("flat", "固定价格", "retail", {"mode": "flat"}),
         ]
 
     def list_wholesale_profiles(self) -> list[CurveOption]:
@@ -223,6 +249,26 @@ class SimpleDayCatalog:
         if not da_col or not rt_col:
             raise ValueError(f"spot curve {curve_id} is missing price columns")
         return (_to_yuan_per_kwh(df[da_col].tolist()), _to_yuan_per_kwh(df[rt_col].tolist()))
+
+    def load_monthly_price_curve(self, curve_id: str) -> list[float]:
+        """Return a 24-hour monthly comprehensive price curve in yuan/kWh."""
+        option = self._find_option(self.list_monthly_curves(), curve_id)
+        path = self._data_path(str(option.meta.get("file") or ""))
+        if not path.exists():
+            raise FileNotFoundError(f"monthly curve file not found: {curve_id}")
+        df = pd.read_csv(path, comment="#")
+        if "hour" not in df.columns:
+            raise ValueError(f"monthly curve {curve_id} is missing hour column")
+        value_col = _first_existing_column(
+            df,
+            ["p_contract_yuan_per_kwh", "P_contract", "contract_price_yuan_per_kwh"],
+        )
+        if not value_col:
+            raise ValueError(f"monthly curve {curve_id} is missing price column")
+        hourly = df.groupby("hour", as_index=False)[value_col].mean().sort_values("hour")
+        if len(hourly) != 24 or set(int(h) for h in hourly["hour"]) != set(range(24)):
+            raise ValueError(f"monthly curve {curve_id} must cover hour=0..23")
+        return [float(v) for v in hourly[value_col].tolist()]
 
     def _find_option(self, options: list[CurveOption], curve_id: str) -> CurveOption:
         for option in options:

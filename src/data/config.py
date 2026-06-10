@@ -211,7 +211,7 @@ class ConfigLoader:
             v = r['value']
             if k in ('design_life',):
                 row[k] = int(v)
-            elif k in ('region', 'curve_type'):
+            elif k in ('region', 'curve_type', 'curve_id'):
                 row[k] = str(v)
             else:
                 row[k] = float(v)

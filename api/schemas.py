@@ -22,6 +22,7 @@ class CalculateRequest(BaseModel):
     system: Optional[dict[str, Any]] = None
     ess_params: Optional[dict[str, Any]] = None
     pv_params: Optional[dict[str, Any]] = None
+    financial_params: Optional[dict[str, Any]] = None
     run_curves: Optional[dict[str, Any]] = None
     private_overrides: Optional[dict[str, Any]] = None
     wholesale_overrides: Optional[WholesaleOverrides] = None
@@ -159,6 +160,7 @@ class SimpleDayCatalogResponse(BaseModel):
     load: list[CurveCatalogItem] = Field(default_factory=list)
     pv: list[CurveCatalogItem] = Field(default_factory=list)
     spot: list[CurveCatalogItem] = Field(default_factory=list)
+    monthly: list[CurveCatalogItem] = Field(default_factory=list)
     retail: list[CurveCatalogItem] = Field(default_factory=list)
     wholesale: list[CurveCatalogItem] = Field(default_factory=list)
 

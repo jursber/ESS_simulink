@@ -123,6 +123,14 @@ document.querySelectorAll('.topbar-tab[data-tab]').forEach(tab => {
 
 function loadScenarios() { init(); }
 async function saveScenario() {
+  if (currentPage === 'params' && App.params?.saveGlobalParams) {
+    try {
+      await App.params.saveGlobalParams();
+    } catch (e) {
+      alert('保存缺省参数失败: ' + e.message);
+    }
+    return;
+  }
   const scenarioId = state.currentScenario;
   if (!scenarioId) {
     alert('当前没有可保存的方案');

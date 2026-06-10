@@ -28,7 +28,7 @@ def test_catalog_returns_empty_groups_when_optional_assets_are_missing():
 
         data = catalog.list_catalog()
 
-        assert set(data) == {"load", "pv", "spot", "retail", "wholesale"}
+        assert set(data) == {"load", "pv", "spot", "monthly", "retail", "wholesale"}
         assert data["load"] == []
         assert data["pv"] == []
         assert data["spot"] == []
@@ -87,6 +87,19 @@ def test_catalog_lists_load_pv_spot_and_reads_24_hour_curves():
                 for h in range(24)
             ],
         )
+        _write_csv(
+            tmp_path / "trading_strategy" / "contract_position" / "mock_profile" / "202606.csv",
+            [
+                {
+                    "date": "2026-06-01",
+                    "hour": h,
+                    "q_contract_kwh": 100,
+                    "p_contract_yuan_per_kwh": 0.30 + h / 100,
+                    "p_ref_yuan_per_kwh": 0.25,
+                }
+                for h in range(24)
+            ],
+        )
 
         catalog = SimpleDayCatalog(tmp_path)
         groups = catalog.list_catalog()
@@ -94,14 +107,18 @@ def test_catalog_lists_load_pv_spot_and_reads_24_hour_curves():
         assert groups["load"][0]["id"] == "steady"
         assert groups["pv"][0]["id"] == "Test:test_city:annual:sunny"
         assert groups["spot"][0]["id"] == "Test:2026-06:spot_price"
+        assert groups["monthly"][0]["id"] == "mock_profile:202606"
 
         load = catalog.load_load_curve("steady")
         pv = catalog.load_pv_curve("Test:test_city:annual:sunny")
         p_da, p_rt = catalog.load_spot_curve("Test:2026-06:spot_price")
+        monthly = catalog.load_monthly_price_curve("mock_profile:202606")
 
         assert load == pytest.approx([2000.0] * 24)
         assert pv == pytest.approx([0.06] * 24)
         assert p_da[0] == pytest.approx(0.1)
         assert p_rt[-1] == pytest.approx(0.223)
+        assert monthly[0] == pytest.approx(0.30)
+        assert monthly[-1] == pytest.approx(0.53)
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)

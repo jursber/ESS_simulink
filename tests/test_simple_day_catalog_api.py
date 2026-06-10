@@ -9,7 +9,7 @@ def test_simple_day_catalog_response_contract_has_stable_groups():
     response = SimpleDayCatalogResponse(**data)
     payload = response.model_dump()
 
-    assert set(payload) == {"load", "pv", "spot", "retail", "wholesale"}
+    assert set(payload) == {"load", "pv", "spot", "monthly", "retail", "wholesale"}
     assert isinstance(payload["load"], list)
     assert isinstance(payload["pv"], list)
     assert isinstance(payload["spot"], list)

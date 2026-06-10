@@ -7,6 +7,9 @@
 import math
 from typing import List, Tuple, Optional
 
+import numpy as np
+from scipy.optimize import Bounds, LinearConstraint, milp
+
 from src.core.registry import register_algorithm
 from src.models.dispatch import (
     ESSParams, PVParams, FinancialParams, HourlyData, DispatchResult,
@@ -182,6 +185,141 @@ def optimize_arbitrage(
     return best_load_ESS, best_SOC, best_profit
 
 
+def _finite_or_default(value: float, default: float) -> float:
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return default
+    return value if math.isfinite(value) else default
+
+
+def _clean_series(values: Optional[List[float]], n: int, default: float = 0.0) -> List[float]:
+    if values is None:
+        return [default] * n
+    out = []
+    for i in range(n):
+        out.append(_finite_or_default(values[i], default) if i < len(values) else default)
+    return out
+
+
+@register_algorithm("peak_valley_milp", "单储能峰谷套利 MILP——约束功率、SOC、充放互斥与反送电边界")
+def optimize_peak_valley_arbitrage(
+    price: List[float],
+    params: ESSParams,
+    load_absorption_limit: Optional[List[float]] = None,
+    export_price: Optional[List[float]] = None,
+    soc_initial: float = 0.10,
+) -> Tuple[List[float], List[float], float]:
+    """单储能峰谷套利优化。
+
+    约定：load_ESS > 0 为放电，load_ESS < 0 为充电。无光伏时
+    `export_price` 为空，模型通过 `load_absorption_limit` 保证放电不超过
+    用户可消纳负荷；有光伏时允许反送电，并按 `export_price` 计入收益。
+    """
+    n = 24
+    price = _clean_series(price, n)
+    cap = _finite_or_default(params.cap_rated, 0.0)
+    p_max = _finite_or_default(params.max_power, 0.0)
+    if cap <= 0 or p_max <= 0:
+        return [0.0] * n, [soc_initial] * n, 0.0
+
+    soc_min = max(0.0, min(1.0, _finite_or_default(params.soc_min, 0.0)))
+    soc_max = max(0.0, min(1.0, _finite_or_default(params.soc_max, 1.0)))
+    if soc_min > soc_max:
+        soc_min, soc_max = soc_max, soc_min
+    if soc_max - soc_min <= 1e-9:
+        return [0.0] * n, [soc_min] * n, 0.0
+
+    soc_initial = max(soc_min, min(soc_max, _finite_or_default(soc_initial, soc_min)))
+    eta = _finite_or_default(params.eta_single, 1.0)
+    if eta <= 0:
+        eta = 1.0
+
+    local_limit = [max(0.0, v) for v in _clean_series(load_absorption_limit, n, p_max)]
+    export_allowed = export_price is not None
+    export_price = _clean_series(export_price, n) if export_allowed else [0.0] * n
+
+    # Variables: charge[24], discharge_to_load[24], discharge_export[24], soc[25], is_charging[24]
+    charge0 = 0
+    dis_load0 = charge0 + n
+    dis_export0 = dis_load0 + n
+    soc0 = dis_export0 + n
+    is_charge0 = soc0 + n + 1
+    total_vars = is_charge0 + n
+
+    c = np.zeros(total_vars)
+    throughput_penalty = 1e-6
+    for h in range(n):
+        c[charge0 + h] = price[h] + throughput_penalty
+        c[dis_load0 + h] = -price[h] + throughput_penalty
+        c[dis_export0 + h] = -export_price[h] + throughput_penalty
+
+    lb = np.zeros(total_vars)
+    ub = np.full(total_vars, np.inf)
+    for h in range(n):
+        ub[charge0 + h] = p_max
+        ub[dis_load0 + h] = min(p_max, local_limit[h])
+        ub[dis_export0 + h] = p_max if export_allowed else 0.0
+        ub[is_charge0 + h] = 1.0
+    for h in range(n + 1):
+        lb[soc0 + h] = soc_min
+        ub[soc0 + h] = soc_max
+
+    constraints = []
+
+    row = np.zeros(total_vars)
+    row[soc0] = 1.0
+    constraints.append(LinearConstraint(row, soc_initial, soc_initial))
+
+    for h in range(n):
+        row = np.zeros(total_vars)
+        row[soc0 + h + 1] = 1.0
+        row[soc0 + h] = -1.0
+        row[charge0 + h] = -eta / cap
+        row[dis_load0 + h] = 1.0 / (eta * cap)
+        row[dis_export0 + h] = 1.0 / (eta * cap)
+        constraints.append(LinearConstraint(row, 0.0, 0.0))
+
+        row = np.zeros(total_vars)
+        row[charge0 + h] = 1.0
+        row[is_charge0 + h] = -p_max
+        constraints.append(LinearConstraint(row, -np.inf, 0.0))
+
+        row = np.zeros(total_vars)
+        row[dis_load0 + h] = 1.0
+        row[dis_export0 + h] = 1.0
+        row[is_charge0 + h] = p_max
+        constraints.append(LinearConstraint(row, -np.inf, p_max))
+
+    integrality = np.zeros(total_vars)
+    integrality[is_charge0:is_charge0 + n] = 1
+
+    try:
+        result = milp(
+            c=c,
+            integrality=integrality,
+            bounds=Bounds(lb, ub),
+            constraints=constraints,
+            options={"time_limit": 10},
+        )
+    except Exception:
+        return [0.0] * n, [soc_initial] * n, 0.0
+
+    if not result.success or result.x is None:
+        return [0.0] * n, [soc_initial] * n, 0.0
+
+    x = result.x
+    load_ESS = []
+    for h in range(n):
+        discharge = x[dis_load0 + h] + x[dis_export0 + h]
+        charge = x[charge0 + h]
+        value = discharge - charge
+        load_ESS.append(0.0 if abs(value) < 1e-7 else float(value))
+    SOC = [float(x[soc0 + h + 1]) for h in range(n)]
+    profit = float(-result.fun)
+    return load_ESS, SOC, profit
+
+
 def run_dispatch(
     hourly: List[HourlyData],
     bm: BusinessModel,
@@ -218,29 +356,38 @@ def run_dispatch(
     # 1. 计算有效价格信号
     P_eff = compute_effective_price(bm, P_user, P_TOU, P_rt, fin.r_user)
 
-    # 2. 优化调度
-    load_ESS, SOC, _ = optimize_arbitrage(
-        P_eff, params, soc_initial=soc_initial,
-    )
-
-    # 3. 光伏发电计算
     has_pv = pv_params is not None and pv_curve is not None and pv_params.cap_rated > 0
     pv_generation = [0.0] * 24
     pv_self_consumed = [0.0] * 24
     pv_fed_in = [0.0] * 24
+    if has_pv:
+        for h in range(24):
+            pv_generation[h] = pv_params.cap_rated * pv_curve[h]
+    local_absorption_limit = [
+        max(0.0, load_real[h] - (pv_generation[h] if has_pv else 0.0))
+        for h in range(24)
+    ]
+    export_price = [pv_params.feed_in_tariff] * 24 if has_pv else None
+
+    # 2. 优化调度
+    load_ESS, SOC, _ = optimize_peak_valley_arbitrage(
+        P_eff,
+        params,
+        load_absorption_limit=local_absorption_limit,
+        export_price=export_price,
+        soc_initial=soc_initial,
+    )
 
     if has_pv:
         for h in range(24):
-            pv_gen = pv_params.cap_rated * pv_curve[h]
-            pv_generation[h] = pv_gen
-            # PV 自发自用：覆盖 ESS 调度后剩余的净负荷
-            net_load_after_ess = load_real[h] - load_ESS[h]
-            pv_self = min(pv_gen, max(0, net_load_after_ess))
-            pv_self_consumed[h] = pv_self
-            pv_fed_in[h] = pv_gen - pv_self
+            pv_self_consumed[h] = min(pv_generation[h], max(0.0, load_real[h]))
 
     # 4. 计算 load_grid（扣除储能和光伏自用）
     load_grid = [load_real[h] - load_ESS[h] - pv_self_consumed[h] for h in range(24)]
+    grid_import = [max(0.0, v) for v in load_grid]
+    grid_export = [max(0.0, -v) for v in load_grid]
+    if has_pv:
+        pv_fed_in = grid_export
 
     result = DispatchResult()
     result.load_ESS = load_ESS
@@ -250,7 +397,12 @@ def run_dispatch(
 
     # 4. 用户侧
     user_bill_no_ess = sum(load_real[h] * P_user[h] for h in range(24))
-    user_bill_with_ess = sum(load_grid[h] * P_user[h] for h in range(24))
+    export_revenue = (
+        sum(grid_export[h] * pv_params.feed_in_tariff for h in range(24))
+        if has_pv
+        else 0.0
+    )
+    user_bill_with_ess = sum(grid_import[h] * P_user[h] for h in range(24)) - export_revenue
     savings = user_bill_no_ess - user_bill_with_ess
 
     result.user_bill_no_ess = user_bill_no_ess

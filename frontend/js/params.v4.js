@@ -17,8 +17,16 @@ function tablePanelHTML(title, headers, rows) {
 // 参数表单面板模板
 function formPanelHTML(title, fields) {
   return `<div class="params-section"><div class="params-section-hd">${title}</div><div class="params-grid cols-3">${fields.map(f=>{
-    const cb = f.checkbox ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:var(--fs-11);color:var(--text-2);cursor:pointer;white-space:nowrap"><input type="checkbox" id="${f.checkbox.id}" ${f.checkbox.checked?'checked':''} style="margin:0"> 启用</span>` : '';
-    return `<div class="params-field"><div style="display:flex;align-items:center;margin-bottom:4px"><span style="font-size:var(--fs-11);color:var(--text-3);font-weight:var(--fw-medium)">${f.label}</span>${cb}</div><input type="number" id="${f.id}" step="${f.step||1}" value="${f.value||''}"></div>`;
+    const disabled = f.disabled ? 'disabled' : '';
+    const cb = f.checkbox ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:var(--fs-11);color:var(--text-2);cursor:pointer;white-space:nowrap"><input type="checkbox" id="${f.checkbox.id}" ${f.checkbox.checked?'checked':''} ${f.checkbox.disabled?'disabled':''} style="margin:0"> 启用</span>` : '';
+    if (f.type === 'radio') {
+      const radios = (f.options || []).map(o => `<label style="display:flex;align-items:center;gap:5px;color:var(--text-1);font-size:var(--fs-12)"><input type="radio" name="${f.id}" value="${o.value}" ${o.value===f.value?'checked':''} ${disabled}>${o.label}</label>`).join('');
+      return `<div class="params-field"><label>${f.label}</label><div style="display:flex;gap:12px;min-height:30px;align-items:center">${radios}</div></div>`;
+    }
+    if (f.type === 'checkbox') {
+      return `<div class="params-field"><label>${f.label}</label><label style="display:flex;align-items:center;gap:8px;color:var(--text-1);font-size:var(--fs-12);min-height:30px"><input type="checkbox" id="${f.id}" ${f.checked?'checked':''} ${disabled}> 启用</label></div>`;
+    }
+    return `<div class="params-field"><div style="display:flex;align-items:center;margin-bottom:4px"><span style="font-size:var(--fs-11);color:var(--text-3);font-weight:var(--fw-medium)">${f.label}</span>${cb}</div><input type="number" id="${f.id}" step="${f.step||1}" value="${f.value??''}" ${disabled}></div>`;
   }).join('')}</div></div>`;
 }
 
@@ -35,7 +43,7 @@ async function renderPanelContent(panelId) {
   switch(panelId) {
     case 'ess':
       const _rteTip = 'RTE为一次完整循环的综合效率，已经考虑到公辅系统的耗电';
-      panel.innerHTML = formPanelHTML('储能缺省参数', [
+      panel.innerHTML = formPanelHTML('基本参数', [
         {label:'额定容量 (MWh)', id:'gp-cap-rated', step:0.1, value:(d.ess.cap_rated/1000).toFixed(2)},
         {label:'额定功率 (MW)', id:'gp-power-rated', step:0.1, value:d.ess.power_rated||0.5},
         {label:`往返效率 RTE (%) <span class="param-tip" data-tip="${_rteTip}">?</span>`, id:'gp-eta', step:1, value:((d.ess.eta_roundtrip||0.87)*100).toFixed(0)},
@@ -46,54 +54,20 @@ async function renderPanelContent(panelId) {
         {label:'储能容量年衰减比例 (%)', id:'gp-r-degrade', step:0.5, value:((d.ess.r_degrade||0.025)*100).toFixed(1), checkbox:{id:'gp-degrade-enabled', checked:d.ess.degrade_enabled}},
         {label:'储能循环次数 (100% DoD)', id:'gp-cycle-life', step:100, value:d.ess.cycle_life||5000, checkbox:{id:'gp-cycle-enabled', checked:d.ess.cycle_enabled}},
         {label:'储能收益分成比例 (%)', id:'gp-r-ess-share', step:1, value:((d.ess.r_ess_share||0.20)*100).toFixed(0)},
-      ]) + formPanelHTML('财务参数', [
+      ]) + formPanelHTML('电价参数', [
+        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1??0)*100).toFixed(0)},
+        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2??0)*100).toFixed(0)},
+      ]) + formPanelHTML('经济参数', [
         {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost||0.9},
         {label:'年运维支出比例 (%)', id:'gp-r-om', step:0.1, value:((d.ess.r_om||0.01)*100).toFixed(1)},
-        {label:'折现率 (%)', id:'gp-r-discount', step:0.5, value:((d.financial.r_discount||0.06)*100).toFixed(1)},
-        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1||0.3)*100).toFixed(0)},
-        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2||0.5)*100).toFixed(0)},
       ]);
       appendEssNotes(panel);
       break;
     case 'pv':
       try {
         const pv = await api('/params/pv');
-        const p = pv.params;
-        const regions = pv.curves;  // 现在是 {region: [curve_types]} 格式
-        const regionNames = Object.keys(regions);
-        const regionLabels = {henan:'河南',jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
-        const curveLabels = {annual_avg:'全年日均',cloudy:'阴天',sunny:'晴天'};
-        const curRegion = p.region || (regionNames[0] || 'henan');
-        const curCurve = p.curve_type || 'annual_avg';
-        const regionOpts = regionNames.map(r=>`<option value="${r}" ${r===curRegion?'selected':''}>${regionLabels[r]||r}</option>`).join('');
-        const curveList = regions[curRegion] || [];
-        const curveOpts = curveList.map(c=>`<option value="${c}" ${c===curCurve?'selected':''}>${curveLabels[c]||c}</option>`).join('');
-
-        const _tipSelfUse = '用户实际用电费用为约定的电价×本地消纳电费折扣，约定的电价通常为用户实际在电网/售电公司购电的电价';
-        const _modeOpts = '<option value="admin">行政分时</option><option value="contract">合同分时</option><option value="flat">固定电价</option><option value="spot_da">日前现货联动</option><option value="spot_rt">实时现货联动</option><option value="lt_contract">中长期联动</option>';
-
-        panel.innerHTML = formPanelHTML('光伏缺省参数', [
-          {label:'额定装机容量 (kWp)', id:'pv-cap-rated', step:0.1, value:p.cap_rated||1.0},
-          {label:'光伏上网电价 (元/kWh)', id:'pv-feed-in-tariff', step:0.01, value:p.feed_in_tariff||0.4},
-        ]) + `<div class="params-section"><div class="params-section-hd">光伏经济参数</div>
-          <div class="params-grid cols-3">
-            <div class="params-field"><label>本地消纳电费折扣（%）<span class="param-tip" data-tip="${_tipSelfUse}">?</span></label><input type="number" id="pv-self-use-discount" step="1" value="${((p.self_use_discount||0.80)*100).toFixed(0)}"></div>
-            <div class="params-field"><label>电费模式</label><select id="pv-tariff-mode" onchange="onPvTariffModeChange()">${_modeOpts}</select></div>
-            <div class="params-field"><label>电价曲线</label><select id="pv-tariff-curve"></select></div>
-          </div>
-          <div class="params-grid cols-3" style="margin-top:8px">
-            <div class="params-field"><label>单位造价 (元/Wp)</label><input type="number" id="pv-unit-cost" step="0.1" value="${p.unit_cost||3.5}"></div>
-            <div class="params-field"><label>年运维费用比例 (%)</label><input type="number" id="pv-r-om" step="0.1" value="${((p.r_om||0.015)*100).toFixed(1)}"></div>
-            <div class="params-field"><label>设计寿命 (年)</label><input type="number" id="pv-design-life" step="1" value="${p.design_life||25}"></div>
-          </div>
-          <div class="params-grid cols-2" style="margin-top:8px">
-            <div class="params-field"><label>首年衰减率 (%)</label><input type="number" id="pv-r-degrade-first" step="0.1" value="${((p.r_degrade_first||0.02)*100).toFixed(1)}"></div>
-            <div class="params-field"><label>年衰减率 (%)</label><input type="number" id="pv-r-degrade" step="0.1" value="${((p.r_degrade||0.005)*100).toFixed(1)}"></div>
-          </div>
-        </div>` + `<div class="params-section" style="margin-top:16px"><div class="params-section-hd">出力特性</div><div style="display:flex;align-items:center;gap:16px;margin-bottom:12px"><div class="params-field" style="flex:1"><label>地区</label><select id="pv-region" onchange="onPvCurveChange()">${regionOpts}</select></div><div class="params-field" style="flex:1"><label>曲线类型</label><select id="pv-curve-type" onchange="onPvCurveChange()">${curveOpts}</select></div><div style="flex:1;display:flex;align-items:flex-end;gap:6px;padding-bottom:2px"><span style="font-size:var(--fs-11);color:var(--text-3)">等效利用小时数</span><span id="pv-util-hours" style="font-size:var(--fs-13);color:var(--accent);font-weight:var(--fw-semi)">--</span><span style="font-size:var(--fs-11);color:var(--text-3)">h</span></div></div><div id="pv-curve-chart" style="height:260px"></div></div>
-        <div style="font-size:var(--fs-11);color:var(--text-3);margin-top:8px;padding:0 20px">本模型暂未考虑光伏环境权益收益</div>`;
-        renderPvCurveChart(pv.curve_data, curRegion, curCurve);
-        onPvTariffModeChange();
+        const catalog = await api('/simple-day/catalog');
+        renderPvDefaultsPanel(panel, pv.params, catalog.pv || []);
       } catch(e) {
         panel.innerHTML = placeholderHTML('光伏缺省参数 — 加载失败');
       }
@@ -161,11 +135,11 @@ async function renderPanelContent(panelId) {
       break;
     case 'pricing-mode':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">模式说明</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
-        <b style="color:var(--text-1)">M1 行政分时</b> — 政府核定的峰谷平电价，固定时段划分<br>
-        <b style="color:var(--text-1)">M2 江苏模式</b> — 基础电价 × 时段系数（峰/平/谷）<br>
-        <b style="color:var(--text-1)">M3 合同分时</b> — 售电公司与用户签订的合同电价<br>
-        <b style="color:var(--text-1)">M4 现货联动</b> — 电价与电力市场日前价格联动<br>
-        <b style="color:var(--text-1)">M5 一口价</b> — 固定单价，不区分时段
+        <b style="color:var(--text-1)">行政分时</b> — 政府核定的峰谷平电价，固定时段划分<br>
+        <b style="color:var(--text-1)">合同分时</b> — 售电公司与用户签订的合同电价<br>
+        <b style="color:var(--text-1)">固定价格</b> — 固定单价，不区分时段<br>
+        <b style="color:var(--text-1)">月度联动</b> — 用户侧电价与月度综合价曲线按比例联动<br>
+        <b style="color:var(--text-1)">现货联动</b> — 用户侧电价与日前或实时现货价格曲线按比例联动
       </div></div>`;
       break;
     case 'tariff-tou':
@@ -183,12 +157,19 @@ async function renderPanelContent(panelId) {
       renderTariffTouTab('admin');
       break;
     case 'tariff-spot':
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">电力市场联动价格</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">M4 模式下，用户侧电价 = 当月日前电价 24h 均值曲线。<br>数据来源：<code>data/spot_price/henan/*.csv</code> 中 <code>day_ahead</code> 列按月聚合。</div><div id="spot-price-chart" style="height:300px;margin-top:12px"></div></div>`;
-      renderSpotPriceChart();
+      panel.innerHTML = `<div class="params-section">
+        <div class="params-section-hd">电力市场联动</div>
+        <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)">
+          <div class="params-tariff-tab active" data-market-linked-tab="monthly" onclick="App.params.switchMarketLinkedTab(this,'monthly')">月度联动</div>
+          <div class="params-tariff-tab" data-market-linked-tab="spot" onclick="App.params.switchMarketLinkedTab(this,'spot')">现货联动</div>
+        </div>
+        <div id="market-linked-content"></div>
+      </div>`;
+      renderMarketLinkedTab('monthly');
       break;
     case 'load-curve':
       const _randTip = '选择随机度后，每次仿真都会生成带随机干扰的曲线，目的是增加仿真结果的多样性，建议默认选择不随机。\n\n加性高斯白噪声：给每个数据点增加独立微小随机波动，不改变曲线整体形状，噪声强度推荐 2%~6%\n一阶自相关噪声：生成平滑连续的时序随机波动，相邻点变化自然无跳变，噪声强度推荐 1%~5%、自相关系数 0.7~0.95\n乘性相对噪声：根据曲线数值大小自动调整波动幅度，数值大则波动大，相对扰动系数推荐 0.01~0.05\n低频形状微调：在保留整体趋势与拐点的前提下小幅柔和改变曲线轮廓，频率推荐 2~5、幅度推荐 2%~5%';
-      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">用户净生产负荷</div>
+      panel.innerHTML = `<div class="params-section"><div class="params-section-hd">净生产负荷</div>
         <div id="load-mini-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:0"></div>
         <div style="border-top:1px solid var(--border);margin:20px 0;padding-top:16px">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
@@ -259,12 +240,16 @@ async function renderPanelContent(panelId) {
       break;
     case 'ess-biz':
       panel.innerHTML = formPanelHTML('储能商业模式', [
-        {label:'折现率 (%)', id:'gp-r-discount', step:0.5, value:((d.financial.r_discount||0.06)*100).toFixed(1)},
-        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1||0.3)*100).toFixed(0)},
-        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2||0.5)*100).toFixed(0)},
+        {label:'用户侧峰谷套利收益分享比例 (%)', id:'gp-r-user-b1', step:1, value:((d.financial.r_user_b1??0)*100).toFixed(0)},
+        {label:'售电公司额外收益分享比例 (%)', id:'gp-r-user-b2', step:1, value:((d.financial.r_user_b2??0)*100).toFixed(0)},
         {label:'建设单价 (元/Wh)', id:'gp-unit-cost', step:0.1, value:d.ess.unit_cost||0.9},
         {label:'年运维支出比例 (%)', id:'gp-r-om', step:0.1, value:((d.ess.r_om||0.01)*100).toFixed(1)},
       ]);
+      break;
+    case 'misc':
+      panel.innerHTML = formPanelHTML('杂项', [
+        {label:'折现率 (%)', id:'gp-r-discount', step:0.5, value:((d.financial.r_discount||0.06)*100).toFixed(1)},
+      ]) + `<div class="params-section" style="margin-top:16px"><div style="font-size:var(--fs-11);color:var(--text-3);line-height:1.8">折现率用于储能和光伏投资评价中的 NPV 计算，不属于单一设备参数。</div></div>`;
       break;
     case 'biz-note':
       panel.innerHTML = `<div class="params-section"><div class="params-section-hd">其他模式说明</div><div style="font-size:var(--fs-12);color:var(--text-2);line-height:1.8">
@@ -326,6 +311,86 @@ async function renderDataAssetsPanel(panel) {
   } catch (e) {
     panel.innerHTML = `<div class="params-section"><div style="color:var(--danger)">数据资产加载失败：${e.message}</div></div>`;
   }
+}
+
+let marketLinkedChart = null;
+
+function switchMarketLinkedTab(tabEl, tabName) {
+  document.querySelectorAll('[data-market-linked-tab]').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+  renderMarketLinkedTab(tabName);
+}
+
+async function renderMarketLinkedTab(tabName) {
+  const container = document.getElementById('market-linked-content');
+  if (!container) return;
+  const isSpot = tabName === 'spot';
+  const ratioDefault = isSpot ? 90 : 70;
+  const ratioLabel = isSpot ? '现货联动比例（%）' : '月度联动比例（%）';
+  const curveLabel = isSpot ? '现货价格曲线' : '月度综合价曲线（全省统一）';
+  container.innerHTML = `<div class="params-grid cols-3" style="margin-bottom:12px">
+    <div class="params-field"><label>${ratioLabel}</label><input type="number" id="market-link-ratio" min="0" max="100" step="1" value="${ratioDefault}" oninput="App.params.updateMarketLinkedPreview('${tabName}')"></div>
+    <div class="params-field"><label>固定价格（元/kWh）</label><input type="number" id="market-link-fixed" step="0.01" value="0.4" oninput="App.params.updateMarketLinkedPreview('${tabName}')"></div>
+    <div class="params-field"><label>${curveLabel}</label><select id="market-link-curve" onchange="App.params.updateMarketLinkedPreview('${tabName}')"></select></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px">
+    <div class="metric-chip"><div class="label">${isSpot ? '现货联动分量均值' : '月度联动分量均值'}</div><div class="value" id="market-link-market-avg">--</div></div>
+    <div class="metric-chip"><div class="label">固定单价分量</div><div class="value" id="market-link-fixed-comp">--</div></div>
+  </div>
+  <div id="market-link-chart" style="height:300px"></div>`;
+  const catalog = await api('/simple-day/catalog');
+  const options = isSpot ? buildSpotLinkedOptions(catalog.spot || []) : (catalog.monthly || []);
+  const select = document.getElementById('market-link-curve');
+  select.innerHTML = options.map(item => `<option value="${item.id}" data-curve-id="${item.curve_id || item.id}" data-price-kind="${item.price_kind || ''}">${item.label}</option>`).join('');
+  updateMarketLinkedPreview(tabName);
+}
+
+function buildSpotLinkedOptions(items) {
+  return items.flatMap(item => ([
+    { id: `${item.id}::day_ahead`, curve_id: item.id, price_kind: 'day_ahead', label: `${item.label} / 日前` },
+    { id: `${item.id}::real_time`, curve_id: item.id, price_kind: 'real_time', label: `${item.label} / 实时` },
+  ]));
+}
+
+async function updateMarketLinkedPreview(tabName) {
+  const select = document.getElementById('market-link-curve');
+  if (!select || !select.value) return;
+  const option = select.selectedOptions[0];
+  const category = tabName === 'spot' ? 'spot' : 'monthly';
+  const curveId = option.dataset.curveId || select.value;
+  const priceKind = option.dataset.priceKind || '';
+  const ratio = Math.min(100, Math.max(0, Number(document.getElementById('market-link-ratio')?.value || (tabName === 'spot' ? 90 : 70)))) / 100;
+  const fixed = Number(document.getElementById('market-link-fixed')?.value || 0.4);
+  try {
+    const res = await api(`/simple-day/curve?category=${category}&curve_id=${encodeURIComponent(curveId)}&price_kind=${encodeURIComponent(priceKind)}`);
+    const base = res.values || [];
+    const marketPart = base.map(v => +(Number(v) * ratio).toFixed(4));
+    const fixedPart = base.map(() => +(fixed * (1 - ratio)).toFixed(4));
+    const avg = marketPart.reduce((a,b)=>a+b,0) / (marketPart.length || 1);
+    document.getElementById('market-link-market-avg').textContent = `${avg.toFixed(4)} 元/kWh`;
+    document.getElementById('market-link-fixed-comp').textContent = `${(fixedPart[0] || 0).toFixed(4)} 元/kWh`;
+    renderMarketLinkedChart(marketPart, fixedPart, tabName === 'spot' ? '现货联动分量' : '月度联动分量');
+  } catch (e) {
+    console.error('market linked preview failed:', e);
+  }
+}
+
+function renderMarketLinkedChart(marketPart, fixedPart, marketName) {
+  const target = document.getElementById('market-link-chart');
+  if (!target) return;
+  if (marketLinkedChart) marketLinkedChart.dispose();
+  marketLinkedChart = echarts.init(target);
+  marketLinkedChart.setOption({
+    tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
+    legend:{top:0,textStyle:{color:'#b0b8c8',fontSize:11}},
+    grid:{left:50,right:24,top:34,bottom:26},
+    xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:9,interval:0}},
+    yAxis:{type:'value',name:'元/kWh',nameTextStyle:{color:'#7a8298',fontSize:9},axisLabel:{color:'#7a8298',fontSize:9},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[
+      {name:marketName,type:'bar',stack:'price',barWidth:'58%',data:marketPart,itemStyle:{color:'#7EA8FA'}},
+      {name:'固定单价分量',type:'bar',stack:'price',barWidth:'58%',data:fixedPart,itemStyle:{color:'#F2A104'}},
+    ],
+  });
 }
 
 // 现货电价图表
@@ -905,40 +970,105 @@ function renderTariffAdminTable(data, voltageCol) {
   el.innerHTML = html;
 }
 let pvCurveChart = null;
-function renderPvCurveChart(data, region, curveType) {
+let pvCurveCatalog = [];
+
+function renderPvDefaultsPanel(panel, p, curves) {
+  pvCurveCatalog = curves || [];
+  const _tipSelfUse = '用户实际用电费用为约定电价×本地消纳电费折扣，约定电价通常为用户从电网/售电公司购电的电价';
+  panel.innerHTML = formPanelHTML('基本参数', [
+    {label:'额定装机容量 (kWp)', id:'pv-cap-rated', step:0.1, value:p.cap_rated||1.0},
+    {label:'项目类型', id:'pv-project-type', type:'radio', value:'distributed', disabled:true, options:[{value:'distributed', label:'分布式'}, {value:'centralized', label:'集中式'}]},
+  ]) + formPanelHTML('电价参数', [
+    {label:'光伏上网电价 (元/kWh)', id:'pv-feed-in-tariff', step:0.01, value:p.feed_in_tariff||0.4},
+    {label:`本地消纳电费折扣 (%) <span class="param-tip" data-tip="${_tipSelfUse}">?</span>`, id:'pv-self-use-discount', step:1, value:((p.self_use_discount||0.80)*100).toFixed(0)},
+    {label:'启用机制电价', id:'pv-mechanism-enabled', type:'checkbox', checked:false, disabled:true},
+    {label:'机制电价 (元/MWh)', id:'pv-mechanism-price', step:1, value:0, disabled:true},
+    {label:'机制电价比例 (%)', id:'pv-mechanism-ratio', step:1, value:0, disabled:true},
+  ]) + formPanelHTML('经济参数', [
+    {label:'单位造价 (元/Wp)', id:'pv-unit-cost', step:0.1, value:p.unit_cost||3.5},
+    {label:'年运维费用比例 (%)', id:'pv-r-om', step:0.1, value:((p.r_om||0.015)*100).toFixed(1)},
+    {label:'设计寿命 (年)', id:'pv-design-life', step:1, value:p.design_life||25},
+    {label:'首年衰减率 (%)', id:'pv-r-degrade-first', step:0.1, value:((p.r_degrade_first||0.02)*100).toFixed(1)},
+    {label:'年衰减率 (%)', id:'pv-r-degrade', step:0.1, value:((p.r_degrade||0.005)*100).toFixed(1)},
+  ]) + `<div class="params-section" style="margin-top:16px">
+    <div class="params-section-hd">出力特性</div>
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) 120px;gap:12px;align-items:end;margin-bottom:12px">
+      <div class="params-field"><label>省份</label><select id="pv-province" onchange="onPvCurveChange()"></select></div>
+      <div class="params-field"><label>城市</label><select id="pv-city" onchange="onPvCurveChange()"></select></div>
+      <div class="params-field"><label>季节</label><select id="pv-season" onchange="onPvCurveChange()"></select></div>
+      <div class="params-field"><label>天气/典型类型</label><select id="pv-weather" onchange="onPvCurveChange()"></select></div>
+      <div class="params-field"><label>曲线</label><select id="pv-curve-id" onchange="onPvCurveChange()"></select></div>
+      <div class="metric-chip" style="height:58px"><div class="label">等效利用小时数</div><div class="value" id="pv-util-hours">--</div></div>
+    </div>
+    <div id="pv-curve-chart" style="height:260px"></div>
+  </div>
+  <div style="font-size:var(--fs-11);color:var(--text-3);margin-top:8px;padding:0 20px">本模型暂未考虑光伏环境权益收益</div>`;
+  initPvCurveSelectors(p.region, p.curve_type);
+}
+
+function uniqueOptions(items, key, labelKey) {
+  const seen = new Map();
+  items.forEach(item => {
+    const meta = item.meta || {};
+    const value = meta[key] || '';
+    if (!value || seen.has(value)) return;
+    seen.set(value, meta[labelKey] || value);
+  });
+  return [...seen.entries()].map(([value, label]) => ({value, label}));
+}
+
+function fillOptions(id, options, previous) {
+  const select = document.getElementById(id);
+  if (!select) return '';
+  select.innerHTML = options.map(o => `<option value="${o.value}" ${o.value===previous?'selected':''}>${o.label}</option>`).join('');
+  if (previous && [...select.options].some(opt => opt.value === previous)) select.value = previous;
+  else if (select.options.length) select.selectedIndex = 0;
+  return select.value;
+}
+
+function initPvCurveSelectors(defaultRegion, defaultCurveType) {
+  const provinceOptions = uniqueOptions(pvCurveCatalog, 'province_code', 'province');
+  const preferredProvince = defaultRegion === 'henan' ? 'Henan' : defaultRegion;
+  fillOptions('pv-province', provinceOptions, preferredProvince);
+  onPvCurveChange(defaultCurveType);
+}
+
+function renderPvCurveChart(data, title) {
   const el = document.getElementById('pv-curve-chart');
   if (!el) return;
   if (pvCurveChart) pvCurveChart.dispose();
   pvCurveChart = echarts.init(el);
-  const regionLabels = {jiangsu:'江苏',shandong:'山东',guangdong:'广东'};
-  const curveLabels = {annual_avg:'年均',cloudy:'典型阴雨天',sunny:'典型晴天'};
   pvCurveChart.setOption({
     tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
     grid:{left:46,right:46,top:30,bottom:20},
     xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
-    yAxis:{type:'value',name:'归一化出力',nameTextStyle:{color:'#7a8298',fontSize:8},min:0,max:1,axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
-    series:[{name:(regionLabels[region]||region)+' '+(curveLabels[curveType]||curveType),type:'line',data:data,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
+    yAxis:{type:'value',name:'kWh/kWp',nameTextStyle:{color:'#7a8298',fontSize:8},min:0,axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
+    series:[{name:title||'光伏出力',type:'line',data:data,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
   });
   window.addEventListener('resize',()=>pvCurveChart&&pvCurveChart.resize());
 
-  // 等效利用小时数 = 日归一化出力之和 × 365
   const dailySum = data.reduce((a,b) => a+b, 0);
   const utilHours = (dailySum * 365).toFixed(0);
   const utilEl = document.getElementById('pv-util-hours');
-  if (utilEl) utilEl.textContent = utilHours;
+  if (utilEl) utilEl.textContent = `${utilHours}h`;
 }
 
-async function onPvCurveChange() {
-  const region = document.getElementById('pv-region').value;
-  const curveType = document.getElementById('pv-curve-type').value;
-  const curveLabels = {annual_avg:'全年日均',cloudy:'阴天',sunny:'晴天'};
-  const sel = document.getElementById('pv-curve-type');
+async function onPvCurveChange(preferredCurveType = '') {
+  if (!pvCurveCatalog.length) return;
+  const province = document.getElementById('pv-province')?.value;
+  const provinceItems = pvCurveCatalog.filter(item => (item.meta || {}).province_code === province);
+  const city = fillOptions('pv-city', uniqueOptions(provinceItems, 'city_code', 'city'), document.getElementById('pv-city')?.value);
+  const cityItems = provinceItems.filter(item => (item.meta || {}).city_code === city);
+  const season = fillOptions('pv-season', uniqueOptions(cityItems, 'season', 'season_label'), preferredCurveType || document.getElementById('pv-season')?.value);
+  const seasonItems = cityItems.filter(item => (item.meta || {}).season === season);
+  const weather = fillOptions('pv-weather', uniqueOptions(seasonItems, 'weather_type', 'weather_label'), document.getElementById('pv-weather')?.value);
+  const weatherItems = seasonItems.filter(item => (item.meta || {}).weather_type === weather);
+  const curveOptions = weatherItems.map(item => ({value:item.id, label:item.label}));
+  const curveId = fillOptions('pv-curve-id', curveOptions, document.getElementById('pv-curve-id')?.value);
+  const selected = pvCurveCatalog.find(item => item.id === curveId);
   try {
-    const pv = await api('/params/pv');
-    const opts = (pv.curves[region]||[]).map(c=>`<option value="${c}" ${c===curveType?'selected':''}>${curveLabels[c]||c}</option>`).join('');
-    sel.innerHTML = opts;
-    const res = await api(`/params/pv-curve/${region}/${sel.value}`);
-    renderPvCurveChart(res.data, region, sel.value);
+    const res = await api(`/simple-day/curve?category=pv&curve_id=${encodeURIComponent(curveId)}`);
+    renderPvCurveChart(res.values || [], selected?.label || curveId);
   } catch(e) { console.error('PV curve load failed:', e); }
 }
 
@@ -1250,9 +1380,72 @@ async function loadGlobalParams() {
   }
 }
 
+function numberValue(id, fallback) {
+  const input = document.getElementById(id);
+  if (!input || input.disabled || input.value === '') return fallback;
+  const value = Number(input.value);
+  return Number.isNaN(value) ? fallback : value;
+}
+
+async function saveGlobalParams() {
+  if (!globalParamsData) await loadGlobalParams();
+  const ess = { ...(globalParamsData.ess || {}) };
+  const financial = { ...(globalParamsData.financial || {}) };
+  const wholesale = { ...(globalParamsData.wholesale || {}) };
+
+  ess.cap_rated = numberValue('gp-cap-rated', ess.cap_rated / 1000) * 1000;
+  ess.power_rated = numberValue('gp-power-rated', ess.power_rated);
+  ess.eta_roundtrip = numberValue('gp-eta', ess.eta_roundtrip * 100) / 100;
+  ess.eta_charge = numberValue('gp-eta-charge', ess.eta_charge * 100) / 100;
+  ess.soc_min = numberValue('gp-soc-min', ess.soc_min * 100) / 100;
+  ess.soc_max = numberValue('gp-soc-max', ess.soc_max * 100) / 100;
+  ess.design_life = numberValue('gp-design-life', ess.design_life);
+  ess.r_degrade = numberValue('gp-r-degrade', ess.r_degrade * 100) / 100;
+  ess.degrade_enabled = document.getElementById('gp-degrade-enabled')?.checked ?? ess.degrade_enabled;
+  ess.cycle_life = numberValue('gp-cycle-life', ess.cycle_life);
+  ess.cycle_enabled = document.getElementById('gp-cycle-enabled')?.checked ?? ess.cycle_enabled;
+  ess.r_ess_share = numberValue('gp-r-ess-share', ess.r_ess_share * 100) / 100;
+  ess.unit_cost = numberValue('gp-unit-cost', ess.unit_cost);
+  ess.r_om = numberValue('gp-r-om', ess.r_om * 100) / 100;
+
+  financial.r_discount = numberValue('gp-r-discount', (financial.r_discount || 0.06) * 100) / 100;
+  financial.r_user_b1 = numberValue('gp-r-user-b1', (financial.r_user_b1 ?? 0) * 100) / 100;
+  financial.r_user_b2 = numberValue('gp-r-user-b2', (financial.r_user_b2 ?? 0) * 100) / 100;
+
+  await api('/global-params', {
+    method: 'PUT',
+    body: JSON.stringify({ ess, financial, wholesale }),
+  });
+
+  if (document.getElementById('pv-cap-rated')) {
+    const pv = { ...(globalParamsData.pv || {}) };
+    pv.cap_rated = numberValue('pv-cap-rated', pv.cap_rated || 1.0);
+    pv.feed_in_tariff = numberValue('pv-feed-in-tariff', pv.feed_in_tariff || 0.4);
+    pv.self_use_discount = numberValue('pv-self-use-discount', (pv.self_use_discount || 0.8) * 100) / 100;
+    pv.unit_cost = numberValue('pv-unit-cost', pv.unit_cost || 3.5);
+    pv.r_om = numberValue('pv-r-om', (pv.r_om || 0.015) * 100) / 100;
+    pv.design_life = numberValue('pv-design-life', pv.design_life || 25);
+    pv.r_degrade_first = numberValue('pv-r-degrade-first', (pv.r_degrade_first || 0.02) * 100) / 100;
+    pv.r_degrade = numberValue('pv-r-degrade', (pv.r_degrade || 0.005) * 100) / 100;
+    const selectedCurve = document.getElementById('pv-curve-id')?.value;
+    const selected = pvCurveCatalog.find(item => item.id === selectedCurve);
+    if (selected) {
+      pv.region = (selected.meta || {}).province_code || pv.region;
+      pv.curve_type = (selected.meta || {}).season || pv.curve_type;
+      pv.curve_id = selected.id;
+    }
+    await api('/params/pv', { method: 'PUT', body: JSON.stringify(pv) });
+  }
+
+  App.setParamsDirty?.(false);
+  await loadGlobalParams();
+  if (currentPanel) await renderPanelContent(currentPanel);
+  alert('缺省参数已保存');
+}
+
 // --- App 注册 ---
 App.params = {
-  loadGlobalParams, initParamsMenu, renderPanelContent, selectPanel,
+  loadGlobalParams, saveGlobalParams, initParamsMenu, renderPanelContent, selectPanel,
   toggleSection, switchTariffTab, onPvCurveChange,
   renderPvCurveChart, appendEssNotes, markParamsDirty, bindDirtyTracking,
   onContractModeChange, onContractCurveChange, renderContractChart,
@@ -1263,6 +1456,7 @@ App.params = {
   switchTariffTouTab, renderTariffTouTab,
   onLoadCurveChange, onLoadScaleModeChange, onLoadScaleChange, onLoadRandomnessChange,
   onPvTariffModeChange, renderDataAssetsPanel,
+  switchMarketLinkedTab, renderMarketLinkedTab, updateMarketLinkedPreview,
   get currentPanel() { return currentPanel; },
   set currentPanel(v) { currentPanel = v; }
 };

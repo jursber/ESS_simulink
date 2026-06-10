@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=1920,initial-scale=1">
 <title>源网荷储售综合模拟仿真系统</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<link rel="stylesheet" href="css/style.v4.css?v=20260608-night">
+<link rel="stylesheet" href="css/style.v4.css?v=20260610-case1-curves">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -297,7 +297,7 @@
               <label class="toggle-item">
                 <span>电网代购</span>
                 <label class="toggle-switch">
-                  <input type="checkbox" id="chk-retail-mode" onchange="App.analysis.updateTopology()">
+                  <input type="checkbox" id="chk-retail-mode" onchange="App.workbench.updateCompositionUI(true)">
                   <span class="toggle-slider"></span>
                 </label>
                 <span>售电公司</span>
@@ -327,7 +327,7 @@
               <span class="param-label">调度目标</span>
               <div class="dispatch-target-line">
                 <select class="param-select" id="sel-dispatch-target" onchange="App.workbench.markChanged()">
-                  <option value="group0">第一组收益之和最优</option>
+                  <option value="group0">第一组总收益最优</option>
                 </select>
                 <label class="demand-check"><input type="checkbox" disabled>考虑需量</label>
               </div>
@@ -349,13 +349,16 @@
                 <option value="M1">行政分时</option>
                 <option value="M3">合同分时</option>
                 <option value="M5">固定价格</option>
-                <option value="M4-contract">中长期联动</option>
+                <option value="M4-contract">月度联动</option>
                 <option value="M4">现货联动</option>
               </select>
             </div>
             <div class="param-row">
               <span class="param-label">电价曲线</span>
-              <select class="param-select" id="sel-pricing-curve" onchange="App.workbench.markChanged()"></select>
+              <div class="param-inline-action">
+                <select class="param-select" id="sel-pricing-curve" onchange="App.workbench.markChanged()"></select>
+                <button class="link-button" type="button" onclick="App.workbench.openPricingCurveModal()">选择曲线</button>
+              </div>
             </div>
           </div>
 
@@ -363,7 +366,7 @@
           <div class="param-sec" id="sec-run-params">
             <div class="param-sec-title">运行曲线</div>
             <div class="param-row">
-              <span class="param-label">用户净生产负荷曲线</span>
+              <span class="param-label">净生产负荷曲线</span>
               <select class="param-select" id="sel-load-profile" onchange="App.workbench.markChanged()"></select>
             </div>
             <div class="param-row">
@@ -480,7 +483,7 @@
             <div class="params-menu-group-hd">能源设施</div>
             <div class="params-menu-item" data-panel="pv" onclick="App.params.selectPanel('pv')">光伏缺省参数</div>
             <div class="params-menu-item" data-panel="ess" onclick="App.params.selectPanel('ess')">储能缺省参数</div>
-            <div class="params-menu-item" data-panel="load-curve" onclick="App.params.selectPanel('load-curve')">用户净生产负荷</div>
+            <div class="params-menu-item" data-panel="load-curve" onclick="App.params.selectPanel('load-curve')">净生产负荷</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">电力市场</div>
@@ -491,7 +494,7 @@
             <div class="params-menu-group-hd">电价信息</div>
             <div class="params-menu-item" data-panel="pricing-mode" onclick="App.params.selectPanel('pricing-mode')">模式说明</div>
             <div class="params-menu-item" data-panel="tariff-tou" onclick="App.params.selectPanel('tariff-tou')">分时电价</div>
-            <div class="params-menu-item" data-panel="tariff-spot" onclick="App.params.selectPanel('tariff-spot')">电力市场联动价格</div>
+            <div class="params-menu-item" data-panel="tariff-spot" onclick="App.params.selectPanel('tariff-spot')">电力市场联动</div>
           </div>
           <div class="params-menu-group">
             <div class="params-menu-group-hd">商业模式</div>
@@ -501,8 +504,9 @@
             <div class="params-menu-item" data-panel="biz-note" onclick="App.params.selectPanel('biz-note')">其他模式说明</div>
           </div>
           <div class="params-menu-group">
-            <div class="params-menu-group-hd">数据资产</div>
+            <div class="params-menu-group-hd">其他</div>
             <div class="params-menu-item" data-panel="data-assets" onclick="App.params.selectPanel('data-assets')">数据资产总览</div>
+            <div class="params-menu-item" data-panel="misc" onclick="App.params.selectPanel('misc')">杂项</div>
           </div>
         </div>
       </div>
@@ -567,13 +571,13 @@
   </div>
 </div>
 
-<script src="js/app.v4.js?v=20260609-snapshot-contract"></script>
+<script src="js/app.v4.js?v=20260610-case1-curves"></script>
 <script src="js/charts.v4.js?v=20260608-night"></script>
 <script src="js/flow.v4.js?v=20260608-night"></script>
-<script src="js/analysis.v4.js?v=20260609-snapshot-contract"></script>
-<script src="js/params.v4.js?v=20260608-night"></script>
+<script src="js/analysis.v4.js?v=20260610-case1-curves"></script>
+<script src="js/params.v4.js?v=20260610-case1-curves"></script>
 <script src="js/compare.v4.js?v=20260609-snapshot-contract"></script>
-<script src="js/workbench.v4.js?v=20260609-snapshot-contract"></script>
+<script src="js/workbench.v4.js?v=20260610-case1-curves"></script>
 <script>
 window.runCalculation = () => App.workbench?.runCalculation?.();
 window.switchInvTab = (t) => App.analysis?.switchInvTab?.(t);

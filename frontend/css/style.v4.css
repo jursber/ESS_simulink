@@ -120,6 +120,10 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .param-select:focus,.param-input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(126,168,250,0.15)}
 .param-select{appearance:auto;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .param-input{text-align:right}
+.param-inline-action{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.param-inline-action .param-select{min-width:0}
+.link-button{border:none;background:transparent;color:var(--accent);font-size:var(--fs-12);font-family:inherit;padding:4px 0;cursor:pointer;white-space:nowrap}
+.link-button:hover{text-decoration:underline;color:var(--text-1)}
 
 .input-group{display:flex;align-items:center;gap:4px;flex:1}
 .input-group .unit{font-size:var(--fs-11);color:var(--text-2);white-space:nowrap}
@@ -471,12 +475,21 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 .device-tab.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 .topo-disabled-svg{stroke-dasharray:4 3}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border-light)}
-.workbench-modal-box{width:560px}
+.workbench-modal-box{width:720px}
 .workbench-modal-body{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.workbench-modal-body.wide{display:block}
+.wb-section-title{grid-column:1/-1;color:var(--accent);font-size:var(--fs-12);font-weight:var(--fw-semi);padding:4px 0 2px;border-bottom:1px solid var(--border-light)}
 .wb-field{display:flex;flex-direction:column;gap:5px}
 .wb-field span{font-size:var(--fs-11);color:var(--text-2)}
 .wb-field input,.wb-field select{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-1);padding:7px 10px;font-size:var(--fs-12);outline:none}
 .wb-field input:disabled{opacity:.5}
+.curve-modal-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.curve-modal-controls select,.curve-modal-controls input{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text-1);padding:6px 9px;font-size:var(--fs-12)}
+.curve-modal-chart{height:280px;margin:12px 0}
+.curve-stack-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.metric-chip{background:var(--bg-strip);border:1px solid var(--border-light);border-radius:6px;padding:10px 12px}
+.metric-chip .label{font-size:var(--fs-11);color:var(--text-3);margin-bottom:4px}
+.metric-chip .value{font-size:20px;color:var(--accent);font-weight:var(--fw-semi)}
 
 /* 拓扑图模块变灰 */
 .topo-dim{opacity:.25;transition:opacity .3s}

@@ -397,6 +397,14 @@ const MAX_GROUPS = 4;
 let bizGroups = [[]];
 let activeDropdownGroup = -1;
 
+function getAllowedBizEntityIds() {
+  const ids = ['user'];
+  if (document.getElementById('chk-ess')?.checked) ids.push('ess');
+  if (document.getElementById('chk-pv')?.checked) ids.push('pv');
+  if (document.getElementById('chk-retail-mode')?.checked) ids.push('retail');
+  return ids;
+}
+
 function normalizeBizGroups(groups) {
   if (!Array.isArray(groups) || groups.length === 0) return [[]];
   const seen = new Set();
@@ -429,6 +437,21 @@ function getAssignedEntities() {
 
 function getGroupCount() {
   return bizGroups.length;
+}
+
+function syncBizGroupsToComposition() {
+  const allowed = new Set(getAllowedBizEntityIds());
+  let changed = false;
+  bizGroups = bizGroups.map(group => {
+    const filtered = group.filter(entityId => allowed.has(entityId));
+    if (filtered.length !== group.length) changed = true;
+    return filtered;
+  });
+  activeDropdownGroup = -1;
+  const dropdown = document.getElementById('biz-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  renderBizGroups();
+  return changed;
 }
 
 // 重新渲染整个 biz-groups 容器
@@ -471,11 +494,14 @@ function updateDispatchOptions() {
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = bizGroups.map((_, i) =>
-    `<option value="group${i}">${GROUP_NAMES[i]}收益之和最优</option>`
+    `<option value="group${i}" ${bizGroups[i].length ? '' : 'disabled'}>${GROUP_NAMES[i]}总收益最优</option>`
   ).join('');
-  // 尝试保持之前的选择
-  if (prev && sel.querySelector(`option[value="${prev}"]`)) {
+  const prevOption = prev ? sel.querySelector(`option[value="${prev}"]`) : null;
+  if (prevOption && !prevOption.disabled) {
     sel.value = prev;
+  } else {
+    const firstEnabled = [...sel.options].find(opt => !opt.disabled);
+    if (firstEnabled) sel.value = firstEnabled.value;
   }
 }
 
@@ -507,8 +533,9 @@ function toggleBizDropdown(groupIdx) {
 
   activeDropdownGroup = groupIdx;
   const assigned = getAssignedEntities();
+  const allowed = new Set(getAllowedBizEntityIds());
 
-  const availableEntities = BIZ_ENTITIES.filter(e => !assigned.includes(e.id));
+  const availableEntities = BIZ_ENTITIES.filter(e => allowed.has(e.id) && !assigned.includes(e.id));
   dropdown.innerHTML = availableEntities
     .map(e => `<div class="biz-dropdown-item" onclick="App.analysis.addBizEntity('${e.id}')">${e.label}</div>`)
     .join('');
@@ -531,6 +558,7 @@ function toggleBizDropdown(groupIdx) {
 
 function addBizEntity(entityId) {
   if (activeDropdownGroup < 0) return;
+  if (!getAllowedBizEntityIds().includes(entityId)) return;
   const assigned = getAssignedEntities();
   if (assigned.includes(entityId)) return;
 
@@ -574,7 +602,7 @@ const PRICING_CURVE_MAP = {
     { value: 'flat_0.6', label: '固定 0.6 元/kWh' },
   ],
   'M4-contract': [
-    { value: 'contract_spot_guangdong', label: '广东中长期联动' },
+    { value: 'contract_spot_guangdong', label: '广东月度联动' },
   ],
   'M4': [
     { value: 'spot_guangdong', label: '广东现货' },
@@ -599,7 +627,7 @@ App.analysis = {
   switchInvTab, updateInvTabs, runCalculation, renderResult, renderMiniBars, renderEconRatings,
   addSlot, toggleSlot, openCompareModal, closeCompareModal,
   updateTopology, toggleBizDropdown, addBizEntity, removeBizEntity, onRetailPricingChange,
-  addGroup, removeGroup, getBizGroupsSnapshot, setBizGroupsSnapshot,
+  addGroup, removeGroup, getBizGroupsSnapshot, setBizGroupsSnapshot, syncBizGroupsToComposition,
   _setLoading: setLoading,
   getSlots: () => slots.filter(Boolean),
 };

@@ -20,6 +20,15 @@ def _runtime_pricing_mode(value: str) -> PricingMode:
     return PricingMode(value)
 
 
+def _linked_price_curve(base: list[float], ratio: float, fixed_price: float) -> list[float]:
+    """Blend market-linked price and fixed price into a 24-hour user price."""
+    bounded_ratio = min(1.0, max(0.0, float(ratio)))
+    return [
+        float(v) * bounded_ratio + float(fixed_price) * (1.0 - bounded_ratio)
+        for v in base
+    ]
+
+
 def _coerce_ess_params(values: dict) -> dict:
     """Convert scenario/global ESS values into ESSParams constructor types."""
     out = {}
@@ -125,8 +134,23 @@ def calculate(
         "flat_price": 0.55,
     }
     pricing_mode = _runtime_pricing_mode(config.pricing_mode)
-    pda_for_user_price = P_da if spot_curve_id else DataLoader.get_monthly_pda(region)
-    P_user = compute_user_price(pricing_mode, tariffs, pda_for_user_price)
+    if config.pricing_mode == "M4-contract" and run_curves.get("monthly_curve_id"):
+        base_price = catalog.load_monthly_price_curve(str(run_curves["monthly_curve_id"]))
+        P_user = _linked_price_curve(
+            base_price,
+            float(run_curves.get("monthly_link_ratio", 0.70)),
+            float(run_curves.get("monthly_fixed_price", 0.40)),
+        )
+    elif config.pricing_mode == "M4" and spot_curve_id:
+        base_price = P_rt if run_curves.get("spot_price_kind") == "real_time" else P_da
+        P_user = _linked_price_curve(
+            base_price,
+            float(run_curves.get("spot_link_ratio", 0.90)),
+            float(run_curves.get("spot_fixed_price", 0.40)),
+        )
+    else:
+        pda_for_user_price = P_da if spot_curve_id else DataLoader.get_monthly_pda(region)
+        P_user = compute_user_price(pricing_mode, tariffs, pda_for_user_price)
 
     hourly = DataLoader.load_processed_load(
         region, date, P_da, P_rt,
@@ -155,7 +179,7 @@ def calculate(
     if not (config.system or {}).get("pv", False):
         pv_dict["cap_rated"] = 0
     pv_params = PVParams(**_coerce_pv_params(pv_dict))
-    pv_curve_id = run_curves.get("pv_curve_id")
+    pv_curve_id = run_curves.get("pv_curve_id") or pv_dict.get("curve_id")
     if pv_curve_id:
         pv_curve = catalog.load_pv_curve(str(pv_curve_id))
     else:
@@ -185,5 +209,6 @@ def calculate(
         "load_profile": str(profile_name or "daily_default"),
         "pv_curve_id": str(pv_curve_id) if pv_curve_id else None,
         "spot_curve_id": str(spot_curve_id) if spot_curve_id else None,
+        "monthly_curve_id": str(run_curves.get("monthly_curve_id")) if run_curves.get("monthly_curve_id") else None,
     }
     return result

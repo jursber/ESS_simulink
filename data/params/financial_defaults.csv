@@ -1,4 +1,4 @@
 ﻿param,value,unit,editable
 r_discount,0.06,-,true
-r_user_b1,0.3,-,true
-r_user_b2,0.5,-,true
+r_user_b1,0,-,true
+r_user_b2,0,-,true

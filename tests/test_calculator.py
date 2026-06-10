@@ -79,7 +79,7 @@ class TestCalculator:
 
         assert result.P_da_curve[0] == pytest.approx(0.10)
         assert result.P_rt_curve[-1] == pytest.approx(0.223)
-        assert result.P_user_curve == pytest.approx(result.P_da_curve)
+        assert result.P_user_curve == pytest.approx([p * 0.9 + 0.4 * 0.1 for p in result.P_da_curve])
         assert result.simulation_meta["spot_curve_id"] == "Test:spot"
 
     def test_calculate_honors_pv_curve_id(self, monkeypatch):
