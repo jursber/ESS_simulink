@@ -24,7 +24,10 @@ env/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Data files (keep small samples, ignore large ones)
+# Runtime data (tracked samples live in data_seed/)
+data/
+
+# Data files (legacy granular ignores kept for clarity)
 data/raw/**/*.csv
 data/raw/**/*.xlsx
 data/raw/**/*.parquet
@@ -45,3 +48,7 @@ Thumbs.db
 output/
 results/
 *.log
+
+# Large data files (causes Codex crash due to command line overflow)
+data/pv_typical_curves/
+data/spot_typical_prices/
