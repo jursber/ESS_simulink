@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>算法验证后台页</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<link rel="stylesheet" href="css/style.v4.css?v=20260611-algorithm">
+<style>html{transform:none;width:100%;height:auto;overflow:auto}</style>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body class="algorithm-page">
+  <div class="algorithm-shell">
+    <header class="algorithm-header">
+      <div>
+        <h1>算法验证后台页</h1>
+        <div class="algorithm-subtitle">随单方案计算结果刷新，用于核对储能调度、关口表功率、SOC 与当前参数。</div>
+      </div>
+      <div class="algorithm-status" id="algo-status">等待计算结果</div>
+    </header>
+
+    <main class="algorithm-main">
+      <section class="algorithm-chart-stack">
+        <div class="algorithm-chart-large" id="algo-chart-dispatch"></div>
+        <div class="algorithm-chart-small" id="algo-chart-price"></div>
+      </section>
+
+      <section class="algorithm-params">
+        <div class="algorithm-section-title">当前单方案参数与约束摘要</div>
+        <div class="algorithm-param-grid" id="algo-param-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/algorithm.v4.js?v=20260611-algorithm"></script>
+</body>
+</html>

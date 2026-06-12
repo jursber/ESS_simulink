@@ -945,6 +945,7 @@
         }),
       });
       App.state.result = result;
+      publishAlgorithmSnapshot(result, v);
       App.analysis.renderResult(result);
       updateCompositionUI(false);
       const tag = el('tag-calc');
@@ -956,6 +957,20 @@
       alert('计算失败: ' + e.message);
     } finally {
       App.analysis._setLoading?.(false);
+    }
+  }
+
+  function publishAlgorithmSnapshot(result, variant) {
+    try {
+      localStorage.setItem('ess_algorithm_latest_result', JSON.stringify({
+        result,
+        variant,
+        scenarioId: App.state.currentScenario || App.state.scenarios[0]?.id || null,
+        variantKey: state.activeKey,
+        timestamp: Date.now(),
+      }));
+    } catch (e) {
+      console.warn('Failed to publish algorithm snapshot', e);
     }
   }
 

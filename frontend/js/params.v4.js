@@ -31,10 +31,38 @@ function formPanelHTML(title, fields) {
 }
 
 // 渲染各面板内容
+function showChartMessage(el, message) {
+  if (!el) return;
+  const old = echarts.getInstanceByDom(el);
+  if (old) old.dispose();
+  el.innerHTML = `<div class="params-placeholder" style="height:100%;min-height:120px"><div style="color:var(--text-3);font-size:var(--fs-12)">${message}</div></div>`;
+}
+
+function createParamChart(el) {
+  if (!el) return null;
+  const old = echarts.getInstanceByDom(el);
+  if (old) old.dispose();
+  el.innerHTML = '';
+  const chart = echarts.init(el);
+  const resize = () => chart && !chart.isDisposed?.() && chart.resize();
+  requestAnimationFrame(resize);
+  setTimeout(resize, 80);
+  return chart;
+}
+
+function normalizeHourlyData(data) {
+  if (!Array.isArray(data)) return [];
+  return data.slice(0, 24).map(v => Number(v) || 0);
+}
+
 async function renderPanelContent(panelId) {
   console.log('[params] renderPanelContent called for:', panelId, 'globalParamsData:', globalParamsData);
   const d = globalParamsData;
   const panel = document.getElementById('panel-' + panelId);
+  if (!panel) {
+    console.warn('[params] missing panel:', panelId);
+    return;
+  }
   if (!d) {
     panel.innerHTML = '<div class="params-placeholder"><div style="color:var(--danger);font-size:var(--fs-14)">参数数据未加载，请刷新页面重试</div></div>';
     return;
@@ -341,6 +369,11 @@ async function renderMarketLinkedTab(tabName) {
   const catalog = await api('/simple-day/catalog');
   const options = isSpot ? buildSpotLinkedOptions(catalog.spot || []) : (catalog.monthly || []);
   const select = document.getElementById('market-link-curve');
+  if (!options.length) {
+    select.innerHTML = '';
+    showChartMessage(document.getElementById('market-link-chart'), '暂无可用曲线数据');
+    return;
+  }
   select.innerHTML = options.map(item => `<option value="${item.id}" data-curve-id="${item.curve_id || item.id}" data-price-kind="${item.price_kind || ''}">${item.label}</option>`).join('');
   updateMarketLinkedPreview(tabName);
 }
@@ -363,7 +396,11 @@ async function updateMarketLinkedPreview(tabName) {
   const fixed = Number(document.getElementById('market-link-fixed')?.value || 0.4);
   try {
     const res = await api(`/simple-day/curve?category=${category}&curve_id=${encodeURIComponent(curveId)}&price_kind=${encodeURIComponent(priceKind)}`);
-    const base = res.values || [];
+    const base = normalizeHourlyData(res.values || []);
+    if (!base.length) {
+      showChartMessage(document.getElementById('market-link-chart'), '曲线数据为空');
+      return;
+    }
     const marketPart = base.map(v => +(Number(v) * ratio).toFixed(4));
     const fixedPart = base.map(() => +(fixed * (1 - ratio)).toFixed(4));
     const avg = marketPart.reduce((a,b)=>a+b,0) / (marketPart.length || 1);
@@ -378,8 +415,8 @@ async function updateMarketLinkedPreview(tabName) {
 function renderMarketLinkedChart(marketPart, fixedPart, marketName) {
   const target = document.getElementById('market-link-chart');
   if (!target) return;
-  if (marketLinkedChart) marketLinkedChart.dispose();
-  marketLinkedChart = echarts.init(target);
+  marketLinkedChart = createParamChart(target);
+  if (!marketLinkedChart) return;
   marketLinkedChart.setOption({
     tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
     legend:{top:0,textStyle:{color:'#b0b8c8',fontSize:11}},
@@ -397,8 +434,12 @@ function renderMarketLinkedChart(marketPart, fixedPart, marketName) {
 async function renderSpotPriceCharts() {
   try {
     const res = await api('/params/spot-prices');
-    const da = res.day_ahead;
-    const rt = res.real_time;
+    const da = normalizeHourlyData(res.day_ahead);
+    const rt = normalizeHourlyData(res.real_time);
+    if (da.length !== 24 || rt.length !== 24) {
+      ['spot-da-chart', 'spot-rt-chart', 'spot-spread-chart'].forEach(id => showChartMessage(document.getElementById(id), '现货电价曲线数据不完整'));
+      return;
+    }
     const spread = da.map((v, i) => +(rt[i] - v).toFixed(4));
 
     // 图1：日前电价
@@ -419,14 +460,15 @@ function onSpotPriceSetChange() {
 function renderSpotLineChart(containerId, data, name, color) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  const chart = echarts.init(el);
+  const chart = createParamChart(el);
+  if (!chart) return;
   chart.setOption({
     title: { text: name, textStyle: { color: '#b0b8c8', fontSize: 12 }, left: 'center', top: 0 },
     tooltip: { trigger: 'axis', backgroundColor: '#1e2330', borderColor: '#2e3446', textStyle: { color: '#f0f2f5', fontSize: 11 } },
     grid: { left: 46, right: 20, top: 30, bottom: 20 },
     xAxis: { type: 'category', data: Array.from({length:24}, (_,i) => `${i}`), axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8, interval: 0 } },
     yAxis: { type: 'value', name: '元/kWh', nameTextStyle: { color: '#7a8298', fontSize: 8 }, axisLine: { lineStyle: { color: '#2e3446' } }, axisLabel: { color: '#7a8298', fontSize: 8 }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } } },
-    series: [{ name: name, type: 'line', data: data, smooth: true, symbol: 'none', lineStyle: { color: color, width: 1.5 }, areaStyle: { color: color.replace(')', ',0.12)').replace('rgb', 'rgba') } }],
+    series: [{ name: name, type: 'line', data: data, smooth: true, symbol: 'none', lineStyle: { color: color, width: 1.5 }, areaStyle: { color: color.startsWith('#') ? color + '22' : color.replace(')', ',0.12)').replace('rgb', 'rgba') } }],
   });
   window.addEventListener('resize', () => chart.resize());
 }
@@ -434,7 +476,8 @@ function renderSpotLineChart(containerId, data, name, color) {
 function renderSpotSpreadChart(containerId, spread) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  const chart = echarts.init(el);
+  const chart = createParamChart(el);
+  if (!chart) return;
   chart.setOption({
     title: { text: '价差曲线（实时 - 日前）', textStyle: { color: '#b0b8c8', fontSize: 12 }, left: 'center', top: 0 },
     tooltip: {
@@ -464,7 +507,8 @@ function renderSpotSpreadChart(containerId, spread) {
 function renderSpotPriceChart() {
   const el = document.getElementById('spot-price-chart');
   if (!el) return;
-  const chart = echarts.init(el);
+  const chart = createParamChart(el);
+  if (!chart) return;
   const mockDa = Array.from({length:24},(_,i)=>+(0.35+Math.sin((i-5)*Math.PI/13)*0.25).toFixed(4));
   chart.setOption({
     tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
@@ -489,12 +533,14 @@ function loadLoadProfiles() {
     if (sel) {
       sel.innerHTML = loadProfilesData.map((p,i) => `<option value="${i}">${i+1}.${p.label}</option>`).join('');
     }
+    if (!loadProfilesData.length) {
+      showChartMessage(document.getElementById('load-curve-chart'), '暂无可用净生产负荷曲线');
+      return;
+    }
     // 默认选择第 1 个（全天候生产,白天偏高），平均负荷 = 3 MW
     const defaultIdx = 0;
     if (sel) sel.value = defaultIdx;
-    if (loadProfilesData.length > 0) {
-      renderLoadDetail(defaultIdx);
-    }
+    renderLoadDetail(defaultIdx);
   }).catch(e => console.error('load profiles failed:', e));
 }
 
@@ -503,6 +549,10 @@ function renderLoadMiniGrid() {
   if (!grid) return;
   loadMiniCharts.forEach(c => c.dispose());
   loadMiniCharts = [];
+  if (!loadProfilesData.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text-3);font-size:var(--fs-12);padding:16px;text-align:center">暂无可用净生产负荷曲线</div>';
+    return;
+  }
 
   // 16 个内置曲线 + 1 个"用户自定义"占位
   let html = loadProfilesData.map((p,i) => `
@@ -521,7 +571,8 @@ function renderLoadMiniGrid() {
   loadProfilesData.forEach((p,i) => {
     const el = document.getElementById(`load-mini-${i}`);
     if (!el) return;
-    const c = echarts.init(el);
+    const c = createParamChart(el);
+    if (!c) return;
     c.setOption({
       grid:{left:2,right:2,top:2,bottom:2},
       xAxis:{type:'category',data:p.hour_data.map((_,h)=>h),show:false},
@@ -541,6 +592,7 @@ function selectLoadProfile(idx) {
 function renderLoadDetail(idx) {
   const p = loadProfilesData[idx];
   if (!p) return;
+  const baseAvg = Number(p.avg_load_mw) || 1;
 
   // 填充默认值：平均负荷 = 3 MW，最大负荷自动算
   const avgInput = document.getElementById('load-avg-input');
@@ -548,7 +600,7 @@ function renderLoadDetail(idx) {
   const defaultAvg = 3.0;
   if (avgInput) avgInput.value = defaultAvg.toFixed(1);
   // 按平均负荷缩放后计算最大负荷
-  const ratio = defaultAvg / p.avg_load_mw;
+  const ratio = defaultAvg / baseAvg;
   const scaledMax = p.max_load_mw * ratio;
   if (maxInput) maxInput.value = scaledMax.toFixed(4);
 
@@ -567,8 +619,12 @@ function renderLoadDetail(idx) {
 function renderLoadDetailChart(hourData, idx) {
   const el = document.getElementById('load-curve-chart');
   if (!el) return;
-  if (loadDetailChart) loadDetailChart.dispose();
-  loadDetailChart = echarts.init(el);
+  if (!Array.isArray(hourData) || !hourData.length) {
+    showChartMessage(el, '暂无可用净生产负荷曲线');
+    return;
+  }
+  loadDetailChart = createParamChart(el);
+  if (!loadDetailChart) return;
 
   const p = loadProfilesData[idx];
   loadDetailChart.setOption({
@@ -857,8 +913,13 @@ async function initTariffAdminTou() {
   try {
     const provinces = await App.api('/tariff/administrative/provinces');
     const provSel = document.getElementById('tariff-admin-province');
+    if (!Array.isArray(provinces) || !provinces.length) {
+      showChartMessage(document.getElementById('tariff-admin-chart'), '暂无行政分时电价数据');
+      return;
+    }
+    const defaultProvince = provinces.includes('Henan') ? 'Henan' : provinces[0];
     if (provSel) {
-      provSel.innerHTML = provinces.map(p => `<option value="${p}" ${p==='Beijing'?'selected':''}>${PROVINCE_NAMES[p]||p}</option>`).join('');
+      provSel.innerHTML = provinces.map(p => `<option value="${p}" ${p===defaultProvince?'selected':''}>${PROVINCE_NAMES[p]||p}</option>`).join('');
     }
     await onTariffAdminTouChange();
   } catch(e) { console.error('init tariff admin tou failed:', e); }
@@ -873,6 +934,10 @@ async function onTariffAdminTouChange() {
     const months = await App.api(`/tariff/administrative/months/${province}`);
     const monthSel = document.getElementById('tariff-admin-month');
     const prevMonth = monthSel?.value;
+    if (!Array.isArray(months) || !months.length) {
+      showChartMessage(document.getElementById('tariff-admin-chart'), '该省份暂无行政分时电价月份数据');
+      return;
+    }
     if (monthSel) {
       monthSel.innerHTML = months.map(m => `<option value="${m}" ${m===(prevMonth||'202606')?'selected':''}>${m}</option>`).join('');
     }
@@ -882,6 +947,10 @@ async function onTariffAdminTouChange() {
     const bizTypes = await App.api(`/tariff/administrative/business-types/${province}/${month}`);
     const bizSel = document.getElementById('tariff-admin-biz-type');
     const prevBiz = bizSel?.value;
+    if (!Array.isArray(bizTypes) || !bizTypes.length) {
+      showChartMessage(document.getElementById('tariff-admin-chart'), '该月份暂无用电性质数据');
+      return;
+    }
     if (bizSel) {
       bizSel.innerHTML = bizTypes.map(b => `<option value="${b}" ${b===(prevBiz||bizTypes[0])?'selected':''}>${BIZ_TYPE_NAMES[b]||b}</option>`).join('');
     }
@@ -892,8 +961,9 @@ async function onTariffAdminTouChange() {
     tariffAdminData = result;
 
     // 更新电压等级下拉（过滤掉全空的列）
-    const validVoltageLevels = result.voltage_levels.filter(v => {
-      return result.data.some(r => r[v] != null);
+    const resultRows = Array.isArray(result.data) ? result.data : [];
+    const validVoltageLevels = (result.voltage_levels || []).filter(v => {
+      return resultRows.some(r => r[v] != null);
     });
     const voltSel = document.getElementById('tariff-admin-voltage');
     const prevVolt = voltSel?.value;
@@ -901,17 +971,26 @@ async function onTariffAdminTouChange() {
       voltSel.innerHTML = validVoltageLevels.map(v => `<option value="${v}" ${v===(prevVolt||validVoltageLevels[0])?'selected':''}>${v}</option>`).join('');
     }
     const voltage = voltSel?.value || validVoltageLevels[0];
+    if (!validVoltageLevels.length || !resultRows.length) {
+      showChartMessage(document.getElementById('tariff-admin-chart'), '该组合暂无有效电价数据');
+      renderTariffAdminTable([], '');
+      return;
+    }
 
-    renderTariffAdminChart(result.data, voltage);
-    renderTariffAdminTable(result.data, voltage);
+    renderTariffAdminChart(resultRows, voltage);
+    renderTariffAdminTable(resultRows, voltage);
   } catch(e) { console.error('tariff admin tou change failed:', e); }
 }
 
 function renderTariffAdminChart(data, voltageCol) {
   const el = document.getElementById('tariff-admin-chart');
   if (!el) return;
-  if (tariffAdminChart) tariffAdminChart.dispose();
-  tariffAdminChart = echarts.init(el);
+  if (!Array.isArray(data) || !data.length || !voltageCol) {
+    showChartMessage(el, '暂无有效行政分时电价数据');
+    return;
+  }
+  tariffAdminChart = createParamChart(el);
+  if (!tariffAdminChart) return;
 
   const prices = data.map(r => r[voltageCol] != null ? r[voltageCol] : 0);
   const periods = data.map(r => r['时段'] || '');
@@ -935,6 +1014,10 @@ function renderTariffAdminChart(data, voltageCol) {
 function renderTariffAdminTable(data, voltageCol) {
   const el = document.getElementById('tariff-admin-table');
   if (!el) return;
+  if (!Array.isArray(data) || !data.length || !voltageCol) {
+    el.innerHTML = '<div class="params-placeholder" style="min-height:120px"><div style="color:var(--text-3);font-size:var(--fs-12)">暂无有效行政分时电价明细</div></div>';
+    return;
+  }
 
   // 按时段聚合
   const segments = [];
@@ -1036,18 +1119,23 @@ function initPvCurveSelectors(defaultRegion, defaultCurveType) {
 function renderPvCurveChart(data, title) {
   const el = document.getElementById('pv-curve-chart');
   if (!el) return;
-  if (pvCurveChart) pvCurveChart.dispose();
-  pvCurveChart = echarts.init(el);
+  const values = normalizeHourlyData(data);
+  if (!values.length) {
+    showChartMessage(el, '暂无可用光伏出力曲线');
+    return;
+  }
+  pvCurveChart = createParamChart(el);
+  if (!pvCurveChart) return;
   pvCurveChart.setOption({
     tooltip:{trigger:'axis',backgroundColor:'#1e2330',borderColor:'#2e3446',textStyle:{color:'#f0f2f5',fontSize:11}},
     grid:{left:46,right:46,top:30,bottom:20},
     xAxis:{type:'category',data:Array.from({length:24},(_,i)=>`${i}`),axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8,interval:0}},
     yAxis:{type:'value',name:'kWh/kWp',nameTextStyle:{color:'#7a8298',fontSize:8},min:0,axisLine:{lineStyle:{color:'#2e3446'}},axisLabel:{color:'#7a8298',fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.04)'}}},
-    series:[{name:title||'光伏出力',type:'line',data:data,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
+    series:[{name:title||'光伏出力',type:'line',data:values,smooth:true,symbol:'none',lineStyle:{color:'#fbbf24',width:1},areaStyle:{color:'rgba(251,191,36,0.12)'}}],
   });
   window.addEventListener('resize',()=>pvCurveChart&&pvCurveChart.resize());
 
-  const dailySum = data.reduce((a,b) => a+b, 0);
+  const dailySum = values.reduce((a,b) => a+b, 0);
   const utilHours = (dailySum * 365).toFixed(0);
   const utilEl = document.getElementById('pv-util-hours');
   if (utilEl) utilEl.textContent = `${utilHours}h`;
@@ -1127,13 +1215,19 @@ async function onContractCurveChange() {
 function renderContractChart(res) {
   const el = document.getElementById('contract-chart');
   if (!el) return;
-  if (contractChart) contractChart.dispose();
-  contractChart = echarts.init(el);
+  const hourlyMwh = normalizeHourlyData(res?.hourly_mwh);
+  const touPrices = normalizeHourlyData(res?.tou_prices);
+  if (hourlyMwh.length !== 24 || touPrices.length !== 24) {
+    showChartMessage(el, '中长期量价曲线数据不完整');
+    return;
+  }
+  contractChart = createParamChart(el);
+  if (!contractChart) return;
   const hours = Array.from({length:24}, (_,i) => `${i}`);
   const curveLabels = {load:'按统调负荷分解',D1:'D1 峰平谷',D2:'D2 平均',D3:'D3 高峰',D4:'D4 平段',D5:'D5 谷段'};
 
   // 颜色：按电价分色
-  const colors = res.tou_prices.map(p => {
+  const colors = touPrices.map(p => {
     if (p >= 0.9) return '#f87171'; // 峰-红
     if (p >= 0.5) return '#fbbf24'; // 平-黄
     return '#5ea3ff';               // 谷-蓝
@@ -1147,7 +1241,7 @@ function renderContractChart(res) {
       textStyle: { color: '#f0f2f5', fontSize: 11 },
       formatter: function(params) {
         const p = params[0];
-        const price = res.tou_prices[p.dataIndex];
+        const price = touPrices[p.dataIndex];
         return `${p.name}<br/>合约电量: ${p.value.toFixed(2)} MWh<br/>分时电价: ${price} 元/kWh`;
       }
     },
@@ -1169,7 +1263,7 @@ function renderContractChart(res) {
     series: [{
       name: curveLabels[res.curve_type] || res.curve_type,
       type: 'bar',
-      data: res.hourly_mwh.map((v, i) => ({
+      data: hourlyMwh.map((v, i) => ({
         value: v,
         itemStyle: { color: colors[i], opacity: v > 0 ? 0.85 : 0.15 }
       })),
@@ -1271,8 +1365,14 @@ function onContractCurveTypeChange() {
 function renderTariffBarChart(containerId, hourly, seriesName) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  const chart = echarts.init(el);
-  const colors = hourly.map(p => {
+  const values = normalizeHourlyData(hourly);
+  if (values.length !== 24) {
+    showChartMessage(el, '分时电价曲线数据不完整');
+    return;
+  }
+  const chart = createParamChart(el);
+  if (!chart) return;
+  const colors = values.map(p => {
     if (p >= 0.9) return '#f87171'; // 峰-红
     if (p >= 0.5) return '#fbbf24'; // 平-黄
     return '#5ea3ff';               // 谷-蓝
@@ -1303,7 +1403,7 @@ function renderTariffBarChart(containerId, hourly, seriesName) {
     series: [{
       name: seriesName,
       type: 'bar',
-      data: hourly.map((v, i) => ({
+      data: values.map((v, i) => ({
         value: v,
         itemStyle: { color: colors[i] }
       })),

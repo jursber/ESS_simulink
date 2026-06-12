@@ -223,6 +223,15 @@ async function runCalculation() {
     });
     st.result = result;
     st.currentScenario = scenarioId;
+    publishAlgorithmSnapshot(result, {
+      pricing_mode: pricingMode,
+      business_model: businessModel,
+      wholesale_overrides: {
+        settlement_mode: settlementMode,
+        contract_curve_profile: contractProfile,
+        dayahead_curve_profile: dayaheadProfile,
+      },
+    });
     const tagCalc = document.getElementById('tag-calc');
     tagCalc.textContent = '计算完成';
     tagCalc.classList.add('done');
@@ -403,6 +412,20 @@ function getAllowedBizEntityIds() {
   if (document.getElementById('chk-pv')?.checked) ids.push('pv');
   if (document.getElementById('chk-retail-mode')?.checked) ids.push('retail');
   return ids;
+}
+
+function publishAlgorithmSnapshot(result, variant) {
+  try {
+    localStorage.setItem('ess_algorithm_latest_result', JSON.stringify({
+      result,
+      variant,
+      scenarioId: App.state.currentScenario || App.state.scenarios[0]?.id || null,
+      variantKey: variant?.key || 'A',
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    console.warn('Failed to publish algorithm snapshot', e);
+  }
 }
 
 function normalizeBizGroups(groups) {

@@ -494,3 +494,163 @@ body{overflow:hidden;background:var(--bg);color:var(--text-1);font-family:"Harmo
 /* 拓扑图模块变灰 */
 .topo-dim{opacity:.25;transition:opacity .3s}
 .topo-active{opacity:1;transition:opacity .3s}
+/* Algorithm verification standalone page */
+body.algorithm-page {
+  --bg: #f5f7fb;
+  --bg-card: #ffffff;
+  --bg-card-alt: #f8fafc;
+  --bg-strip: #f8fafc;
+  --bg-input: #ffffff;
+  --border: #d8dee9;
+  --border-light: #e8edf4;
+  --border-active: #2563eb;
+  --text-1: #172033;
+  --text-2: #5d6678;
+  --text-3: #8993a5;
+  --text-4: #b4bdcc;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-dim: rgba(37, 99, 235, 0.08);
+  --primary-glow: rgba(37, 99, 235, 0.18);
+  --accent: #2563eb;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-1);
+  overflow: auto;
+}
+
+.algorithm-shell {
+  min-height: 100vh;
+  padding: 18px 22px 24px;
+  box-sizing: border-box;
+}
+
+.algorithm-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.algorithm-header h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.algorithm-subtitle {
+  font-size: var(--fs-12);
+  color: var(--text-2);
+}
+
+.algorithm-status {
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-2);
+  font-size: var(--fs-12);
+  text-align: right;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.algorithm-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.algorithm-chart-stack {
+  height: 620px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.algorithm-chart-large {
+  height: 410px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.algorithm-chart-small {
+  height: 209px;
+}
+
+.algorithm-params {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.algorithm-section-title {
+  font-size: var(--fs-14);
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-1);
+}
+
+.algorithm-param-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.algorithm-param-card {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-strip);
+  padding: 10px 12px;
+  min-height: 74px;
+}
+
+.algorithm-param-card h3 {
+  margin: 0 0 8px;
+  font-size: var(--fs-12);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.algorithm-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+}
+
+.algorithm-kv span:last-child {
+  color: var(--text-1);
+  font-weight: 600;
+  text-align: right;
+}
+
+.algorithm-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: var(--fs-13);
+}
+
+@media (max-width: 1200px) {
+  .algorithm-param-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+html:has(body.algorithm-page) {
+  transform: none;
+  width: 100%;
+  height: auto;
+  overflow: auto;
+}
